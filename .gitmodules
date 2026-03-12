@@ -1,0 +1,3 @@
+[submodule "dot-graph-lib"]
+	path = dot-graph-lib
+	url = git@github.com:sevaphasol/dot-graph-lib.git
