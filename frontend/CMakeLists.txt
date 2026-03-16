@@ -1,29 +1,46 @@
-# cmake_minimum_required(VERSION 3.10)
-#
-# project(SimpleCompiler VERSION 1.0 LANGUAGES CXX)
-#
-# # Устанавливаем стандарт C++17
-# set(CMAKE_CXX_STANDARD 17)
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_CXX_EXTENSIONS OFF)
-#
-# add_executable(front
-#     main.cc
-#     lexer.cc
-# )
-#
-# target_include_directories(front PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-#
-# target_compile_options(front PRIVATE -Wall -Wextra -Wpedantic)
-
 set(INC_DIR "include")
 set(SRC_DIR "sources")
 
-add_executable(
-    frontend
+set(
+    COMPILE_OPTIONS
+    -Wall
+    -Werror
+    -Wextra
+    -Wpedantic
+)
+
+set(
+    FRONTEND_SOURCES
     ${SRC_DIR}/lexer.cc
     ${SRC_DIR}/syntax.cc
-    ${SRC_DIR}/main.cc
+    ${SRC_DIR}/frontend.cc
+    ${SRC_DIR}/ast_dump.cc
+)
+
+set(
+    FRONTEND_HEADERS
+    ${INC_DIR}/ast_dump.hh
+    ${INC_DIR}/ast.hh
+    ${INC_DIR}/frontend.hh
+    ${INC_DIR}/lexer.hh
+    ${INC_DIR}/syntax.hh
+    ${INC_DIR}/nametable.hh
+)
+
+#
+# Separate frontend executable
+#
+
+add_executable(
+    frontend
+    ${FRONTEND_SOURCES}
+    ${FRONTEND_HEADERS}
+)
+
+target_compile_definitions(
+    frontend
+    PRIVATE
+    BUILD_FRONTEND_SEPARATELY
 )
 
 target_include_directories(
@@ -38,9 +55,54 @@ target_link_libraries(
     DUMB::common
 )
 
+target_link_libraries(
+    frontend
+    PRIVATE
+    DotGraphLib
+)
+
 target_compile_options(
     frontend
     PRIVATE
-    -Wall
-    -Werror
+    ${COMPILE_OPTIONS}
+)
+
+#
+# Frontend library
+#
+
+add_library(
+    frontend_lib
+    ${FRONTEND_SOURCES}
+    ${FRONTEND_HEADERS}
+)
+
+target_compile_definitions(
+    frontend_lib
+    PRIVATE
+    BUILD_FRONTEND_SEPARATELY
+)
+
+target_include_directories(
+    frontend_lib
+    PRIVATE
+    ${INC_DIR}
+)
+
+target_link_libraries(
+    frontend_lib
+    PRIVATE
+    DUMB::common
+)
+
+target_link_libraries(
+    frontend_lib
+    PRIVATE
+    DotGraphLib
+)
+
+target_compile_options(
+    frontend_lib
+    PRIVATE
+    ${COMPILE_OPTIONS}
 )

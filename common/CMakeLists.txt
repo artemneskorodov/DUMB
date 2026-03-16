@@ -10,7 +10,8 @@ add_library(
 add_library(
     DUMB::common
     ALIAS
-    common)
+    common
+)
 
 target_include_directories(
     common
@@ -24,10 +25,4 @@ target_compile_options(
     -Wall
     -Werror
     -Wpedantic
-)
-
-target_link_libraries(
-    common
-    PRIVATE
-    DotGraphLib
 )

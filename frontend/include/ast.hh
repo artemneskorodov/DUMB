@@ -5,6 +5,8 @@
 #include <string>
 #include <list>
 
+#include "nametable.hh"
+
 namespace dumb
 {
 namespace ast
@@ -48,14 +50,14 @@ public:
 struct Identifier final : public ASTNode
 {
     explicit
-    Identifier( const std::string &name)
-     :  name{ name}
+    Identifier( std::size_t id)
+     :  id{ id}
     {
     }
 
     void Accept( Visitor& v) override;
 
-    std::string name;
+    std::size_t id;
 
 };
 
@@ -176,16 +178,16 @@ struct Return final : public ASTNode
 struct FunctionCall final : public ASTNode
 {
     explicit
-    FunctionCall( const std::string&    name,
+    FunctionCall( std::size_t           id,
                   std::list<ASTNodePtr> parameters)
-     :  name       { name},
+     :  id         { id},
         parameters { std::move( parameters)}
     {
     }
 
     void Accept( Visitor& v) override;
 
-    std::string           name;
+    std::size_t           id;
     std::list<ASTNodePtr> parameters;
 
 };
@@ -196,10 +198,10 @@ struct FunctionCall final : public ASTNode
 struct Function final : public ASTNode
 {
     explicit
-    Function( const std::string&    name,
+    Function( std::size_t           id,
               std::list<ASTNodePtr> parameters,
               std::list<ASTNodePtr> body)
-     :  name       { std::move( name)},
+     :  id         { id},
         parameters { std::move( parameters)},
         body       { std::move( body)}
     {
@@ -207,7 +209,7 @@ struct Function final : public ASTNode
 
     void Accept( Visitor& v) override;
 
-    std::string           name;
+    std::size_t           id;
     std::list<ASTNodePtr> parameters;
     std::list<ASTNodePtr> body;
 
@@ -219,14 +221,20 @@ struct Function final : public ASTNode
 struct Program final : public ASTNode
 {
     explicit
-    Program( std::list<ASTNodePtr> functions)
-     :  functions { std::move( functions)}
+    Program( std::list<ASTNodePtr> functions,
+             std::list<ASTNodePtr> global_variables,
+             nametable::NameTable  nametable)
+     :  functions        { std::move( functions)},
+        global_variables { std::move( global_variables)},
+        nametable        { std::move( nametable)}
     {
     }
 
     void Accept( Visitor& v) override;
 
     std::list<ASTNodePtr> functions;
+    std::list<ASTNodePtr> global_variables;
+    nametable::NameTable  nametable;
 
 };
 

@@ -38,7 +38,7 @@ constexpr std::array<KeyWordInfo, 5> kKeyWordsAlpha
     KeyWordInfo{   "return", TokenType::RETURN_STATEMENT },
 }};
 
-constexpr std::array<KeyWordInfo, 11> kKeyWordsNormalSymbols
+constexpr std::array<KeyWordInfo, 12> kKeyWordsNormalSymbols
 {{
     KeyWordInfo{ "+", TokenType::OP_ADD            },
     KeyWordInfo{ "-", TokenType::OP_SUB            },
@@ -51,6 +51,7 @@ constexpr std::array<KeyWordInfo, 11> kKeyWordsNormalSymbols
     KeyWordInfo{ ")", TokenType::RIGHT_PARENTHESIS },
     KeyWordInfo{ "{", TokenType::LEFT_SCOPE        },
     KeyWordInfo{ "}", TokenType::RIGHT_SCOPE       },
+    KeyWordInfo{ ",", TokenType::COMMA             },
 }};
 
 } // ! anonymous namespace
@@ -225,8 +226,8 @@ Lexer::read_symbol()
         }
     }
 
-    pos_ += value.size();
-    line_ += value.size();
+    pos_    += value.size();
+    column_ += value.size();
     return Token{ type, value, line, column};
 }
 

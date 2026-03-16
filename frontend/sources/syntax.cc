@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "syntax.hh"
+#include "nametable.hh"
 
 namespace dumb
 {
@@ -54,13 +55,12 @@ private:
     ast::ASTNodePtr get_sum();
     ast::ASTNodePtr get_product();
     ast::ASTNodePtr get_element();
-    ast::ASTNodePtr get_function_call();
     ast::ASTNodePtr get_immediate();
-    ast::ASTNodePtr get_identifier();
     ast::ASTNodePtr get_new_var();
+    ast::ASTNodePtr get_symbol();
 
 private:
-    inline bool is_type( lexer::TokenType type, int offset = 0) const { return (token( offset).type == type); }
+    inline bool is_type( lexer::TokenType type, int offset = 0) const { std::cerr << "On token = " << token(offset).type << "(line:column) = (" << line() << ":" << column() << ")" << std::endl; return (token( offset).type == type); }
     inline int line( int offset = 0) const { return token( offset).line; }
     inline int column( int offset = 0) const { return token( offset).column; }
     inline const std::string& value( int offset = 0) const { return token( offset).value; }
@@ -69,24 +69,39 @@ private:
 
 private:
     const std::vector<lexer::Token> &tokens_;
-    size_t pos_ = 0;
+    size_t pos_{ 0};
+    nametable::NameTable nametable_{};
 
 };
 
 ast::ASTNodePtr
 SyntaxParser::GetProgram()
 {
-    std::list<ast::ASTNodePtr> functions;
+    std::list<ast::ASTNodePtr> functions        {};
+    std::list<ast::ASTNodePtr> global_variables {};
     while ( !is_type( lexer::TokenType::END_OF_PROGRAM) )
     {
-        functions.emplace_back( get_function());
+        if ( is_type( lexer::TokenType::FUNC_DECLARATION) )
+        {
+            functions.emplace_back( get_function());
+        } else if ( is_type( lexer::TokenType::VAR_DEClARATION) )
+        {
+            global_variables.emplace_back( get_new_var());
+        } else
+        {
+            throw SyntaxError{ line(), column(),
+                               "Unexpected global token"};
+        }
     }
-    return std::make_unique<ast::Program>( std::move( functions));
+    return std::make_unique<ast::Program>( std::move( functions),
+                                           std::move( global_variables),
+                                           std::move( nametable_));
 }
 
 ast::ASTNodePtr
 SyntaxParser::get_function()
 {
+    assert( !nametable_.HasScope());
     if ( !is_type( lexer::TokenType::FUNC_DECLARATION) )
     {
         throw SyntaxError{ line(), column(),
@@ -100,6 +115,7 @@ SyntaxParser::get_function()
                           "Expected function name"};
     }
     std::string name = value();
+    std::size_t id = nametable_.AddSymbol( name, nametable::Symbol::Type::FUNCTION);
     advance();
 
     if ( !is_type( lexer::TokenType::LEFT_PARENTHESIS) )
@@ -109,16 +125,37 @@ SyntaxParser::get_function()
     }
     advance();
 
+    nametable_.EnterScope();
     std::list<ast::ASTNodePtr> parameters{};
-
     while ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
     {
-        parameters.emplace_back( get_identifier());
+        if ( !is_type( lexer::TokenType::USER_STRING) )
+        {
+            throw SyntaxError{ line(), column(),
+                               "Expected function parameter"};
+        }
+        std::string name = value();
+        std::size_t param_id = nametable_.AddSymbol( name, nametable::Symbol::Type::LOCAL_VARIABLE);
+        advance();
+
+        parameters.emplace_back( std::make_unique<ast::Identifier>( param_id));
+
+        if ( is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
+        {
+            advance();
+            break;
+        } else if ( is_type( lexer::TokenType::COMMA) )
+        {
+            advance();
+            continue;
+        }
+        throw SyntaxError{ line(), column(),
+                          "Expected ','"};
     }
-    advance();
 
     std::list<ast::ASTNodePtr> body = get_body();
-    return std::make_unique<ast::Function>( name, std::move( parameters), std::move( body));
+    nametable_.LeaveScope();
+    return std::make_unique<ast::Function>( id, std::move( parameters), std::move( body));
 }
 
 std::list<ast::ASTNodePtr>
@@ -143,20 +180,6 @@ SyntaxParser::get_body()
 };
 
 ast::ASTNodePtr
-SyntaxParser::get_identifier()
-{
-    if ( !is_type( lexer::TokenType::USER_STRING) )
-    {
-        throw SyntaxError{ line(), column(),
-                          "Expected identifier"};
-    }
-    std::string name = value();
-    advance();
-
-    return std::make_unique<ast::Identifier>( name);
-}
-
-ast::ASTNodePtr
 SyntaxParser::get_statement()
 {
     if ( is_type( lexer::TokenType::IF_STATEMENT) )
@@ -169,32 +192,14 @@ SyntaxParser::get_statement()
                 is_type( lexer::TokenType::ASSIGNMENT, 1) )
     {
         ast::ASTNodePtr result = get_assignment();
-        if ( !is_type( lexer::TokenType::STATEMENT_END) )
-        {
-            throw SyntaxError{ line(), column(),
-                              "Expected ';'"};
-        }
-        advance();
         return result;
     } else if ( is_type( lexer::TokenType::RETURN_STATEMENT) )
     {
         ast::ASTNodePtr result = get_return();
-        if ( !is_type( lexer::TokenType::STATEMENT_END) )
-        {
-            throw SyntaxError{ line(), column(),
-                              "Expected ';'"};
-        }
-        advance();
         return result;
     } else if ( is_type( lexer::TokenType::VAR_DEClARATION) )
     {
         ast::ASTNodePtr result = get_new_var();
-        if ( !is_type( lexer::TokenType::STATEMENT_END) )
-        {
-            throw SyntaxError{ line(), column(),
-                              "Expected ';'"};
-        }
-        advance();
         return result;
     }else
     {
@@ -209,17 +214,46 @@ SyntaxParser::get_new_var()
     assert( is_type( lexer::TokenType::VAR_DEClARATION));
     advance();
 
-    ast::ASTNodePtr identifier = get_identifier();
-
-    if ( !is_type( lexer::TokenType::ASSIGNMENT) )
+    if ( !is_type( lexer::TokenType::USER_STRING) )
     {
-        return std::make_unique<ast::NewVariable>( std::move( identifier), nullptr);
+        throw SyntaxError{ line(), column(),
+                           "Expected identifier after VAR_DECLARATION token"};
+    }
+    // Adding to nametable
+    std::string name = value();
+    std::size_t id;
+    if ( nametable_.HasScope() )
+    {
+        id = nametable_.AddSymbol( name, nametable::Symbol::Type::LOCAL_VARIABLE);
     } else
+    {
+        id = nametable_.AddSymbol( name, nametable::Symbol::Type::GLOBAL_VARIABLE);
+    }
+    advance();
+
+    ast::ASTNodePtr identifier = std::make_unique<ast::Identifier>( id);
+
+    ast::ASTNodePtr new_variable = nullptr;
+
+    if ( is_type( lexer::TokenType::ASSIGNMENT) )
     {
         advance();
         ast::ASTNodePtr initializer = get_sum();
-        return std::make_unique<ast::NewVariable>( std::move( identifier), std::move( initializer));
+        new_variable = std::make_unique<ast::NewVariable>( std::move( identifier),
+                                                           std::move( initializer));
+    } else
+    {
+        new_variable =  std::make_unique<ast::NewVariable>( std::move( identifier),
+                                                            nullptr);
     }
+
+    if ( !is_type( lexer::TokenType::STATEMENT_END) )
+    {
+        throw SyntaxError{ line(), column(),
+                          "Expected ';'"};
+    }
+    advance();
+    return new_variable;
 }
 
 ast::ASTNodePtr
@@ -244,7 +278,10 @@ SyntaxParser::get_if()
     }
     advance();
 
+    nametable_.EnterScope();
     std::list<ast::ASTNodePtr> body = get_body();
+    nametable_.LeaveScope();
+
     return std::make_unique<ast::If>( std::move( condition), std::move( body));
 }
 
@@ -270,7 +307,9 @@ SyntaxParser::get_while()
     }
     advance();
 
+    nametable_.EnterScope();
     std::list<ast::ASTNodePtr> body = get_body();
+    nametable_.LeaveScope();
 
     return std::make_unique<ast::While>( std::move( condition), std::move( body));
 }
@@ -281,11 +320,26 @@ SyntaxParser::get_assignment()
     assert( is_type( lexer::TokenType::USER_STRING));
     assert( is_type( lexer::TokenType::ASSIGNMENT, 1));
 
-    ast::ASTNodePtr left = get_identifier();
+    std::string name = value();
+    auto sym = nametable_.GetSymbol( name);
+    if ( !sym.has_value() )
+    {
+        throw SyntaxError{ line(), column(),
+                           "Unknown symbol"};
+    }
 
-    advance();
+    ast::ASTNodePtr left = std::make_unique<ast::Identifier>( sym.value().GetID());
+
+    advance( 2); // Skipping 'user-string' and '='
 
     ast::ASTNodePtr expression = get_expression();
+
+    if ( !is_type( lexer::TokenType::STATEMENT_END) )
+    {
+        throw SyntaxError{ line(), column(),
+                          "Expected ';'"};
+    }
+    advance();
 
     return std::make_unique<ast::Assignment>( std::move( left), std::move( expression));
 }
@@ -297,6 +351,13 @@ SyntaxParser::get_return()
     advance();
 
     ast::ASTNodePtr expression = get_expression();
+
+    if ( !is_type( lexer::TokenType::STATEMENT_END) )
+    {
+        throw SyntaxError{ line(), column(),
+                          "Expected ';'"};
+    }
+    advance();
 
     return std::make_unique<ast::Return>( std::move( expression));
 }
@@ -382,13 +443,7 @@ SyntaxParser::get_element()
 {
     if ( is_type( lexer::TokenType::USER_STRING) )
     {
-        if ( is_type( lexer::TokenType::LEFT_PARENTHESIS, 1 ) )
-        {
-            return get_function_call();
-        } else
-        {
-            return get_identifier();
-        }
+        return get_symbol();
     } else if ( is_type( lexer::TokenType::IMMEDIATE) )
     {
         return get_immediate();
@@ -409,20 +464,38 @@ SyntaxParser::get_element()
 }
 
 ast::ASTNodePtr
-SyntaxParser::get_function_call()
+SyntaxParser::get_symbol()
 {
-    assert( is_type( lexer::TokenType::USER_STRING));
-    assert( is_type( lexer::TokenType::LEFT_PARENTHESIS, 1));
-
     std::string name = value();
-    advance( 2);
-
-    std::list<ast::ASTNodePtr> parameters{};
-    while ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
+    auto sym = nametable_.GetSymbol( name);
+    if ( !sym.has_value() )
     {
-        parameters.emplace_back( get_expression());
+        throw SyntaxError{ line(), column(),
+                           "Undeclared symbol: " + name};
     }
-    return std::make_unique<ast::FunctionCall>( name, std::move( parameters));
+    advance();
+
+    if ( sym.value().GetType() == nametable::Symbol::Type::FUNCTION )
+    {
+        if ( !is_type( lexer::TokenType::LEFT_PARENTHESIS) )
+        {
+            throw SyntaxError{ line(), column(),
+                               "Expected '('"};
+        }
+        advance();
+
+        std::list<ast::ASTNodePtr> parameters{};
+        while ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
+        {
+            parameters.emplace_back( get_expression());
+        }
+        advance();
+
+        return std::make_unique<ast::FunctionCall>( sym.value().GetID(), std::move( parameters));
+    } else
+    {
+        return std::make_unique<ast::Identifier>( sym.value().GetID());
+    }
 }
 
 ast::ASTNodePtr

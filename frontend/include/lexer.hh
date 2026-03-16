@@ -37,7 +37,42 @@ enum class TokenType
     CMP_EQUAL,
     STATEMENT_END,
     END_OF_PROGRAM,
+    COMMA,
 };
+
+template<typename TOutStream>
+TOutStream&
+operator<<( TOutStream& os, TokenType token_type)
+{
+    std::string type_string;
+    switch ( token_type )
+    {
+        case TokenType::USER_STRING:        type_string = "USER_STRING";        break;
+        case TokenType::IMMEDIATE:          type_string = "IMMEDIATE";          break;
+        case TokenType::FUNC_DECLARATION:   type_string = "FUNC_DECLARATION";   break;
+        case TokenType::VAR_DEClARATION:    type_string = "VAR_DECLARATION";    break;
+        case TokenType::LEFT_PARENTHESIS:   type_string = "LEFT_PARENTHESIS";   break;
+        case TokenType::RIGHT_PARENTHESIS:  type_string = "RIGHT_PARENTHESIS";  break;
+        case TokenType::LEFT_SCOPE:         type_string = "LEFT_SCOPE";         break;
+        case TokenType::RIGHT_SCOPE:        type_string = "RIGHT_SCOPE";        break;
+        case TokenType::IF_STATEMENT:       type_string = "IF_STATEMENT";       break;
+        case TokenType::WHILE_STATEMENT:    type_string = "WHILE_STATEMENT";    break;
+        case TokenType::RETURN_STATEMENT:   type_string = "RETURN_STATEMENT";   break;
+        case TokenType::OP_ADD:             type_string = "OP_ADD";             break;
+        case TokenType::OP_SUB:             type_string = "OP_SUB";             break;
+        case TokenType::OP_MUL:             type_string = "OP_MUL";             break;
+        case TokenType::OP_DIV:             type_string = "OP_DIV";             break;
+        case TokenType::ASSIGNMENT:         type_string = "ASSIGNMENT";         break;
+        case TokenType::CMP_LESS:           type_string = "CMP_LESS";           break;
+        case TokenType::CMP_BIGGER:         type_string = "CMP_BIGGER";         break;
+        case TokenType::CMP_EQUAL:          type_string = "CMP_EQUAL";          break;
+        case TokenType::STATEMENT_END:      type_string = "STATEMENT_END";      break;
+        case TokenType::END_OF_PROGRAM:     type_string = "END_OF_PROGRAM";     break;
+        case TokenType::COMMA:              type_string = "COMMA";              break;
+    }
+
+    return (os << type_string);
+}
 
 ///
 /// @brief

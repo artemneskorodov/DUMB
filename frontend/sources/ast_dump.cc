@@ -26,6 +26,7 @@ static constexpr std::string_view kFunctionCallNodeColor    = "#b036b9";
 static constexpr std::string_view kReturnNodeColor          = "#c53986";
 static constexpr std::string_view kProgramNodeColor         = "#727272";
 static constexpr std::string_view kNewVariableNodeColor     = "#96eb0c";
+static constexpr std::string_view kNametableNodeColor       = "#176383";
 
 class ASTDumper final : public Visitor
 {
@@ -60,7 +61,7 @@ public:
     Visit( Identifier& node) override
     {
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> Identifier | <Name> " + node.name + " }";
+        std::string label = "{ <Type> Identifier | <Name> " + std::to_string( node.id) + " }";
 
         current_subgraph_->addNode( this_node_id)
                           .setFillColor( kIdentifierNodeColor)
@@ -141,8 +142,7 @@ public:
         dot_graph::Subgraph *old_subgraph = current_subgraph_;
 
         current_subgraph_ = &old_subgraph->addSubgraph( "cluster_if_condition_" + this_node_id)
-                                          .setColor( "#646464")
-                                          .setRaw( "rank", "same");
+                                          .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Condition");
         node.condition.get()->Accept( *this);
@@ -176,15 +176,13 @@ public:
         dot_graph::Subgraph *old_subgraph = current_subgraph_;
 
         current_subgraph_ = &old_subgraph->addSubgraph( "cluster_while_condition_" + this_node_id)
-                                          .setColor( "#646464")
-                                          .setRaw( "rank", "same");
+                                          .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Condition");
         node.condition.get()->Accept( *this);
 
         current_subgraph_ = &old_subgraph->addSubgraph( "cluster_while_body_" + this_node_id)
-                                          .setColor( "#646464")
-                                          .setRaw( "rank", "same");
+                                          .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Body");
         for ( auto& stmt : node.body )
@@ -201,7 +199,9 @@ public:
     Visit( FunctionCall& node) override
     {
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> FunctionCall | <Name> " + node.name + " | <Parameters> Parameters }";
+        std::string label = "{ <Type> FunctionCall | <Name> " +
+                            std::to_string( node.id) +
+                            " | <Parameters> Parameters }";
 
         current_subgraph_->addNode( this_node_id)
                           .setFillColor( kFunctionCallNodeColor)
@@ -212,8 +212,7 @@ public:
 
         dot_graph::Subgraph *old_subgraph = current_subgraph_;
         current_subgraph_ = &old_subgraph->addSubgraph( "cluster_call_parameters_of_" + this_node_id)
-                                          .setColor( "#646464")
-                                          .setRaw( "rank", "same");
+                                          .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Parameters");
         for ( auto& param : node.parameters )
@@ -230,7 +229,8 @@ public:
     Visit( Function& node) override
     {
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> Function | <Name> " + node.name + " | { <Prev> Prev | <Parameters> Parameters | <Body> Body | <Next> Next } }";
+        std::string label = "{ <Type> Function | <Name> " + std::to_string( node.id) +
+                            " | { <Prev> Prev | <Parameters> Parameters | <Body> Body | <Next> Next } }";
 
         graph_.addNode( this_node_id)
               .setFillColor( kFunctionNodeColor)
@@ -240,8 +240,7 @@ public:
         graph_.addEdge( parent_node_id_, this_node_id);
 
         current_subgraph_ = &graph_.addSubgraph( "cluster_parameters_of_" + this_node_id)
-                                   .setColor( "#646464")
-                                   .setRaw( "rank", "same");
+                                   .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Parameters");
         for ( auto& param : node.parameters )
@@ -252,8 +251,7 @@ public:
         }
 
         current_subgraph_ = &graph_.addSubgraph( "cluster_body_of_" + this_node_id)
-                                   .setColor( "#646464")
-                                   .setRaw( "rank", "same");
+                                   .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Body");
         for ( auto& stmt : node.body )
@@ -261,24 +259,6 @@ public:
             std::string current_stmt_id = next_node_id();
             stmt.get()->Accept( *this);
             set_parent_id( current_stmt_id + ":Next");
-        }
-    }
-
-    void
-    Visit( Program& node) override
-    {
-        std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> Program }";
-        graph_.addNode( this_node_id)
-              .setFillColor( kProgramNodeColor)
-              .setQuoted( "label", label)
-              .setShape( "Mrecord")
-              .setStyle( "filled");
-
-        for ( auto& function : node.functions )
-        {
-            set_parent_id( this_node_id);
-            function.get()->Accept( *this);
         }
     }
 
@@ -320,6 +300,60 @@ public:
         {
             set_parent_id( this_node_id + ":Initializer");
             node.initializer.get()->Accept( *this);
+        }
+    }
+
+    void
+    Visit( Program& node) override
+    {
+        std::string nametable{ ""};
+        for ( const auto& it : node.nametable.GetNametable() )
+        {
+            std::string type{ ""};
+            switch ( it.GetType() )
+            {
+                case nametable::Symbol::Type::FUNCTION:        type = "function";        break;
+                case nametable::Symbol::Type::GLOBAL_VARIABLE: type = "global variable"; break;
+                case nametable::Symbol::Type::LOCAL_VARIABLE:  type = "local variable";  break;
+            }
+            nametable += "{" + std::to_string( it.GetID()) + " | "+ type + " | " + it.GetName() + "}";
+            if ( &it != &node.nametable.GetNametable().back() )
+            {
+                nametable += " | ";
+            }
+        }
+
+        std::string nametable_node_id = get_node_id();
+        graph_.addNode( nametable_node_id)
+              .setFillColor( kNametableNodeColor)
+              .setQuoted( "label", nametable)
+              .setShape( "Mrecord")
+              .setStyle( "filled");
+
+        std::string this_node_id = get_node_id();
+
+        std::string label = "{ <Type> Program }";
+        graph_.addNode( this_node_id)
+              .setFillColor( kProgramNodeColor)
+              .setQuoted( "label", label)
+              .setShape( "Mrecord")
+              .setStyle( "filled");
+
+        current_subgraph_ = &graph_.addSubgraph( "global_variables_" + this_node_id)
+                                   .setColor( "#646464");
+
+        for ( auto& var : node.global_variables )
+        {
+            set_parent_id( this_node_id);
+            var.get()->Accept( *this);
+        }
+
+        current_subgraph_ = nullptr;
+
+        for ( auto& function : node.functions )
+        {
+            set_parent_id( this_node_id);
+            function.get()->Accept( *this);
         }
     }
 
