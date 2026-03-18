@@ -46,7 +46,7 @@ public:
     Visit( Immediate& node) override
     {
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> Immediate | { <Value> Value | " + std::to_string(node.value) + " } }";
+        std::string label = "{ <Type> Immediate | { <Value> Value | " + std::to_string( node.value) + " } }";
 
         current_subgraph_->addNode( this_node_id)
                           .setFillColor( kImmediateNodeColor)
@@ -83,11 +83,36 @@ public:
             case BinaryOp::OP_SUB:        op_string = "SUB";  break;
             case BinaryOp::OP_MUL:        op_string = "MUL";  break;
             case BinaryOp::OP_DIV:        op_string = "DIV";  break;
-            case BinaryOp::OP_CMP_LESS:   op_string = "LESS";  break;
-            case BinaryOp::OP_CMP_EQUAL:  op_string = "EQUAL"; break;
-            case BinaryOp::OP_CMP_BIGGER: op_string = "BIGGER";  break;
         }
         std::string label = "{ <Type> BinaryOp | { <Operation> Operation | " + op_string +
+                            " } | { <Left> Left | <Right> Right } }";
+
+        current_subgraph_->addNode( this_node_id)
+                          .setFillColor( kBinaryOpNodeColor)
+                          .setQuoted( "label", label)
+                          .setShape( "Mrecord")
+                          .setStyle( "filled");
+        graph_.addEdge( parent_node_id_, this_node_id);
+
+        set_parent_id( this_node_id + ":Left");
+        node.left.get()->Accept( *this);
+
+        set_parent_id( this_node_id + ":Right");
+        node.right.get()->Accept( *this);
+    }
+
+    void
+    Visit( CompareOp& node) override
+    {
+        std::string this_node_id = get_node_id();
+        std::string op_string{};
+        switch ( node.operation )
+        {
+            case CompareOp::OP_CMP_LESS:   op_string = "LESS";   break;
+            case CompareOp::OP_CMP_EQUAL:  op_string = "EQUAL";  break;
+            case CompareOp::OP_CMP_BIGGER: op_string = "BIGGER"; break;
+        }
+        std::string label = "{ <Type> CompareOp | { <Operation> Operation | " + op_string +
                             " } | { <Left> Left | <Right> Right } }";
 
         current_subgraph_->addNode( this_node_id)
@@ -108,7 +133,7 @@ public:
     Visit( Assignment& node) override
     {
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> Assignment | { <Prev> Prev | <Left> Left | <Right> Right | <Next> Next } }";
+        std::string label = "{ <Type> Assignment | { <Prev> Prev | { <Left> Identifier | " + std::to_string( node.left) + " } | <Right> Right | <Next> Next } }";
 
         current_subgraph_->addNode( this_node_id)
                           .setFillColor( kAssignmentNodeColor)
@@ -117,9 +142,6 @@ public:
                           .setStyle( "filled");
         graph_.addEdge( parent_node_id_, this_node_id + ":Prev")
               .setColor( "#e600ff");
-
-        set_parent_id( this_node_id + ":Left");
-        node.left.get()->Accept( *this);
 
         set_parent_id( this_node_id + ":Right");
         node.right.get()->Accept( *this);
@@ -226,43 +248,6 @@ public:
     }
 
     void
-    Visit( Function& node) override
-    {
-        std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> Function | <Name> " + std::to_string( node.id) +
-                            " | { <Prev> Prev | <Parameters> Parameters | <Body> Body | <Next> Next } }";
-
-        graph_.addNode( this_node_id)
-              .setFillColor( kFunctionNodeColor)
-              .setQuoted( "label", label)
-              .setShape( "Mrecord")
-              .setStyle( "filled");
-        graph_.addEdge( parent_node_id_, this_node_id);
-
-        current_subgraph_ = &graph_.addSubgraph( "cluster_parameters_of_" + this_node_id)
-                                   .setColor( "#646464");
-
-        set_parent_id( this_node_id + ":Parameters");
-        for ( auto& param : node.parameters )
-        {
-            std::string current_param_id = next_node_id();
-            param.get()->Accept( *this);
-            set_parent_id( current_param_id);
-        }
-
-        current_subgraph_ = &graph_.addSubgraph( "cluster_body_of_" + this_node_id)
-                                   .setColor( "#646464");
-
-        set_parent_id( this_node_id + ":Body");
-        for ( auto& stmt : node.body )
-        {
-            std::string current_stmt_id = next_node_id();
-            stmt.get()->Accept( *this);
-            set_parent_id( current_stmt_id + ":Next");
-        }
-    }
-
-    void
     Visit( Return& node) override
     {
         std::string this_node_id = get_node_id();
@@ -283,7 +268,7 @@ public:
     Visit( NewVariable& node) override
     {
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> NewVariable | { <Prev> Prev | <Identifier> Identifier | <Initializer> Initializer | <Next> Next } }";
+        std::string label = "{ <Type> NewVariable | { <Prev> Prev | { <Identifier> Identifier | " + std::to_string( node.identifier) + " }| <Initializer> Initializer | <Next> Next } }";
 
         current_subgraph_->addNode( this_node_id)
                           .setFillColor( kNewVariableNodeColor)
@@ -293,9 +278,6 @@ public:
         graph_.addEdge( parent_node_id_, this_node_id + ":Prev")
               .setColor( "#e600ff");
 
-        set_parent_id( this_node_id + ":Identifier");
-        node.identifier.get()->Accept( *this);
-
         if ( node.initializer != nullptr )
         {
             set_parent_id( this_node_id + ":Initializer");
@@ -304,10 +286,58 @@ public:
     }
 
     void
-    Visit( Program& node) override
+    DumpFunction( ast::Function *function)
+    {
+        // Function header node
+        std::string this_node_id = get_node_id();
+        std::string label = "{ <Type> Function | <Name> " + std::to_string( function->id) +
+                            " | { <Prev> Prev | <Parameters> Parameters | <Body> Body | <Next> Next } }";
+
+        graph_.addNode( this_node_id)
+              .setFillColor( kFunctionNodeColor)
+              .setQuoted( "label", label)
+              .setShape( "Mrecord")
+              .setStyle( "filled");
+        graph_.addEdge( parent_node_id_, this_node_id);
+
+        // Parameters
+        std::string parameters_node_id = get_node_id();
+
+        label = "{ ";
+        for ( ir::VarID& param : function->parameters )
+        {
+            label += "{ Identifier | " + std::to_string( param) + " }";
+            if ( &param != &function->parameters.back() )
+            {
+                label += " | ";
+            }
+        }
+        label += "}";
+        graph_.addNode( parameters_node_id)
+              .setFillColor( kFunctionNodeColor)
+              .setQuoted( "label", label)
+              .setShape( "Mrecord")
+              .setStyle( "filled");
+        graph_.addEdge( this_node_id + ":Parameters", parameters_node_id);
+
+        // Function body
+        current_subgraph_ = &graph_.addSubgraph( "cluster_body_of_" + this_node_id)
+                                   .setColor( "#646464");
+
+        set_parent_id( this_node_id + ":Body");
+        for ( auto& stmt : function->body )
+        {
+            std::string current_stmt_id = next_node_id();
+            stmt.get()->Accept( *this);
+            set_parent_id( current_stmt_id + ":Next");
+        }
+    }
+
+    void
+    DumpProgram( ast::Program *program)
     {
         std::string nametable{ ""};
-        for ( const auto& it : node.nametable.GetNametable() )
+        for ( const auto& it : program->nametable.GetNametable() )
         {
             std::string type{ ""};
             switch ( it.GetType() )
@@ -317,7 +347,7 @@ public:
                 case nametable::Symbol::Type::LOCAL_VARIABLE:  type = "local variable";  break;
             }
             nametable += "{" + std::to_string( it.GetID()) + " | "+ type + " | " + it.GetName() + "}";
-            if ( &it != &node.nametable.GetNametable().back() )
+            if ( &it != &program->nametable.GetNametable().back() )
             {
                 nametable += " | ";
             }
@@ -342,18 +372,18 @@ public:
         current_subgraph_ = &graph_.addSubgraph( "global_variables_" + this_node_id)
                                    .setColor( "#646464");
 
-        for ( auto& var : node.global_variables )
+        for ( auto& var : program->global_variables )
         {
             set_parent_id( this_node_id);
-            var.get()->Accept( *this);
+            var->Accept( *this);
         }
 
         current_subgraph_ = nullptr;
 
-        for ( auto& function : node.functions )
+        for ( auto& function : program->functions )
         {
             set_parent_id( this_node_id);
-            function.get()->Accept( *this);
+            DumpFunction( &function);
         }
     }
 
@@ -373,11 +403,12 @@ private:
 } // ! anonymous namespace
 
 void
-DumpAST( ast::ASTNodePtr&   root,
+DumpAST( ast::Program      *program,
          const std::string& output)
 {
     ASTDumper dumper{ output};
-    root.get()->Accept( dumper);
+    std::string nametable{ ""};
+    dumper.DumpProgram( program);
 
     std::cout << dumper.GetGraph();
 

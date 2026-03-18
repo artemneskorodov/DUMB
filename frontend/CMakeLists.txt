@@ -15,6 +15,7 @@ set(
     ${SRC_DIR}/syntax.cc
     ${SRC_DIR}/frontend.cc
     ${SRC_DIR}/ast_dump.cc
+    ${SRC_DIR}/emit_ir.cc
 )
 
 set(
@@ -25,6 +26,7 @@ set(
     ${INC_DIR}/lexer.hh
     ${INC_DIR}/syntax.hh
     ${INC_DIR}/nametable.hh
+    ${INC_DIR}/emit_ir.hh
 )
 
 #

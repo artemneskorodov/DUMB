@@ -5,15 +5,18 @@
 #include "syntax.hh"
 #include "ast_dump.hh"
 #include "utils.hh"
+#include "ir.hh"
+#include "emit_ir.hh"
+#include "ir_dump.hh"
 
 namespace dumb
 {
 
-ast::ASTNodePtr
+ast::Program
 RunFrontend( const std::string& filename)
 {
     std::string source = utils::ReadTextFile( filename);
-    dumb::lexer::Lexer lexer{ source};
+    lexer::Lexer lexer{ source};
     std::vector<lexer::Token> tokens = lexer.Tokenize();
 
     for ( const auto& token : tokens )
@@ -21,8 +24,14 @@ RunFrontend( const std::string& filename)
         std::cout << token.line << ":" << token.column << " " << token.value << " type = " << token.type << std::endl;
     }
 
-    ast::ASTNodePtr tree = syntax::ParseSyntax( tokens, filename);
-    ast::dump::DumpAST( tree, "output.svg");
+    ast::Program tree = syntax::ParseSyntax( tokens, filename);
+
+    ast::dump::DumpAST( &tree, "output.svg");
+
+    ir::Program program = emit_ir::EmitIR( &tree);
+
+    ir_dump::DumpIR( &program);
+
     return tree;
 }
 
@@ -42,7 +51,7 @@ main( int         argc,
 
     std::string filename{ argv[1]};
 
-    dumb::ast::ASTNodePtr tree = dumb::RunFrontend( filename);
+    dumb::ast::Program tree = dumb::RunFrontend( filename);
 }
 
 #endif // defined( BUILD_FRONTEND_SEPARATELY)
