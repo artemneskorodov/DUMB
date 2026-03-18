@@ -370,20 +370,20 @@ SyntaxParser::get_expression()
          is_type( lexer::TokenType::CMP_EQUAL) ||
          is_type( lexer::TokenType::CMP_BIGGER) )
     {
-        ast::BinaryOp::Operation operation;
+        ast::CompareOp::Operation operation;
         switch ( token().type )
         {
-            case lexer::TokenType::CMP_LESS:   operation = ast::BinaryOp::OP_CMP_LESS;   break;
-            case lexer::TokenType::CMP_EQUAL:  operation = ast::BinaryOp::OP_CMP_EQUAL;  break;
-            case lexer::TokenType::CMP_BIGGER: operation = ast::BinaryOp::OP_CMP_BIGGER; break;
+            case lexer::TokenType::CMP_LESS:   operation = ast::CompareOp::OP_CMP_LESS;   break;
+            case lexer::TokenType::CMP_EQUAL:  operation = ast::CompareOp::OP_CMP_EQUAL;  break;
+            case lexer::TokenType::CMP_BIGGER: operation = ast::CompareOp::OP_CMP_BIGGER; break;
             default: assert( false);
         }
         advance();
 
         ast::ASTNodePtr cmp_right_side = get_sum();
-        return std::make_unique<ast::BinaryOp>( operation,
-                                                std::move( cmp_left_side),
-                                                std::move( cmp_right_side));
+        return std::make_unique<ast::CompareOp>( operation,
+                                                 std::move( cmp_left_side),
+                                                 std::move( cmp_right_side));
     } else
     {
         return cmp_left_side;

@@ -5,6 +5,9 @@
 #include "syntax.hh"
 #include "ast_dump.hh"
 #include "utils.hh"
+#include "ir.hh"
+#include "emit_ir.hh"
+#include "ir_dump.hh"
 
 namespace dumb
 {
@@ -13,7 +16,7 @@ ast::ASTNodePtr
 RunFrontend( const std::string& filename)
 {
     std::string source = utils::ReadTextFile( filename);
-    dumb::lexer::Lexer lexer{ source};
+    lexer::Lexer lexer{ source};
     std::vector<lexer::Token> tokens = lexer.Tokenize();
 
     for ( const auto& token : tokens )
@@ -23,6 +26,11 @@ RunFrontend( const std::string& filename)
 
     ast::ASTNodePtr tree = syntax::ParseSyntax( tokens, filename);
     ast::dump::DumpAST( tree, "output.svg");
+
+    ir::Program program = emit_ir::EmitIR( std::move( tree));
+
+    ir_dump::DumpIR( &program);
+
     return tree;
 }
 

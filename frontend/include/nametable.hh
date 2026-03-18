@@ -94,6 +94,25 @@ public:
         return std::nullopt;
     }
 
+    Symbol *
+    GetSymbol( std::size_t id) &
+    {
+        for ( auto& sym : nametable_ )
+        {
+            if ( sym.GetID() == id )
+            {
+                return &sym;
+            }
+        }
+        return nullptr;
+    }
+
+    std::size_t
+    GetMaxSymbolIndex() const
+    {
+        return symbols_counter_;
+    }
+
     const std::vector<Symbol> &
     GetNametable() const &
     {

@@ -83,11 +83,36 @@ public:
             case BinaryOp::OP_SUB:        op_string = "SUB";  break;
             case BinaryOp::OP_MUL:        op_string = "MUL";  break;
             case BinaryOp::OP_DIV:        op_string = "DIV";  break;
-            case BinaryOp::OP_CMP_LESS:   op_string = "LESS";  break;
-            case BinaryOp::OP_CMP_EQUAL:  op_string = "EQUAL"; break;
-            case BinaryOp::OP_CMP_BIGGER: op_string = "BIGGER";  break;
         }
         std::string label = "{ <Type> BinaryOp | { <Operation> Operation | " + op_string +
+                            " } | { <Left> Left | <Right> Right } }";
+
+        current_subgraph_->addNode( this_node_id)
+                          .setFillColor( kBinaryOpNodeColor)
+                          .setQuoted( "label", label)
+                          .setShape( "Mrecord")
+                          .setStyle( "filled");
+        graph_.addEdge( parent_node_id_, this_node_id);
+
+        set_parent_id( this_node_id + ":Left");
+        node.left.get()->Accept( *this);
+
+        set_parent_id( this_node_id + ":Right");
+        node.right.get()->Accept( *this);
+    }
+
+    void
+    Visit( CompareOp& node) override
+    {
+        std::string this_node_id = get_node_id();
+        std::string op_string{};
+        switch ( node.operation )
+        {
+            case CompareOp::OP_CMP_LESS:   op_string = "LESS";   break;
+            case CompareOp::OP_CMP_EQUAL:  op_string = "EQUAL";  break;
+            case CompareOp::OP_CMP_BIGGER: op_string = "BIGGER"; break;
+        }
+        std::string label = "{ <Type> CompareOp | { <Operation> Operation | " + op_string +
                             " } | { <Left> Left | <Right> Right } }";
 
         current_subgraph_->addNode( this_node_id)

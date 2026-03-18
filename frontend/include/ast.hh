@@ -72,15 +72,39 @@ struct BinaryOp : public ASTNode
         OP_SUB,
         OP_MUL,
         OP_DIV,
-        OP_CMP_LESS,
-        OP_CMP_EQUAL,
-        OP_CMP_BIGGER,
     };
 
     explicit
     BinaryOp( Operation  op,
               ASTNodePtr left,
               ASTNodePtr right)
+     :  operation { op},
+        left      { std::move( left)},
+        right     { std::move( right)}
+    {
+    }
+
+    void Accept( Visitor& v) override;
+
+    Operation  operation;
+    ASTNodePtr left;
+    ASTNodePtr right;
+
+};
+
+struct CompareOp : public ASTNode
+{
+    enum Operation
+    {
+        OP_CMP_LESS,
+        OP_CMP_EQUAL,
+        OP_CMP_BIGGER,
+    };
+
+    explicit
+    CompareOp( Operation  op,
+               ASTNodePtr left,
+               ASTNodePtr right)
      :  operation { op},
         left      { std::move( left)},
         right     { std::move( right)}
@@ -267,6 +291,7 @@ public:
     virtual void Visit( Immediate&    node) = 0;
     virtual void Visit( Identifier&   node) = 0;
     virtual void Visit( BinaryOp&     node) = 0;
+    virtual void Visit( CompareOp&    node) = 0;
     virtual void Visit( Assignment&   node) = 0;
     virtual void Visit( If&           node) = 0;
     virtual void Visit( While&        node) = 0;
@@ -284,6 +309,7 @@ public:
 inline void Immediate::Accept    ( Visitor& v) { v.Visit( *this); }
 inline void Identifier::Accept   ( Visitor& v) { v.Visit( *this); }
 inline void BinaryOp::Accept     ( Visitor& v) { v.Visit( *this); }
+inline void CompareOp::Accept    ( Visitor& v) { v.Visit( *this); }
 inline void Assignment::Accept   ( Visitor& v) { v.Visit( *this); }
 inline void If::Accept           ( Visitor& v) { v.Visit( *this); }
 inline void While::Accept        ( Visitor& v) { v.Visit( *this); }
