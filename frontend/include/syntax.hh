@@ -11,7 +11,7 @@ namespace dumb
 namespace syntax
 {
 
-ast::ASTNodePtr ParseSyntax( const std::vector<lexer::Token>& tokens, const std::string& filename);
+ast::Program ParseSyntax( const std::vector<lexer::Token>& tokens, const std::string& filename);
 
 } // ! namespace syntax
 } // ! namespace dumb

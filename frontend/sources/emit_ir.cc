@@ -79,7 +79,7 @@ public:
         }
 
         ir::VarID tmp_id = tmp_counter_++;
-        basic_block_.instructions.emplace_back( std::make_unique<ir::BinaryOpInstr>( tmp_counter_, type, std::move( left), std::move( right)));
+        basic_block_.instructions.emplace_back( std::make_unique<ir::BinaryOpInstr>( tmp_id, type, std::move( left), std::move( right)));
         eval_stack_.push_back( std::make_unique<ir::VarOperand>( tmp_id));
     }
 
@@ -91,15 +91,8 @@ public:
         ir::OperandPtr expression = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
-        // Getting left hand side variable id
-        // FIXME save variable index in assignment node, as it is the only thing that can occur there
-        node.left.get()->Accept( *this);
-        const ir::VarOperand *lhs = static_cast<const ir::VarOperand *>( eval_stack_.back().get());
-        ir::VarID lhs_id = lhs->id;
-        eval_stack_.pop_back();
-
         // Adding mov to variable instruction
-        basic_block_.instructions.emplace_back( std::make_unique<ir::UnaryOpInstr>( lhs_id, ir::UnaryOpType::MOV, std::move( expression)));
+        basic_block_.instructions.emplace_back( std::make_unique<ir::UnaryOpInstr>( node.left, ir::UnaryOpType::MOV, std::move( expression)));
     }
 
     void
@@ -107,8 +100,6 @@ public:
     {
         // Emitting condition
         node.condition.get()->Accept( *this);
-
-        // Getting condition result from evaluation stack
         ir::OperandPtr cmp_result = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
@@ -137,9 +128,7 @@ public:
         ir::LocalLabelID condition_block = basic_blocks_counter_;
 
         // Emitting condition
-        // FIXME store ast::CompareOp in node, it can prevent from many errors
         node.condition.get()->Accept( *this);
-
         ir::OperandPtr cmp_result = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
@@ -191,14 +180,6 @@ public:
     void
     Visit( ast::NewVariable& node) override
     {
-        // FIXME
-        // Getting new variable id using stack
-        // It is better to save variable id in NewVariable node, as only it can occur there
-        node.identifier.get()->Accept( *this);
-        const ir::VarOperand *ident = static_cast<const ir::VarOperand *>( eval_stack_.back().get());
-        ir::VarID ident_id = ident->id;
-        eval_stack_.pop_back();
-
         // Counting new variable in stack, adds instructions to basic blocks
         if ( node.initializer != nullptr )
         {
@@ -213,27 +194,22 @@ public:
         function_.stack_size++;
         ir::OperandPtr initializer = std::move( eval_stack_.back());
         eval_stack_.pop_back();
-        basic_block_.instructions.push_back( std::make_unique<ir::UnaryOpInstr>( ident_id, ir::UnaryOpType::MOV, std::move( initializer)));
+        basic_block_.instructions.push_back( std::make_unique<ir::UnaryOpInstr>( node.identifier, ir::UnaryOpType::MOV, std::move( initializer)));
     }
 
     void
-    Visit( ast::Function& node) override
+    EmitFunction( ast::Function *function)
     {
-        start_function( node.id);
+        start_function( function->id);
 
         // Getting function parameters
-        for ( auto& it : node.parameters )
+        for ( ir::VarID it : function->parameters )
         {
-            // FIXME Function node can also store parameters id's as only they can occur there
-            it.get()->Accept( *this);
-            const ir::VarOperand *ident = static_cast<const ir::VarOperand *>( eval_stack_.back().get());
-            ir::VarID ident_id = ident->id;
-            eval_stack_.pop_back();
-            function_.params.emplace_back( ident_id);
+            function_.params.emplace_back( it);
         }
 
         // Emitting function body
-        for ( auto& it : node.body )
+        for ( auto& it : function->body )
         {
             it.get()->Accept( *this);
         }
@@ -246,25 +222,25 @@ public:
     }
 
     void
-    Visit( ast::Program& node) override
+    EmitProgram( ast::Program *program)
     {
-        tmp_counter_ = node.nametable.GetMaxSymbolIndex();
+        tmp_counter_ = program->nametable.GetMaxSymbolIndex();
 
         start_function( 0);
 
         // Global variables preamble
-        for ( auto& it : node.global_variables )
+        for ( auto& it : program->global_variables )
         {
-            it.get()->Accept( *this);
+            it->Accept( *this);
         }
 
         finish_basic_block(); // TODO check if needed
         finish_function();
 
         // Functions
-        for ( auto& it : node.functions )
+        for ( auto& it : program->functions )
         {
-            it.get()->Accept( *this);
+            EmitFunction( &it);
         }
         program_finished_ = true;
     }
@@ -321,11 +297,11 @@ private:
 } // ! anonymous namespace
 
 ir::Program
-EmitIR( ast::ASTNodePtr program)
+EmitIR( ast::Program *program)
 {
     Emitter emitter{};
 
-    program.get()->Accept( emitter);
+    emitter.EmitProgram( program);
 
     ir::Program program_ir = emitter.GetProgram();
     return program_ir;

@@ -6,7 +6,7 @@
 namespace dumb
 {
 
-ast::ASTNodePtr RunFrontend( const std::string& filename);
+ast::Program RunFrontend( const std::string& filename);
 
 } // ! namespace dumb
 

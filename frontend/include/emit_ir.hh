@@ -9,7 +9,7 @@ namespace dumb
 namespace emit_ir
 {
 
-ir::Program EmitIR( ast::ASTNodePtr program);
+ir::Program EmitIR( ast::Program *program);
 
 };
 };

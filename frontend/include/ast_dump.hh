@@ -13,7 +13,7 @@ namespace dump
 ///
 /// @brief
 ///
-void DumpAST( ast::ASTNodePtr& root, const std::string& output);
+void DumpAST( ast::Program *program, const std::string& output);
 
 } // ! namespace dump
 } // ! namespace ast

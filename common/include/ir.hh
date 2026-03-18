@@ -223,11 +223,6 @@ struct BasicBlock final
     {
     }
 
-    BasicBlock(const BasicBlock&) = delete;
-    BasicBlock& operator=(const BasicBlock&) = delete;
-    BasicBlock(BasicBlock&&) = default;
-    BasicBlock& operator=(BasicBlock&&) = default;
-
     std::vector<InstructionPtr> instructions{};
     LocalLabelID id;
 
@@ -246,11 +241,6 @@ struct Function final
     {
     }
 
-    Function(const Function&) = delete;
-    Function& operator=(const Function&) = delete;
-    Function(Function&&) = default;
-    Function& operator=(Function&&) = default;
-
     std::vector<VarID> params{};
     std::vector<BasicBlockPtr> basic_blocks{};
     std::size_t stack_size{ 0};
@@ -268,13 +258,6 @@ struct Program final
 {
     std::vector<FunctionPtr> functions{};
 
-    // Запрещаем копирование
-    Program(const Program&) = delete;
-    Program& operator=(const Program&) = delete;
-
-    // Разрешаем перемещение (можно default, можно не указывать - сгенерируется автоматически)
-    Program(Program&&) = default;
-    Program& operator=(Program&&) = default;
 };
 
 } // ! namespace ir

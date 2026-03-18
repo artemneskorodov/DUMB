@@ -5,6 +5,8 @@
 #include <vector>
 #include <optional>
 
+#include "ir.hh"
+
 namespace dumb
 {
 namespace nametable
@@ -22,32 +24,32 @@ public:
 
     Symbol( const std::string& name,
             Type               type,
-            std::size_t        id)
+            ir::VarID          id)
      :  name_ { name},
         type_ { type},
         id_   { id}
     {
     }
 
-    std::string GetName() const { return name_; }
-    Type GetType() const { return type_; }
-    std::size_t GetID() const { return id_; }
+    std::string GetName () const { return name_; }
+    Type        GetType () const { return type_; }
+    ir::VarID   GetID   () const { return id_;   }
 
 private:
     std::string name_;
     Type        type_;
-    std::size_t id_;
+    ir::VarID   id_;
 
 };
 
 class NameTable final
 {
 public:
-    std::size_t
+    ir::VarID
     AddSymbol( const std::string& name,
                Symbol::Type       type)
     {
-        std::size_t id = symbols_counter_;
+        ir::VarID id = symbols_counter_;
         ++symbols_counter_;
         nametable_.emplace_back( Symbol{ name, type, id});
 
@@ -95,7 +97,7 @@ public:
     }
 
     Symbol *
-    GetSymbol( std::size_t id) &
+    GetSymbol( ir::VarID id) &
     {
         for ( auto& sym : nametable_ )
         {
@@ -107,7 +109,7 @@ public:
         return nullptr;
     }
 
-    std::size_t
+    ir::VarID
     GetMaxSymbolIndex() const
     {
         return symbols_counter_;
@@ -121,9 +123,9 @@ public:
 
 private:
     std::vector<Symbol>        nametable_       {};
-    std::vector<std::size_t>   visible_names_   {};
+    std::vector<ir::VarID>     visible_names_   {};
     std::vector<std::size_t>   scope_symbols_   {};
-    std::size_t                symbols_counter_ { 0};
+    ir::VarID                  symbols_counter_ { 0};
 
 };
 

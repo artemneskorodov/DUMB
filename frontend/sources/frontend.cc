@@ -12,7 +12,7 @@
 namespace dumb
 {
 
-ast::ASTNodePtr
+ast::Program
 RunFrontend( const std::string& filename)
 {
     std::string source = utils::ReadTextFile( filename);
@@ -24,10 +24,11 @@ RunFrontend( const std::string& filename)
         std::cout << token.line << ":" << token.column << " " << token.value << " type = " << token.type << std::endl;
     }
 
-    ast::ASTNodePtr tree = syntax::ParseSyntax( tokens, filename);
-    ast::dump::DumpAST( tree, "output.svg");
+    ast::Program tree = syntax::ParseSyntax( tokens, filename);
 
-    ir::Program program = emit_ir::EmitIR( std::move( tree));
+    ast::dump::DumpAST( &tree, "output.svg");
+
+    ir::Program program = emit_ir::EmitIR( &tree);
 
     ir_dump::DumpIR( &program);
 
@@ -50,7 +51,7 @@ main( int         argc,
 
     std::string filename{ argv[1]};
 
-    dumb::ast::ASTNodePtr tree = dumb::RunFrontend( filename);
+    dumb::ast::Program tree = dumb::RunFrontend( filename);
 }
 
 #endif // defined( BUILD_FRONTEND_SEPARATELY)
