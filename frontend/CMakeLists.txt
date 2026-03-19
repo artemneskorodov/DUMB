@@ -79,15 +79,9 @@ add_library(
     ${FRONTEND_HEADERS}
 )
 
-target_compile_definitions(
-    frontend_lib
-    PRIVATE
-    BUILD_FRONTEND_SEPARATELY
-)
-
 target_include_directories(
     frontend_lib
-    PRIVATE
+    PUBLIC
     ${INC_DIR}
 )
 

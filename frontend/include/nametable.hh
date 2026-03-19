@@ -24,7 +24,7 @@ public:
 
     Symbol( const std::string& name,
             Type               type,
-            ir::VarID          id)
+            hir::VarID          id)
      :  name_ { name},
         type_ { type},
         id_   { id}
@@ -33,23 +33,23 @@ public:
 
     std::string GetName () const { return name_; }
     Type        GetType () const { return type_; }
-    ir::VarID   GetID   () const { return id_;   }
+    hir::VarID   GetID   () const { return id_;   }
 
 private:
     std::string name_;
     Type        type_;
-    ir::VarID   id_;
+    hir::VarID   id_;
 
 };
 
 class NameTable final
 {
 public:
-    ir::VarID
+    hir::VarID
     AddSymbol( const std::string& name,
                Symbol::Type       type)
     {
-        ir::VarID id = symbols_counter_;
+        hir::VarID id = symbols_counter_;
         ++symbols_counter_;
         nametable_.emplace_back( Symbol{ name, type, id});
 
@@ -68,7 +68,7 @@ public:
     }
 
     bool
-    HasScope()
+    HasScope() const
     {
         return (scope_symbols_.size() != 0);
     }
@@ -84,7 +84,7 @@ public:
     }
 
     std::optional<Symbol>
-    GetSymbol( const std::string& name) &
+    GetSymbol( const std::string& name) const &
     {
         for ( auto it = visible_names_.rbegin(); it != visible_names_.rend(); ++it )
         {
@@ -96,8 +96,8 @@ public:
         return std::nullopt;
     }
 
-    Symbol *
-    GetSymbol( ir::VarID id) &
+    const Symbol *
+    GetSymbol( hir::VarID id) const &
     {
         for ( auto& sym : nametable_ )
         {
@@ -109,7 +109,7 @@ public:
         return nullptr;
     }
 
-    ir::VarID
+    hir::VarID
     GetMaxSymbolIndex() const
     {
         return symbols_counter_;
@@ -123,9 +123,9 @@ public:
 
 private:
     std::vector<Symbol>        nametable_       {};
-    std::vector<ir::VarID>     visible_names_   {};
+    std::vector<hir::VarID>     visible_names_   {};
     std::vector<std::size_t>   scope_symbols_   {};
-    ir::VarID                  symbols_counter_ { 0};
+    hir::VarID                  symbols_counter_ { 0};
 
 };
 

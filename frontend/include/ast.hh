@@ -56,14 +56,14 @@ struct Immediate final : public ExprNode
 {
 public:
     explicit
-    Immediate( ir::ImmType value)
+    Immediate( hir::ImmType value)
      :  value{ value}
     {
     }
 
     void Accept( Visitor& v) override;
 
-    ir::ImmType value;
+    hir::ImmType value;
 
 };
 
@@ -80,7 +80,7 @@ struct Identifier final : public ExprNode
 
     void Accept( Visitor& v) override;
 
-    ir::VarID id;
+    hir::VarID id;
 
 };
 
@@ -115,33 +115,6 @@ struct BinaryOp : public ExprNode
 
 };
 
-struct CompareOp : public ExprNode
-{
-    enum Operation
-    {
-        OP_CMP_LESS,
-        OP_CMP_EQUAL,
-        OP_CMP_BIGGER,
-    };
-
-    explicit
-    CompareOp( Operation  op,
-               ExprNodePtr left,
-               ExprNodePtr right)
-     :  operation { op},
-        left      { std::move( left)},
-        right     { std::move( right)}
-    {
-    }
-
-    void Accept( Visitor& v) override;
-
-    Operation   operation;
-    ExprNodePtr left;
-    ExprNodePtr right;
-
-};
-
 ///
 /// @brief
 ///
@@ -169,7 +142,7 @@ struct FunctionCall final : public ExprNode
 struct Assignment final : public StmtNode
 {
     explicit
-    Assignment( ir::VarID   left,
+    Assignment( hir::VarID   left,
                 ExprNodePtr right)
      :  left  { left},
         right { std::move( right)}
@@ -178,7 +151,35 @@ struct Assignment final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    ir::VarID   left;
+    hir::VarID   left;
+    ExprNodePtr right;
+
+};
+
+///
+/// @brief Compare operation used for while and if
+///
+struct CompareOp
+{
+    enum Operation
+    {
+        OP_CMP_LESS,
+        OP_CMP_EQUAL,
+        OP_CMP_BIGGER,
+    };
+
+    explicit
+    CompareOp( Operation  op,
+               ExprNodePtr left,
+               ExprNodePtr right)
+     :  operation { op},
+        left      { std::move( left)},
+        right     { std::move( right)}
+    {
+    }
+
+    Operation   operation;
+    ExprNodePtr left;
     ExprNodePtr right;
 
 };
@@ -189,7 +190,7 @@ struct Assignment final : public StmtNode
 struct If final : public StmtNode
 {
     explicit
-    If( ExprNodePtr            condition,
+    If( CompareOp              condition,
         std::list<StmtNodePtr> body)
      :  condition { std::move( condition)},
         body      { std::move( body)}
@@ -198,7 +199,7 @@ struct If final : public StmtNode
 
     void Accept( Visitor &v) override;
 
-    ExprNodePtr            condition;
+    CompareOp              condition;
     std::list<StmtNodePtr> body;
 
 };
@@ -209,7 +210,7 @@ struct If final : public StmtNode
 struct While final : public StmtNode
 {
     explicit
-    While( ExprNodePtr            condition,
+    While( CompareOp              condition,
            std::list<StmtNodePtr> body)
      :  condition { std::move( condition)},
         body      { std::move( body)}
@@ -218,7 +219,7 @@ struct While final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    ExprNodePtr            condition;
+    CompareOp              condition;
     std::list<StmtNodePtr> body;
 
 };
@@ -246,7 +247,7 @@ struct Return final : public StmtNode
 struct NewVariable final : public StmtNode
 {
     explicit
-    NewVariable( ir::VarID   identifier,
+    NewVariable( hir::VarID   identifier,
                  ExprNodePtr initializer)
      :  identifier  { identifier},
         initializer { std::move( initializer)}
@@ -255,7 +256,7 @@ struct NewVariable final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    ir::VarID   identifier;
+    hir::VarID   identifier;
     ExprNodePtr initializer;
 
 };
@@ -267,7 +268,7 @@ struct Function final
 {
     explicit
     Function( std::size_t            id,
-              std::list<ir::VarID>   parameters,
+              std::list<hir::VarID>   parameters,
               std::list<StmtNodePtr> body)
      :  id         { id},
         parameters { std::move( parameters)},
@@ -275,8 +276,8 @@ struct Function final
     {
     }
 
-    ir::FuncID             id;
-    std::list<ir::VarID>   parameters;
+    hir::FuncID             id;
+    std::list<hir::VarID>   parameters;
     std::list<StmtNodePtr> body;
 
 };
@@ -311,7 +312,6 @@ public:
     virtual void Visit( Immediate&    node) = 0;
     virtual void Visit( Identifier&   node) = 0;
     virtual void Visit( BinaryOp&     node) = 0;
-    virtual void Visit( CompareOp&    node) = 0;
     virtual void Visit( Assignment&   node) = 0;
     virtual void Visit( If&           node) = 0;
     virtual void Visit( While&        node) = 0;
@@ -327,7 +327,6 @@ public:
 inline void Immediate::Accept    ( Visitor& v) { v.Visit( *this); }
 inline void Identifier::Accept   ( Visitor& v) { v.Visit( *this); }
 inline void BinaryOp::Accept     ( Visitor& v) { v.Visit( *this); }
-inline void CompareOp::Accept    ( Visitor& v) { v.Visit( *this); }
 inline void Assignment::Accept   ( Visitor& v) { v.Visit( *this); }
 inline void If::Accept           ( Visitor& v) { v.Visit( *this); }
 inline void While::Accept        ( Visitor& v) { v.Visit( *this); }

@@ -19,96 +19,108 @@ public:
     void
     Visit( ast::Immediate& node) override
     {
-        eval_stack_.push_back( std::make_unique<ir::ImmOperand>( node.value));
+        eval_stack_.push_back( std::make_unique<hir::ImmOperand>( node.value));
     }
 
     void
     Visit( ast::Identifier& node) override
     {
-        eval_stack_.push_back( std::make_unique<ir::VarOperand>( node.id));
+        const nametable::Symbol *sym = nametable_->GetSymbol( node.id);
+        if ( sym->GetType() == nametable::Symbol::Type::LOCAL_VARIABLE )
+        {
+            eval_stack_.push_back( std::make_unique<hir::VarOperand>( node.id));
+        } else if ( sym->GetType() == nametable::Symbol::Type::GLOBAL_VARIABLE )
+        {
+            eval_stack_.push_back( std::make_unique<hir::GVarOperand>( node.id));
+        } else
+        {
+            throw std::runtime_error{ "Unexpected operand type"};
+        }
     }
 
     void
     Visit( ast::BinaryOp& node) override
     {
         // Emitting left side of operation
-        node.left.get()->Accept( *this);
-        ir::OperandPtr left = std::move( eval_stack_.back());
+        node.left->Accept( *this);
+        hir::OperandPtr left = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
         // Emitting right side of operation
-        node.right.get()->Accept( *this);
-        ir::OperandPtr right = std::move( eval_stack_.back());
+        node.right->Accept( *this);
+        hir::OperandPtr right = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
-        // Adding comparison instruction
-        ir::BinaryOpType type;
+        // Adding instruction
+        hir::BinaryOpType type;
         switch ( node.operation )
         {
-            case ast::BinaryOp::OP_ADD: type = ir::BinaryOpType::ADD; break;
-            case ast::BinaryOp::OP_SUB: type = ir::BinaryOpType::SUB; break;
-            case ast::BinaryOp::OP_MUL: type = ir::BinaryOpType::MUL; break;
-            case ast::BinaryOp::OP_DIV: type = ir::BinaryOpType::DIV; break;
+            case ast::BinaryOp::OP_ADD: type = hir::BinaryOpType::ADD; break;
+            case ast::BinaryOp::OP_SUB: type = hir::BinaryOpType::SUB; break;
+            case ast::BinaryOp::OP_MUL: type = hir::BinaryOpType::MUL; break;
+            case ast::BinaryOp::OP_DIV: type = hir::BinaryOpType::DIV; break;
         }
 
-        ir::VarID tmp_id = tmp_counter_++;
-        basic_block_.instructions.emplace_back( std::make_unique<ir::BinaryOpInstr>( tmp_id, type, std::move( left), std::move( right)));
-        eval_stack_.push_back( std::make_unique<ir::VarOperand>( tmp_id));
-    }
-
-    void
-    Visit( ast::CompareOp& node) override
-    {
-        // Emitting left side of comparison
-        node.left.get()->Accept( *this);
-        ir::OperandPtr left = std::move( eval_stack_.back());
-        eval_stack_.pop_back();
-
-        // Emitting right side of comparison
-        node.right.get()->Accept( *this);
-        ir::OperandPtr right = std::move( eval_stack_.back());
-        eval_stack_.pop_back();
-
-        // Adding comparison instruction
-        ir::BinaryOpType type;
-        switch ( node.operation )
-        {
-            case ast::CompareOp::OP_CMP_LESS:   type = ir::BinaryOpType::CMP_LESS;   break;
-            case ast::CompareOp::OP_CMP_EQUAL:  type = ir::BinaryOpType::CMP_EQUAL;  break;
-            case ast::CompareOp::OP_CMP_BIGGER: type = ir::BinaryOpType::CMP_BIGGER; break;
-        }
-
-        ir::VarID tmp_id = tmp_counter_++;
-        basic_block_.instructions.emplace_back( std::make_unique<ir::BinaryOpInstr>( tmp_id, type, std::move( left), std::move( right)));
-        eval_stack_.push_back( std::make_unique<ir::VarOperand>( tmp_id));
+        hir::VarID tmp_id = tmp_counter_++;
+        function_.variables.emplace_back( tmp_id);
+        hir::OperandPtr dest = std::make_unique<hir::VarOperand>( tmp_id);
+        basic_block_.instructions.emplace_back( std::make_unique<hir::BinaryOpInstr>( std::move( dest), type, std::move( left), std::move( right)));
+        eval_stack_.push_back( std::make_unique<hir::VarOperand>( tmp_id));
     }
 
     void
     Visit( ast::Assignment& node) override
     {
         // Emitting expression
-        node.right.get()->Accept( *this);
-        ir::OperandPtr expression = std::move( eval_stack_.back());
+        node.right->Accept( *this);
+        hir::OperandPtr expression = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
+        hir::OperandPtr dest = nullptr;
+        const nametable::Symbol *sym = nametable_->GetSymbol( node.left);
+        if ( sym->GetType() == nametable::Symbol::Type::LOCAL_VARIABLE )
+        {
+            dest = std::make_unique<hir::VarOperand>( node.left);
+        } else if ( sym->GetType() == nametable::Symbol::Type::GLOBAL_VARIABLE )
+        {
+            dest = std::make_unique<hir::GVarOperand>( node.left);
+        } else
+        {
+            throw std::runtime_error{ "Unexpected operand type"};
+        }
+
         // Adding mov to variable instruction
-        basic_block_.instructions.emplace_back( std::make_unique<ir::UnaryOpInstr>( node.left, ir::UnaryOpType::MOV, std::move( expression)));
+        basic_block_.instructions.emplace_back( std::make_unique<hir::UnaryOpInstr>( std::move( dest), hir::UnaryOpType::MOV, std::move( expression)));
     }
 
     void
     Visit( ast::If& node) override
     {
         // Emitting condition
-        node.condition.get()->Accept( *this);
-        ir::OperandPtr cmp_result = std::move( eval_stack_.back());
+
+        // Left
+        node.condition.left->Accept( *this);
+        hir::OperandPtr left = std::move( eval_stack_.back());
+        eval_stack_.pop_back();
+        //Right
+        node.condition.right->Accept( *this);
+        hir::OperandPtr right = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
+        hir::CmpType type;
+        switch ( node.condition.operation )
+        {
+            case ast::CompareOp::Operation::OP_CMP_LESS:   type = hir::CmpType::LESS;   break;
+            case ast::CompareOp::Operation::OP_CMP_EQUAL:  type = hir::CmpType::EQUAL;  break;
+            case ast::CompareOp::Operation::OP_CMP_BIGGER: type = hir::CmpType::BIGGER; break;
+        }
+
         // Saving basic basic block which will go after if
-        ir::LocalLabelID true_label = basic_blocks_counter_ + 1; // +1 is for next basic block, which will be used for false label
-        ir::LocalLabelID false_label = basic_blocks_counter_ + 2;
+        hir::LocalLabelID true_label = basic_blocks_counter_ + 1; // +1 is for next basic block, which will be used for false label
+        hir::LocalLabelID false_label = basic_blocks_counter_ + 2;
         basic_blocks_counter_ += 2; // Saving two basic blocks which will not be used in body
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::CmpAndJmpInstr>( std::move( cmp_result), true_label, false_label));
+        basic_block_.instructions.emplace_back( std::make_unique<hir::CmpAndJmpInstr>( std::move( left), std::move( right), type, true_label, false_label));
         finish_basic_block( true_label);
 
         for ( auto& it : node.body )
@@ -125,18 +137,31 @@ public:
     {
         // Adding condition basic block
         finish_basic_block();
-        ir::LocalLabelID condition_block = basic_blocks_counter_;
+        hir::LocalLabelID condition_block = basic_blocks_counter_;
 
         // Emitting condition
-        node.condition.get()->Accept( *this);
-        ir::OperandPtr cmp_result = std::move( eval_stack_.back());
+        // Left
+        node.condition.left->Accept( *this);
+        hir::OperandPtr left = std::move( eval_stack_.back());
+        eval_stack_.pop_back();
+        //Right
+        node.condition.right->Accept( *this);
+        hir::OperandPtr right = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
-        ir::LocalLabelID true_label = basic_blocks_counter_ + 1; // +1 is for next basic block, which will be used for false label
-        ir::LocalLabelID false_label = basic_blocks_counter_ + 2;
+        hir::CmpType type;
+        switch ( node.condition.operation )
+        {
+            case ast::CompareOp::Operation::OP_CMP_LESS:   type = hir::CmpType::LESS;   break;
+            case ast::CompareOp::Operation::OP_CMP_EQUAL:  type = hir::CmpType::EQUAL;  break;
+            case ast::CompareOp::Operation::OP_CMP_BIGGER: type = hir::CmpType::BIGGER; break;
+        }
+
+        hir::LocalLabelID true_label = basic_blocks_counter_ + 1; // +1 is for next basic block, which will be used for false label
+        hir::LocalLabelID false_label = basic_blocks_counter_ + 2;
         basic_blocks_counter_ += 2; // Saving two basic blocks which will not be used in body
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::CmpAndJmpInstr>( std::move( cmp_result), true_label, false_label));
+        basic_block_.instructions.emplace_back( std::make_unique<hir::CmpAndJmpInstr>( std::move( left), std::move( right), type, true_label, false_label));
         finish_basic_block( true_label);
 
         for ( auto& it : node.body )
@@ -144,14 +169,14 @@ public:
             it.get()->Accept( *this);
         }
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::CmpAndJmpInstr>( nullptr, condition_block, 0));
+        basic_block_.instructions.emplace_back( std::make_unique<hir::CmpAndJmpInstr>( nullptr, nullptr, hir::CmpType::ALWAYS_TRUE, condition_block, 0));
         finish_basic_block( false_label);
     }
 
     void
     Visit( ast::FunctionCall& node) override
     {
-        std::vector<ir::OperandPtr> parameters;
+        std::vector<hir::OperandPtr> parameters;
         for ( auto& it : node.parameters )
         {
             it.get()->Accept( *this);
@@ -159,9 +184,10 @@ public:
             eval_stack_.pop_back();
         }
 
-        ir::VarID result_tmp_id = tmp_counter_++;
-
-        basic_block_.instructions.emplace_back( std::make_unique<ir::FunctionCallInstr>( result_tmp_id, node.id, std::move( parameters)));
+        hir::VarID tmp_id = tmp_counter_++;
+        function_.variables.emplace_back( tmp_id);
+        hir::OperandPtr dest = std::make_unique<hir::VarOperand>( tmp_id);
+        basic_block_.instructions.emplace_back( std::make_unique<hir::FunctionCallInstr>( std::move( dest), node.id, std::move( parameters)));
     }
 
     void
@@ -170,10 +196,10 @@ public:
         // Emitting expression to return
         node.expression.get()->Accept( *this);
 
-        ir::OperandPtr expression = std::move( eval_stack_.back());
+        hir::OperandPtr expression = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::UnaryOpInstr>( 0 /* unused */, ir::UnaryOpType::RET, std::move( expression)));
+        basic_block_.instructions.emplace_back( std::make_unique<hir::UnaryOpInstr>( nullptr /* unused */, hir::UnaryOpType::RET, std::move( expression)));
         finish_basic_block();
     }
 
@@ -183,18 +209,32 @@ public:
         // Counting new variable in stack, adds instructions to basic blocks
         if ( node.initializer != nullptr )
         {
-            node.initializer.get()->Accept( *this);
+            node.initializer->Accept( *this);
         } else
         {
-            eval_stack_.push_back( std::make_unique<ir::ImmOperand>( 0));
+            eval_stack_.push_back( std::make_unique<hir::ImmOperand>( 0));
         }
 
-        // Adding initialization instruction, adding information about stack size to function
-        // Note: first. function is always preamble
-        function_.stack_size++;
-        ir::OperandPtr initializer = std::move( eval_stack_.back());
+        // Adding initialization instruction
+        function_.variables.emplace_back( node.identifier);
+        hir::OperandPtr initializer = std::move( eval_stack_.back());
         eval_stack_.pop_back();
-        basic_block_.instructions.push_back( std::make_unique<ir::UnaryOpInstr>( node.identifier, ir::UnaryOpType::MOV, std::move( initializer)));
+
+        hir::OperandPtr dest = nullptr;
+        const nametable::Symbol *sym = nametable_->GetSymbol( node.identifier);
+        if ( sym->GetType() == nametable::Symbol::Type::LOCAL_VARIABLE )
+        {
+            dest = std::make_unique<hir::VarOperand>( node.identifier);
+        } else if ( sym->GetType() == nametable::Symbol::Type::GLOBAL_VARIABLE )
+        {
+            program_.globals.emplace_back( node.identifier);
+            dest = std::make_unique<hir::GVarOperand>( node.identifier);
+        } else
+        {
+            throw std::runtime_error{ "Unexpected operand type"};
+        }
+
+        basic_block_.instructions.push_back( std::make_unique<hir::UnaryOpInstr>( std::move( dest), hir::UnaryOpType::MOV, std::move( initializer)));
     }
 
     void
@@ -203,7 +243,7 @@ public:
         start_function( function->id);
 
         // Getting function parameters
-        for ( ir::VarID it : function->parameters )
+        for ( hir::VarID it : function->parameters )
         {
             function_.params.emplace_back( it);
         }
@@ -216,7 +256,10 @@ public:
 
         // TODO check if needed
         // Adding last basic block which can be not full to function
-        finish_basic_block();
+        if ( !basic_block_.instructions.empty() )
+        {
+            finish_basic_block();
+        }
         // This is obviously needed
         finish_function();
     }
@@ -224,6 +267,8 @@ public:
     void
     EmitProgram( ast::Program *program)
     {
+        nametable_ = &program->nametable;
+
         tmp_counter_ = program->nametable.GetMaxSymbolIndex();
 
         start_function( 0);
@@ -235,7 +280,7 @@ public:
         }
 
         finish_basic_block(); // TODO check if needed
-        finish_function();
+        program_.preamble = std::make_unique<hir::Function>( std::move( function_));
 
         // Functions
         for ( auto& it : program->functions )
@@ -245,7 +290,7 @@ public:
         program_finished_ = true;
     }
 
-    ir::Program
+    hir::Program
     GetProgram()
     {
         if ( !program_finished_ )
@@ -256,54 +301,55 @@ public:
     }
 
 private:
-    std::vector<ir::OperandPtr> eval_stack_{};
-    ir::VarID tmp_counter_{ 0};
+    std::vector<hir::OperandPtr> eval_stack_{};
+    hir::VarID tmp_counter_{ 0};
 
-    ir::Program program_{};
+    hir::Program program_{};
     bool program_finished_{ false};
-    ir::Function function_{ 0};
-    ir::BasicBlock basic_block_{ 0};
-    ir::LocalLabelID basic_blocks_counter_{ 0};
+    hir::Function function_{ 0};
+    hir::BasicBlock basic_block_{ 0};
+    hir::LocalLabelID basic_blocks_counter_{ 0};
+    nametable::NameTable *nametable_{ nullptr};
 
 private:
     void
     finish_function()
     {
-        program_.functions.emplace_back( std::make_unique<ir::Function>( std::move( function_)));
+        program_.functions.emplace_back( std::make_unique<hir::Function>( std::move( function_)));
     }
 
     void
-    start_function( ir::FuncID id)
+    start_function( hir::FuncID id)
     {
-        function_ = ir::Function{ id};
+        function_ = hir::Function{ id};
     }
 
     void
     finish_basic_block()
     {
-        function_.basic_blocks.emplace_back( std::make_unique<ir::BasicBlock>( std::move( basic_block_)));
-        basic_block_ = ir::BasicBlock{ ++basic_blocks_counter_};
+        function_.basic_blocks.emplace_back( std::make_unique<hir::BasicBlock>( std::move( basic_block_)));
+        basic_block_ = hir::BasicBlock{ ++basic_blocks_counter_};
     }
 
     void
-    finish_basic_block( ir::LocalLabelID next_bb_id)
+    finish_basic_block( hir::LocalLabelID next_bb_id)
     {
-        function_.basic_blocks.emplace_back( std::make_unique<ir::BasicBlock>( std::move( basic_block_)));
-        basic_block_ = ir::BasicBlock{ next_bb_id};
+        function_.basic_blocks.emplace_back( std::make_unique<hir::BasicBlock>( std::move( basic_block_)));
+        basic_block_ = hir::BasicBlock{ next_bb_id};
     }
 
 };
 
 } // ! anonymous namespace
 
-ir::Program
+hir::Program
 EmitIR( ast::Program *program)
 {
     Emitter emitter{};
 
     emitter.EmitProgram( program);
 
-    ir::Program program_ir = emitter.GetProgram();
+    hir::Program program_ir = emitter.GetProgram();
     return program_ir;
 }
 

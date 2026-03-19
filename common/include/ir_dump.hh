@@ -8,7 +8,7 @@ namespace dumb
 namespace ir_dump
 {
 
-void DumpIR( ir::Program *program);
+void DumpIR( hir::Program *program);
 
 } // ! namespace ir_dump
 } // ! namespace dumb
