@@ -5,7 +5,7 @@
 
 namespace dumb
 {
-namespace hir
+namespace ir
 {
 
 //

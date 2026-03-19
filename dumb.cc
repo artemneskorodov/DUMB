@@ -18,7 +18,7 @@ main( int argc,
 
     std::string filename{ argv[1]};
 
-    dumb::hir::Program program_ir = dumb::RunFrontend( filename);
+    dumb::ir::Program program_ir = dumb::RunFrontend( filename);
 
     dumb::ir_dump::DumpIR( &program_ir);
 

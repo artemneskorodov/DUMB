@@ -56,14 +56,14 @@ struct Immediate final : public ExprNode
 {
 public:
     explicit
-    Immediate( hir::ImmType value)
+    Immediate( ir::ImmType value)
      :  value{ value}
     {
     }
 
     void Accept( Visitor& v) override;
 
-    hir::ImmType value;
+    ir::ImmType value;
 
 };
 
@@ -80,7 +80,7 @@ struct Identifier final : public ExprNode
 
     void Accept( Visitor& v) override;
 
-    hir::VarID id;
+    ir::VarID id;
 
 };
 
@@ -142,7 +142,7 @@ struct FunctionCall final : public ExprNode
 struct Assignment final : public StmtNode
 {
     explicit
-    Assignment( hir::VarID   left,
+    Assignment( ir::VarID   left,
                 ExprNodePtr right)
      :  left  { left},
         right { std::move( right)}
@@ -151,7 +151,7 @@ struct Assignment final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    hir::VarID   left;
+    ir::VarID   left;
     ExprNodePtr right;
 
 };
@@ -247,7 +247,7 @@ struct Return final : public StmtNode
 struct NewVariable final : public StmtNode
 {
     explicit
-    NewVariable( hir::VarID   identifier,
+    NewVariable( ir::VarID   identifier,
                  ExprNodePtr initializer)
      :  identifier  { identifier},
         initializer { std::move( initializer)}
@@ -256,7 +256,7 @@ struct NewVariable final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    hir::VarID   identifier;
+    ir::VarID   identifier;
     ExprNodePtr initializer;
 
 };
@@ -268,7 +268,7 @@ struct Function final
 {
     explicit
     Function( std::size_t            id,
-              std::list<hir::VarID>   parameters,
+              std::list<ir::VarID>   parameters,
               std::list<StmtNodePtr> body)
      :  id         { id},
         parameters { std::move( parameters)},
@@ -276,8 +276,8 @@ struct Function final
     {
     }
 
-    hir::FuncID             id;
-    std::list<hir::VarID>   parameters;
+    ir::FuncID             id;
+    std::list<ir::VarID>   parameters;
     std::list<StmtNodePtr> body;
 
 };

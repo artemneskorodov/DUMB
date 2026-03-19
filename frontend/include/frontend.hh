@@ -6,7 +6,7 @@
 namespace dumb
 {
 
-hir::Program RunFrontend( const std::string& filename);
+ir::Program RunFrontend( const std::string& filename);
 
 } // ! namespace dumb
 

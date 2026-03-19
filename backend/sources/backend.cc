@@ -1,7 +1,8 @@
+#include <unordered_map>
+#include <iostream>
+
 #include "ir.hh"
 #include "backend.hh"
-
-#include <unordered_map>
 
 namespace dumb
 {
@@ -9,78 +10,86 @@ namespace dumb
 namespace
 {
 
-class OperandEmitter : public hir::OperandVisitor
+class OperandEmitter : public ir::OperandVisitor
 {
 public:
-    OperandEmitter( const std::unordered_map<hir::VarID, int>& rbp_offsets)
+    OperandEmitter( const std::unordered_map<ir::VarID, int>& rbp_offsets)
      :  rbp_offsets_{ rbp_offsets}
     {
     }
 
     void
-    Visit( hir::VarOperand& node) override
+    Visit( ir::VarOperand& node) override
     {
-        int rbp_offset = rbp_offsets_.find( node.id)->first;
-        result_ = "[rbp + " + std::to_string( rbp_offset) + "]";
+        int rbp_offset = rbp_offsets_.find( node.id)->second;
+        if ( rbp_offset >= 0 )
+        {
+            result_ = "[rbp + ";
+        } else
+        {
+            result_ = "[rbp - ";
+            rbp_offset = -rbp_offset;
+        }
+        result_ += std::to_string( rbp_offset) + "]";
     }
 
     void
-    Visit( hir::ImmOperand& node) override
+    Visit( ir::ImmOperand& node) override
     {
         result_ = std::to_string( node.value);;
     }
 
     void
-    Visit( hir::GVarOperand& node) override
+    Visit( ir::GVarOperand& node) override
     {
         result_ = "[GLOBAL_" + std::to_string( node.id) + "]";
     }
 
     std::string
-    GetStr( hir::Operand *operand)
+    GetStr( ir::Operand *operand)
     {
         operand->Accept( *this);
         return result_;
     }
 private:
     std::string result_;
-    const std::unordered_map<hir::VarID, int>& rbp_offsets_;
+    const std::unordered_map<ir::VarID, int>& rbp_offsets_;
 
 };
 
-class InstructionEmitter : public hir::InstructionVisitor
+class InstructionEmitter : public ir::InstructionVisitor
 {
 public:
-    InstructionEmitter( const std::unordered_map<hir::VarID, int>& rbp_offsets)
+    InstructionEmitter( const std::unordered_map<ir::VarID, int>& rbp_offsets)
      :  op_emitter_{ rbp_offsets}
     {
     }
 
     void
-    Visit( hir::BinaryOpInstr& node) override
+    Visit( ir::BinaryOpInstr& node) override
     {
         result_ = "        mov rax, " + op_emitter_.GetStr( node.first.get()) + "\n"
                   "        mov rbx, " + op_emitter_.GetStr( node.second.get()) + "\n";
 
         switch ( node.op )
         {
-            case hir::BinaryOpType::ADD: result_ += "        add rax, rbx\n"; break;
-            case hir::BinaryOpType::SUB: result_ += "        sub rax, rbx\n"; break;
-            case hir::BinaryOpType::MUL: result_ += "        mul rax, rbx\n"; break;
-            case hir::BinaryOpType::DIV: result_ += "        div rax, rbx\n"; break;
+            case ir::BinaryOpType::ADD: result_ += "        add rax, rbx\n"; break;
+            case ir::BinaryOpType::SUB: result_ += "        sub rax, rbx\n"; break;
+            case ir::BinaryOpType::MUL: result_ += "        mul rax, rbx\n"; break;
+            case ir::BinaryOpType::DIV: result_ += "        div rax, rbx\n"; break;
         }
 
         result_ += "        mov " + op_emitter_.GetStr( node.dest.get()) + ", rax\n";
     }
 
     void
-    Visit( hir::UnaryOpInstr& node) override
+    Visit( ir::UnaryOpInstr& node) override
     {
-        if ( node.op == hir::UnaryOpType::MOV )
+        if ( node.op == ir::UnaryOpType::MOV )
         {
             result_ = "        mov rax, " + op_emitter_.GetStr( node.operand.get()) + "\n"
                       "        mov " + op_emitter_.GetStr( node.dest.get()) + ", rax\n";
-        } else if ( node.op == hir::UnaryOpType::RET )
+        } else if ( node.op == ir::UnaryOpType::RET )
         {
             result_ = "        mov rax, " + op_emitter_.GetStr( node.operand.get()) + "\n"
                       "        ret\n";
@@ -88,7 +97,7 @@ public:
     }
 
     void
-    Visit( hir::FunctionCallInstr& node) override
+    Visit( ir::FunctionCallInstr& node) override
     {
         result_ = "";
         for ( auto& it : node.params )
@@ -102,11 +111,11 @@ public:
     }
 
     void
-    Visit( hir::CmpAndJmpInstr& node) override
+    Visit( ir::CmpAndJmpInstr& node) override
     {
-        if ( node.type == hir::CmpType::ALWAYS_TRUE )
+        if ( node.type == ir::CmpType::ALWAYS_TRUE )
         {
-            result_ = "        jmp .LOC_" + std::to_string( node.true_dest);
+            result_ = "        jmp .LOC_" + std::to_string( node.true_dest) + "\n";
             return ;
         }
 
@@ -115,18 +124,18 @@ public:
                   "        mov rbx, " + op_emitter_.GetStr( node.right.get()) + "\n"
                   "        cmp rax, rbx\n";
 
-        std::string true_label = ".LOC" + std::to_string( node.true_dest);
-        std::string false_label = ".LOC" + std::to_string( node.false_dest);
+        std::string true_label = ".LOC_" + std::to_string( node.true_dest);
+        std::string false_label = ".LOC_" + std::to_string( node.false_dest);
 
-        if ( node.type == hir::CmpType::LESS )
+        if ( node.type == ir::CmpType::LESS )
         {
             result_ += "        jl " + true_label + "\n"
                        "        jg " + false_label + "\n";
-        } else if ( node.type == hir::CmpType::EQUAL )
+        } else if ( node.type == ir::CmpType::EQUAL )
         {
             result_ += "        je " + true_label + "\n"
                        "        jne " + false_label + "\n";
-        } else if ( node.type == hir::CmpType::BIGGER )
+        } else if ( node.type == ir::CmpType::BIGGER )
         {
             result_ += "        jg " + true_label + "\n"
                        "        jl " + false_label + "\n";
@@ -147,8 +156,8 @@ private:
 };
 
 std::string
-EmitBasicBlock( hir::BasicBlock *basic_block,
-                const std::unordered_map<hir::VarID, int>& rbp_offsets)
+EmitBasicBlock( ir::BasicBlock *basic_block,
+                const std::unordered_map<ir::VarID, int>& rbp_offsets)
 {
     InstructionEmitter emitter{ rbp_offsets};
 
@@ -162,9 +171,9 @@ EmitBasicBlock( hir::BasicBlock *basic_block,
 }
 
 std::string
-EmitFunction( hir::Function *function)
+EmitFunction( ir::Function *function)
 {
-    std::unordered_map<hir::VarID, int> rbp_offsets;
+    std::unordered_map<ir::VarID, int> rbp_offsets;
 
     for ( size_t i = 0; i != function->params.size(); ++i )
     {
@@ -172,6 +181,7 @@ EmitFunction( hir::Function *function)
     }
     for ( size_t i = 0; i != function->variables.size(); ++i )
     {
+        std::cout << -(static_cast<int>( i) + 1) << std::endl;
         rbp_offsets[function->variables[i]] = -(static_cast<int>( i) + 1);
     }
 
@@ -188,7 +198,7 @@ EmitFunction( hir::Function *function)
 } // ! anonymous namespace
 
 std::string
-RunBackend( hir::Program *program)
+RunBackend( ir::Program *program)
 {
     std::string result = "global __start__\n"
                          "section .text\n"
@@ -206,7 +216,7 @@ RunBackend( hir::Program *program)
     }
 
     result += "second .data\n";
-    for ( hir::VarID global : program->globals )
+    for ( ir::VarID global : program->globals )
     {
         result += "GLOBAL_" + std::to_string( global) + " dq 0\n";
     }

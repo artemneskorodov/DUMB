@@ -321,7 +321,7 @@ public:
         std::string parameters_node_id = get_node_id();
 
         label = "{ ";
-        for ( hir::VarID& param : function->parameters )
+        for ( ir::VarID& param : function->parameters )
         {
             label += "{ Identifier | " + std::to_string( param) + " }";
             if ( &param != &function->parameters.back() )

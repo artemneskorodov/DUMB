@@ -126,7 +126,7 @@ SyntaxParser::get_function()
     advance();
 
     nametable_.EnterScope();
-    std::list<hir::VarID> parameters{};
+    std::list<ir::VarID> parameters{};
     while ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
     {
         if ( !is_type( lexer::TokenType::USER_STRING) )
@@ -135,7 +135,7 @@ SyntaxParser::get_function()
                                "Expected function parameter"};
         }
         std::string name = value();
-        hir::VarID param_id = nametable_.AddSymbol( name, nametable::Symbol::Type::LOCAL_VARIABLE);
+        ir::VarID param_id = nametable_.AddSymbol( name, nametable::Symbol::Type::LOCAL_VARIABLE);
         advance();
 
         parameters.emplace_back( param_id);
@@ -221,7 +221,7 @@ SyntaxParser::get_new_var()
     }
     // Adding to nametable
     std::string name = value();
-    hir::VarID id;
+    ir::VarID id;
     if ( nametable_.HasScope() )
     {
         id = nametable_.AddSymbol( name, nametable::Symbol::Type::LOCAL_VARIABLE);
@@ -495,7 +495,7 @@ ast::ExprNodePtr
 SyntaxParser::get_immediate()
 {
     assert( is_type( lexer::TokenType::IMMEDIATE));
-    hir::ImmType immediate = std::atoi( value().c_str());
+    ir::ImmType immediate = std::atoi( value().c_str());
     advance();
     return std::make_unique<ast::Immediate>( immediate);
 }

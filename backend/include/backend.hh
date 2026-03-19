@@ -6,7 +6,7 @@
 namespace dumb
 {
 
-std::string RunBackend( hir::Program *program);
+std::string RunBackend( ir::Program *program);
 
 } // ! namespace dumb
 

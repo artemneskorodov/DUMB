@@ -24,7 +24,7 @@ public:
 
     Symbol( const std::string& name,
             Type               type,
-            hir::VarID          id)
+            ir::VarID          id)
      :  name_ { name},
         type_ { type},
         id_   { id}
@@ -33,23 +33,23 @@ public:
 
     std::string GetName () const { return name_; }
     Type        GetType () const { return type_; }
-    hir::VarID   GetID   () const { return id_;   }
+    ir::VarID   GetID   () const { return id_;   }
 
 private:
     std::string name_;
     Type        type_;
-    hir::VarID   id_;
+    ir::VarID   id_;
 
 };
 
 class NameTable final
 {
 public:
-    hir::VarID
+    ir::VarID
     AddSymbol( const std::string& name,
                Symbol::Type       type)
     {
-        hir::VarID id = symbols_counter_;
+        ir::VarID id = symbols_counter_;
         ++symbols_counter_;
         nametable_.emplace_back( Symbol{ name, type, id});
 
@@ -97,7 +97,7 @@ public:
     }
 
     const Symbol *
-    GetSymbol( hir::VarID id) const &
+    GetSymbol( ir::VarID id) const &
     {
         for ( auto& sym : nametable_ )
         {
@@ -109,7 +109,7 @@ public:
         return nullptr;
     }
 
-    hir::VarID
+    ir::VarID
     GetMaxSymbolIndex() const
     {
         return symbols_counter_;
@@ -123,9 +123,9 @@ public:
 
 private:
     std::vector<Symbol>        nametable_       {};
-    std::vector<hir::VarID>     visible_names_   {};
+    std::vector<ir::VarID>     visible_names_   {};
     std::vector<std::size_t>   scope_symbols_   {};
-    hir::VarID                  symbols_counter_ { 0};
+    ir::VarID                  symbols_counter_ { 0};
 
 };
 

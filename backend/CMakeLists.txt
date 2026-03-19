@@ -17,6 +17,7 @@ set(
 set(
     BACKEND_HEADERS
     ${INC_DIR}/backend.hh
+    ${INC_DIR}/lir.hh
 )
 
 #
