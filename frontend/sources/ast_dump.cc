@@ -102,34 +102,6 @@ public:
     }
 
     void
-    Visit( CompareOp& node) override
-    {
-        std::string this_node_id = get_node_id();
-        std::string op_string{};
-        switch ( node.operation )
-        {
-            case CompareOp::OP_CMP_LESS:   op_string = "LESS";   break;
-            case CompareOp::OP_CMP_EQUAL:  op_string = "EQUAL";  break;
-            case CompareOp::OP_CMP_BIGGER: op_string = "BIGGER"; break;
-        }
-        std::string label = "{ <Type> CompareOp | { <Operation> Operation | " + op_string +
-                            " } | { <Left> Left | <Right> Right } }";
-
-        current_subgraph_->addNode( this_node_id)
-                          .setFillColor( kBinaryOpNodeColor)
-                          .setQuoted( "label", label)
-                          .setShape( "Mrecord")
-                          .setStyle( "filled");
-        graph_.addEdge( parent_node_id_, this_node_id);
-
-        set_parent_id( this_node_id + ":Left");
-        node.left.get()->Accept( *this);
-
-        set_parent_id( this_node_id + ":Right");
-        node.right.get()->Accept( *this);
-    }
-
-    void
     Visit( Assignment& node) override
     {
         std::string this_node_id = get_node_id();
@@ -167,9 +139,32 @@ public:
                                           .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Condition");
-        node.condition.get()->Accept( *this);
 
-        current_subgraph_ = &old_subgraph->addSubgraph( "cluster_while_body_" + this_node_id);
+        std::string op_node_id = get_node_id();
+        std::string op_string{};
+        switch ( node.condition.operation )
+        {
+            case CompareOp::OP_CMP_LESS:   op_string = "LESS";   break;
+            case CompareOp::OP_CMP_EQUAL:  op_string = "EQUAL";  break;
+            case CompareOp::OP_CMP_BIGGER: op_string = "BIGGER"; break;
+        }
+        std::string cmp_label = "{ <Type> CompareOp | { <Operation> Operation | " + op_string +
+                                " } | { <Left> Left | <Right> Right } }";
+
+        current_subgraph_->addNode( op_node_id)
+                          .setFillColor( kBinaryOpNodeColor)
+                          .setQuoted( "label", cmp_label)
+                          .setShape( "Mrecord")
+                          .setStyle( "filled");
+        graph_.addEdge( this_node_id + ":Condition", op_node_id);
+
+        set_parent_id( op_node_id + ":Left");
+        node.condition.left->Accept( *this);
+
+        set_parent_id( op_node_id + ":Right");
+        node.condition.right->Accept( *this);
+
+        current_subgraph_ = &old_subgraph->addSubgraph( "cluster_if_body_" + this_node_id);
 
         set_parent_id( this_node_id + ":Body");
         for ( auto& stmt : node.body )
@@ -185,7 +180,7 @@ public:
     void Visit( While& node) override
     {
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> While | { <Prev> Prev | <Condition> Condition | <Body> Body | <Next> Next } }";
+        std::string label = "{ <Type> If | { <Prev> Prev | <Condition> Condition | <Body> Body | <Next> Next } }";
 
         current_subgraph_->addNode( this_node_id)
                           .setFillColor( kWhileNodeColor)
@@ -201,10 +196,32 @@ public:
                                           .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Condition");
-        node.condition.get()->Accept( *this);
 
-        current_subgraph_ = &old_subgraph->addSubgraph( "cluster_while_body_" + this_node_id)
-                                          .setColor( "#646464");
+        std::string op_node_id = get_node_id();
+        std::string op_string{};
+        switch ( node.condition.operation )
+        {
+            case CompareOp::OP_CMP_LESS:   op_string = "LESS";   break;
+            case CompareOp::OP_CMP_EQUAL:  op_string = "EQUAL";  break;
+            case CompareOp::OP_CMP_BIGGER: op_string = "BIGGER"; break;
+        }
+        std::string cmp_label = "{ <Type> CompareOp | { <Operation> Operation | " + op_string +
+                                " } | { <Left> Left | <Right> Right } }";
+
+        current_subgraph_->addNode( op_node_id)
+                          .setFillColor( kBinaryOpNodeColor)
+                          .setQuoted( "label", cmp_label)
+                          .setShape( "Mrecord")
+                          .setStyle( "filled");
+        graph_.addEdge( this_node_id + ":Condition", op_node_id);
+
+        set_parent_id( op_node_id + ":Left");
+        node.condition.left->Accept( *this);
+
+        set_parent_id( op_node_id + ":Right");
+        node.condition.right->Accept( *this);
+
+        current_subgraph_ = &old_subgraph->addSubgraph( "cluster_while_body_" + this_node_id);
 
         set_parent_id( this_node_id + ":Body");
         for ( auto& stmt : node.body )

@@ -52,8 +52,8 @@ private:
     ast::StmtNodePtr            get_assignment();
     ast::StmtNodePtr            get_return();
     ast::StmtNodePtr            get_new_var();
+    ast::CompareOp              get_comparison();
     ast::ExprNodePtr            get_expression();
-    ast::ExprNodePtr            get_sum();
     ast::ExprNodePtr            get_product();
     ast::ExprNodePtr            get_element();
     ast::ExprNodePtr            get_immediate();
@@ -142,7 +142,6 @@ SyntaxParser::get_function()
 
         if ( is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
         {
-            advance();
             break;
         } else if ( is_type( lexer::TokenType::COMMA) )
         {
@@ -152,6 +151,7 @@ SyntaxParser::get_function()
         throw SyntaxError{ line(), column(),
                           "Expected ','"};
     }
+    advance();
 
     std::list<ast::StmtNodePtr> body = get_body();
     nametable_.LeaveScope();
@@ -231,19 +231,15 @@ SyntaxParser::get_new_var()
     }
     advance();
 
-    ast::StmtNodePtr new_variable = nullptr;
-
+    ast::ExprNodePtr initializer = nullptr;
     if ( is_type( lexer::TokenType::ASSIGNMENT) )
     {
         advance();
-        ast::ExprNodePtr initializer = get_sum();
-        new_variable = std::make_unique<ast::NewVariable>( id,
-                                                           std::move( initializer));
-    } else
-    {
-        new_variable =  std::make_unique<ast::NewVariable>( id,
-                                                            nullptr);
+        initializer = get_expression();
     }
+
+    ast::StmtNodePtr new_variable = std::make_unique<ast::NewVariable>( id,
+                                                                        std::move( initializer));
 
     if ( !is_type( lexer::TokenType::STATEMENT_END) )
     {
@@ -267,7 +263,7 @@ SyntaxParser::get_if()
     }
     advance();
 
-    ast::ExprNodePtr condition = get_expression();
+    ast::CompareOp condition = get_comparison();
 
     if ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
     {
@@ -296,7 +292,7 @@ SyntaxParser::get_while()
     }
     advance();
 
-    ast::ExprNodePtr condition = get_expression();
+    ast::CompareOp condition = get_comparison();
 
     if ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
     {
@@ -358,36 +354,37 @@ SyntaxParser::get_return()
     return std::make_unique<ast::Return>( std::move( expression));
 }
 
-ast::ExprNodePtr
-SyntaxParser::get_expression()
+ast::CompareOp
+SyntaxParser::get_comparison()
 {
-    ast::ExprNodePtr cmp_left_side = get_sum();
-    if ( is_type( lexer::TokenType::CMP_LESS) ||
-         is_type( lexer::TokenType::CMP_EQUAL) ||
-         is_type( lexer::TokenType::CMP_BIGGER) )
-    {
-        ast::CompareOp::Operation operation;
-        switch ( token().type )
-        {
-            case lexer::TokenType::CMP_LESS:   operation = ast::CompareOp::OP_CMP_LESS;   break;
-            case lexer::TokenType::CMP_EQUAL:  operation = ast::CompareOp::OP_CMP_EQUAL;  break;
-            case lexer::TokenType::CMP_BIGGER: operation = ast::CompareOp::OP_CMP_BIGGER; break;
-            default: assert( false);
-        }
-        advance();
+    ast::ExprNodePtr cmp_left_side = get_expression();
 
-        ast::ExprNodePtr cmp_right_side = get_sum();
-        return std::make_unique<ast::CompareOp>( operation,
-                                                 std::move( cmp_left_side),
-                                                 std::move( cmp_right_side));
+    ast::CompareOp::Operation operation;
+    if ( is_type( lexer::TokenType::CMP_LESS) )
+    {
+        operation = ast::CompareOp::OP_CMP_LESS;
+    } else if ( is_type( lexer::TokenType::CMP_EQUAL) )
+    {
+        operation = ast::CompareOp::OP_CMP_EQUAL;
+    } else if ( is_type( lexer::TokenType::CMP_BIGGER) )
+    {
+        operation = ast::CompareOp::OP_CMP_BIGGER;
     } else
     {
-        return cmp_left_side;
+        throw SyntaxError{ line(), column(),
+                           "Expected comparison token: '<', '>' or '=='"};
     }
+    advance();
+
+    ast::ExprNodePtr cmp_right_side = get_expression();
+
+    return ast::CompareOp{ operation,
+                           std::move( cmp_left_side),
+                           std::move( cmp_right_side)};
 }
 
 ast::ExprNodePtr
-SyntaxParser::get_sum()
+SyntaxParser::get_expression()
 {
     ast::ExprNodePtr left_side = get_product();
     while ( is_type( lexer::TokenType::OP_ADD) ||
@@ -445,7 +442,7 @@ SyntaxParser::get_element()
         return get_immediate();
     } else if ( is_type (lexer::TokenType::LEFT_PARENTHESIS) )
     {
-        ast::ExprNodePtr expression = get_sum();
+        ast::ExprNodePtr expression = get_expression();
         if ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
         {
             throw SyntaxError{ line(), column(),
@@ -483,7 +480,7 @@ SyntaxParser::get_symbol()
         std::list<ast::ExprNodePtr> parameters{};
         while ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
         {
-            parameters.emplace_back( get_sum());
+            parameters.emplace_back( get_expression());
         }
         advance();
 

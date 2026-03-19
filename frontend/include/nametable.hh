@@ -68,7 +68,7 @@ public:
     }
 
     bool
-    HasScope()
+    HasScope() const
     {
         return (scope_symbols_.size() != 0);
     }
@@ -84,7 +84,7 @@ public:
     }
 
     std::optional<Symbol>
-    GetSymbol( const std::string& name) &
+    GetSymbol( const std::string& name) const &
     {
         for ( auto it = visible_names_.rbegin(); it != visible_names_.rend(); ++it )
         {
@@ -96,8 +96,8 @@ public:
         return std::nullopt;
     }
 
-    Symbol *
-    GetSymbol( ir::VarID id) &
+    const Symbol *
+    GetSymbol( ir::VarID id) const &
     {
         for ( auto& sym : nametable_ )
         {

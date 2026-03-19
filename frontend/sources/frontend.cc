@@ -12,7 +12,7 @@
 namespace dumb
 {
 
-ast::Program
+ir::Program
 RunFrontend( const std::string& filename)
 {
     std::string source = utils::ReadTextFile( filename);
@@ -29,10 +29,7 @@ RunFrontend( const std::string& filename)
     ast::dump::DumpAST( &tree, "output.svg");
 
     ir::Program program = emit_ir::EmitIR( &tree);
-
-    ir_dump::DumpIR( &program);
-
-    return tree;
+    return program;
 }
 
 } // ! namespace dumb
@@ -50,8 +47,6 @@ main( int         argc,
     }
 
     std::string filename{ argv[1]};
-
-    dumb::ast::Program tree = dumb::RunFrontend( filename);
 }
 
 #endif // defined( BUILD_FRONTEND_SEPARATELY)

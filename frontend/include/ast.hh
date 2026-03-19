@@ -115,33 +115,6 @@ struct BinaryOp : public ExprNode
 
 };
 
-struct CompareOp : public ExprNode
-{
-    enum Operation
-    {
-        OP_CMP_LESS,
-        OP_CMP_EQUAL,
-        OP_CMP_BIGGER,
-    };
-
-    explicit
-    CompareOp( Operation  op,
-               ExprNodePtr left,
-               ExprNodePtr right)
-     :  operation { op},
-        left      { std::move( left)},
-        right     { std::move( right)}
-    {
-    }
-
-    void Accept( Visitor& v) override;
-
-    Operation   operation;
-    ExprNodePtr left;
-    ExprNodePtr right;
-
-};
-
 ///
 /// @brief
 ///
@@ -184,12 +157,40 @@ struct Assignment final : public StmtNode
 };
 
 ///
+/// @brief Compare operation used for while and if
+///
+struct CompareOp
+{
+    enum Operation
+    {
+        OP_CMP_LESS,
+        OP_CMP_EQUAL,
+        OP_CMP_BIGGER,
+    };
+
+    explicit
+    CompareOp( Operation  op,
+               ExprNodePtr left,
+               ExprNodePtr right)
+     :  operation { op},
+        left      { std::move( left)},
+        right     { std::move( right)}
+    {
+    }
+
+    Operation   operation;
+    ExprNodePtr left;
+    ExprNodePtr right;
+
+};
+
+///
 /// @brief
 ///
 struct If final : public StmtNode
 {
     explicit
-    If( ExprNodePtr            condition,
+    If( CompareOp              condition,
         std::list<StmtNodePtr> body)
      :  condition { std::move( condition)},
         body      { std::move( body)}
@@ -198,7 +199,7 @@ struct If final : public StmtNode
 
     void Accept( Visitor &v) override;
 
-    ExprNodePtr            condition;
+    CompareOp              condition;
     std::list<StmtNodePtr> body;
 
 };
@@ -209,7 +210,7 @@ struct If final : public StmtNode
 struct While final : public StmtNode
 {
     explicit
-    While( ExprNodePtr            condition,
+    While( CompareOp              condition,
            std::list<StmtNodePtr> body)
      :  condition { std::move( condition)},
         body      { std::move( body)}
@@ -218,7 +219,7 @@ struct While final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    ExprNodePtr            condition;
+    CompareOp              condition;
     std::list<StmtNodePtr> body;
 
 };
@@ -311,7 +312,6 @@ public:
     virtual void Visit( Immediate&    node) = 0;
     virtual void Visit( Identifier&   node) = 0;
     virtual void Visit( BinaryOp&     node) = 0;
-    virtual void Visit( CompareOp&    node) = 0;
     virtual void Visit( Assignment&   node) = 0;
     virtual void Visit( If&           node) = 0;
     virtual void Visit( While&        node) = 0;
@@ -327,7 +327,6 @@ public:
 inline void Immediate::Accept    ( Visitor& v) { v.Visit( *this); }
 inline void Identifier::Accept   ( Visitor& v) { v.Visit( *this); }
 inline void BinaryOp::Accept     ( Visitor& v) { v.Visit( *this); }
-inline void CompareOp::Accept    ( Visitor& v) { v.Visit( *this); }
 inline void Assignment::Accept   ( Visitor& v) { v.Visit( *this); }
 inline void If::Accept           ( Visitor& v) { v.Visit( *this); }
 inline void While::Accept        ( Visitor& v) { v.Visit( *this); }

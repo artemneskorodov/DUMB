@@ -12,4 +12,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(dot-graph-lib)
 add_subdirectory(common)
 add_subdirectory(frontend)
-# add_subdirectory(backend)
+add_subdirectory(backend)
+
+add_executable(
+    dumb
+    dumb.cc
+)
+
+target_link_libraries(dumb PRIVATE common)
+target_link_libraries(dumb PRIVATE frontend_lib)
+target_link_libraries(dumb PRIVATE backend_lib)
