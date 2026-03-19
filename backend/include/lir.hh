@@ -11,6 +11,8 @@ namespace dumb
 namespace lir
 {
 
+using AddrType = std::int32_t;
+
 enum class RegName
 {
     RAX,
@@ -21,8 +23,6 @@ enum class RegName
     RBP,
     // TODO add other registers
 };
-
-using AddrType = std::size_t;
 
 struct Register
 {
@@ -53,12 +53,12 @@ struct RegMem
 struct Memory
 {
     explicit
-    Memory( AddrType offset)
-     :  offset{ offset}
+    Memory( std::string label)
+     :  label{ std::move( label)}
     {
     }
 
-    AddrType offset;
+    std::string label;
 
 };
 
@@ -83,16 +83,26 @@ struct MovInstr
 
 };
 
-// TODO add jump type
+enum class JmpType
+{
+    JMP,
+    JE,
+    JNE,
+    JL,
+    JG,
+};
+
 struct JmpInstr
 {
-    explicit
-    JmpInstr( AddrType offset)
-     :  offset{ offset}
+    JmpInstr( JmpType type,
+              std::string label)
+     :  type{ type},
+        label{ std::move( label)}
     {
     }
 
-    AddrType offset;
+    JmpType type;
+    std::string label;
 
 };
 
@@ -123,16 +133,58 @@ struct PopInstr
 struct CallInstr
 {
     explicit
-    CallInstr( AddrType addr)
-     :  addr{ addr}
+    CallInstr( std::string label)
+     :  label{ std::move( label)}
     {
     }
 
-    AddrType addr;
+    std::string label;
 
 };
 
 struct RetInstr
+{
+};
+
+enum class MathType
+{
+    ADD,
+    SUB,
+    DIV,
+    MUL,
+    XOR,
+};
+
+struct MathInstr
+{
+    MathInstr( MathType type,
+               Operand first,
+               Operand second)
+     :  type{ type},
+        first{ std::move( first)},
+        second{ std::move( second)}
+    {
+    }
+
+    MathType type;
+    Operand first;
+    Operand second;
+
+};
+
+struct Label
+{
+    explicit
+    Label( std::string label)
+     :  label{ std::move( label)}
+    {
+    }
+
+    std::string label;
+
+};
+
+struct System
 {
 };
 
@@ -143,91 +195,77 @@ using Instruction = std::variant
     PushInstr,
     PopInstr,
     CallInstr,
-    RetInstr
+    RetInstr,
+    Label,
+    MathInstr,
+    System,
 >;
 
 class Program
 {
 public:
     void
-    Mov( Operand first, Operand second)
+    AddMov( Operand first,
+            Operand second)
     {
         instructions_.emplace_back( MovInstr{ first, second});
-        if ( std::holds_alternative<Memory>( first) )
-        {
-            Memory& memory = std::get<Memory>( std::get<MovInstr>( instructions_.back()).first);
-            fixups_positions_.emplace_back( &memory.offset);
-        }
-        if ( std::holds_alternative<Memory>( second) )
-        {
-            Memory& memory = std::get<Memory>( std::get<MovInstr>( instructions_.back()).second);
-            fixups_positions_.emplace_back( &memory.offset);
-        }
     }
 
     void
-    Jmp( AddrType id_of_label)
+    AddJmp( JmpType type,
+            std::string label)
     {
-        instructions_.emplace_back( JmpInstr{ id_of_label});
-        fixups_positions_.emplace_back( &std::get<JmpInstr>( instructions_.back()).offset);
+        instructions_.emplace_back( JmpInstr{ type, std::move( label)});
     }
 
     void
-    Push( Operand op)
+    AddPush( Operand op)
     {
         instructions_.emplace_back( PushInstr{ op});
-        if ( std::holds_alternative<Memory>( op) )
-        {
-            Memory& memory = std::get<Memory>( std::get<PushInstr>( instructions_.back()).operand);
-            fixups_positions_.emplace_back( &memory.offset);
-        }
     }
 
     void
-    Pop( Operand op)
+    AddPop( Operand op)
     {
         instructions_.emplace_back( PopInstr{ op});
-        if ( std::holds_alternative<Memory>( op) )
-        {
-            Memory& memory = std::get<Memory>( std::get<PopInstr>( instructions_.back()).operand);
-            fixups_positions_.emplace_back( &memory.offset);
-        }
     }
 
     void
-    Call( AddrType id_of_label)
+    AddCall( std::string label)
     {
-        instructions_.emplace_back( CallInstr{ id_of_label});
-        fixups_positions_.emplace_back( &std::get<CallInstr>( instructions_.back()).addr);
+        instructions_.emplace_back( CallInstr{ std::move( label)});
     }
 
     void
-    Ret()
+    AddRet()
     {
         instructions_.emplace_back( RetInstr{});
     }
 
     void
-    Label( AddrType id_of_label)
+    AddLabel( std::string label)
     {
-        AddrType addr = instructions_.size() - 1;
-        fixups_map_[id_of_label] = addr;
+        instructions_.emplace_back( Label{ std::move( label)});
     }
 
     void
-    Finalizer()
+    AddMath( MathType type,
+             Operand first,
+             Operand second)
     {
-        for ( AddrType *fixup : fixups_positions_ )
-        {
-            AddrType result = fixups_map_[*fixup];
-            *fixup = result;
-        }
+        instructions_.emplace_back( MathInstr{ type, std::move( first), std::move( second)});
     }
 
+    void
+    AddSystem()
+    {
+        instructions_.emplace_back( System{});
+    }
+
+    std::string ToStr() const;
+
 private:
-    std::vector<Instruction>               instructions_     {};
-    std::vector<AddrType *>                fixups_positions_ {};
-    std::unordered_map<AddrType, AddrType> fixups_map_       {};
+    std::vector<Instruction> instructions_{};
 
 };
 
