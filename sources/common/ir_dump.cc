@@ -119,7 +119,21 @@ public:
             case ir::CmpType::ALWAYS_TRUE: break;
         }
 
-        result_ = "CmpAndJmp: if ( " + left_str + cmp_str + right_str + " ) goto BasicBlock_" + std::to_string( node.true_dest) + " else goto BasicBlock_" + std::to_string( node.false_dest);
+        result_ = "CmpAndJmp: if ( " + left_str + cmp_str + right_str + " ) "
+                  "goto BasicBlock_" + std::to_string( node.true_dest) +
+                  " else goto BasicBlock_" + std::to_string( node.false_dest);
+    }
+
+    void
+    Visit( ir::InputInstr& node) override
+    {
+        result_ = "input (" + operand_dumper_.GetStr( node.dest.get()) + ", \"" + node.string + "\")";
+    }
+
+    void
+    Visit( ir::OutputInstr& node) override
+    {
+        result_ = "output (" + operand_dumper_.GetStr( node.expression.get()) + ", \"" + node.string + "\")";
     }
 
     std::string

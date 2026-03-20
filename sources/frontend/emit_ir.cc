@@ -234,7 +234,33 @@ public:
             throw std::runtime_error{ "Unexpected operand type"};
         }
 
-        basic_block_.instructions.push_back( std::make_unique<ir::UnaryOpInstr>( std::move( dest), ir::UnaryOpType::MOV, std::move( initializer)));
+        basic_block_.instructions.emplace_back( std::make_unique<ir::UnaryOpInstr>( std::move( dest), ir::UnaryOpType::MOV, std::move( initializer)));
+    }
+
+    void
+    Visit( ast::Input& node) override
+    {
+        ir::OperandPtr dest;
+        const nametable::Symbol *sym = nametable_->GetSymbol( node.identifier);
+        if ( sym->GetType() == nametable::Symbol::Type::LOCAL_VARIABLE )
+        {
+            dest = std::make_unique<ir::VarOperand>( node.identifier);
+        } else
+        {
+            dest = std::make_unique<ir::GVarOperand>( node.identifier);
+        }
+
+        basic_block_.instructions.emplace_back( std::make_unique<ir::InputInstr>( std::move( dest), node.string));
+    };
+
+    void
+    Visit( ast::Output& node) override
+    {
+        node.expression->Accept( *this);
+        ir::OperandPtr expression = std::move( eval_stack_.back());
+        eval_stack_.pop_back();
+
+        basic_block_.instructions.emplace_back( std::make_unique<ir::OutputInstr>( std::move( expression), node.string));
     }
 
     void

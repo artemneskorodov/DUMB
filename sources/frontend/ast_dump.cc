@@ -282,6 +282,39 @@ public:
     }
 
     void
+    Visit( Input& node) override
+    {
+        std::string this_node_id = get_node_id();
+        std::string label = "{ <Type> Input | { <Prev> Prev | { <Identifier> Identifier | " +
+                            std::to_string( node.identifier) + "} | { <String> String | " +
+                            node.string + "} | <Next> Next }}";
+        current_subgraph_->addNode( this_node_id)
+                          .setFillColor( kReturnNodeColor)
+                          .setQuoted( "label", label)
+                          .setShape( "Mrecord")
+                          .setStyle( "filled");
+        graph_.addEdge( parent_node_id_, this_node_id + ":Prev");
+    }
+
+    void
+    Visit( Output& node) override
+    {
+        std::string this_node_id = get_node_id();
+        std::string label = "{ <Type> Output | { <Prev> Prev | <Expression> Expression | { <String> String | " +
+                            node.string + "} | <Next> Next }}";
+
+        current_subgraph_->addNode( this_node_id)
+                          .setFillColor( kReturnNodeColor)
+                          .setQuoted( "label", label)
+                          .setShape( "Mrecord")
+                          .setStyle( "filled");
+        graph_.addEdge( parent_node_id_, this_node_id + ":Prev");
+
+        set_parent_id( this_node_id + ":Expression");
+        node.expression->Accept( *this);
+    }
+
+    void
     Visit( NewVariable& node) override
     {
         std::string this_node_id = get_node_id();

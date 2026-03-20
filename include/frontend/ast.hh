@@ -97,7 +97,6 @@ struct BinaryOp : public ExprNode
         OP_DIV,
     };
 
-    explicit
     BinaryOp( Operation  op,
               ASTNodePtr left,
               ASTNodePtr right)
@@ -120,7 +119,6 @@ struct BinaryOp : public ExprNode
 ///
 struct FunctionCall final : public ExprNode
 {
-    explicit
     FunctionCall( std::size_t            id,
                   std::list<ExprNodePtr> parameters)
      :  id         { id},
@@ -135,13 +133,11 @@ struct FunctionCall final : public ExprNode
 
 };
 
-
 ///
 /// @brief
 ///
 struct Assignment final : public StmtNode
 {
-    explicit
     Assignment( ir::VarID   left,
                 ExprNodePtr right)
      :  left  { left},
@@ -168,7 +164,6 @@ struct CompareOp
         OP_CMP_BIGGER,
     };
 
-    explicit
     CompareOp( Operation  op,
                ExprNodePtr left,
                ExprNodePtr right)
@@ -189,7 +184,6 @@ struct CompareOp
 ///
 struct If final : public StmtNode
 {
-    explicit
     If( CompareOp              condition,
         std::list<StmtNodePtr> body)
      :  condition { std::move( condition)},
@@ -209,7 +203,6 @@ struct If final : public StmtNode
 ///
 struct While final : public StmtNode
 {
-    explicit
     While( CompareOp              condition,
            std::list<StmtNodePtr> body)
      :  condition { std::move( condition)},
@@ -246,7 +239,6 @@ struct Return final : public StmtNode
 ///
 struct NewVariable final : public StmtNode
 {
-    explicit
     NewVariable( ir::VarID   identifier,
                  ExprNodePtr initializer)
      :  identifier  { identifier},
@@ -264,9 +256,46 @@ struct NewVariable final : public StmtNode
 ///
 /// @brief
 ///
+struct Input final : public StmtNode
+{
+    Input( ir::VarID   identifier,
+           std::string string)
+     :  identifier { identifier},
+        string     { std::move( string)}
+    {
+    }
+
+    void Accept( Visitor& v) override;
+
+    ir::VarID identifier;
+    std::string string;
+
+};
+
+///
+/// @brief
+///
+struct Output final : public StmtNode
+{
+    Output( ExprNodePtr expression,
+            std::string string)
+     :  expression { std::move( expression)},
+        string     { std::move( string)}
+    {
+    }
+
+    void Accept( Visitor& v) override;
+
+    ExprNodePtr expression;
+    std::string string;
+
+};
+
+///
+/// @brief
+///
 struct Function final
 {
-    explicit
     Function( std::size_t            id,
               std::list<ir::VarID>   parameters,
               std::list<StmtNodePtr> body)
@@ -287,7 +316,6 @@ struct Function final
 ///
 struct Program final
 {
-    explicit
     Program( std::list<Function>    functions,
              std::list<StmtNodePtr> global_variables,
              nametable::NameTable   nametable)
@@ -318,6 +346,8 @@ public:
     virtual void Visit( FunctionCall& node) = 0;
     virtual void Visit( Return&       node) = 0;
     virtual void Visit( NewVariable&  node) = 0;
+    virtual void Visit( Input&        node) = 0;
+    virtual void Visit( Output&       node) = 0;
 
 };
 
@@ -333,6 +363,8 @@ inline void While::Accept        ( Visitor& v) { v.Visit( *this); }
 inline void FunctionCall::Accept ( Visitor& v) { v.Visit( *this); }
 inline void Return::Accept       ( Visitor& v) { v.Visit( *this); }
 inline void NewVariable::Accept  ( Visitor& v) { v.Visit( *this); }
+inline void Input::Accept        ( Visitor& v) { v.Visit( *this); }
+inline void Output::Accept       ( Visitor& v) { v.Visit( *this); }
 
 } // ! namespace ast
 } // ! namespace dumb
