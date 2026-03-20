@@ -300,7 +300,7 @@ public:
     Visit( Output& node) override
     {
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> Input | { <Prev> Prev | <Expression> Expression | { <String> String | " +
+        std::string label = "{ <Type> Output | { <Prev> Prev | <Expression> Expression | { <String> String | " +
                             node.string + "} | <Next> Next }}";
 
         current_subgraph_->addNode( this_node_id)

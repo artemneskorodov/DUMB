@@ -407,7 +407,7 @@ SyntaxParser::get_input()
 ast::StmtNodePtr
 SyntaxParser::get_output()
 {
-    assert( is_type( lexer::TokenType::INPUT_STATEMENT));
+    assert( is_type( lexer::TokenType::OUTPUT_STATEMENT));
     advance();
 
     check( lexer::TokenType::LEFT_PARENTHESIS);

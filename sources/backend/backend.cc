@@ -143,6 +143,18 @@ public:
     }
 
     void
+    Visit( ir::InputInstr& /*node*/) override
+    {
+        // TODO
+    }
+
+    void
+    Visit( ir::OutputInstr& /*node*/) override
+    {
+        // TODO
+    }
+
+    void
     EmitLIR( lir::Program& lir,
              ir::Instruction *instr)
     {
