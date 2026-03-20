@@ -38,40 +38,49 @@ enum class TokenType
     STATEMENT_END,
     END_OF_PROGRAM,
     COMMA,
+    INPUT_STATEMENT,
+    OUTPUT_STATEMENT,
+    USER_QUOTED_STRING,
 };
+
+std::string
+TypeToStr( TokenType type)
+{
+    switch ( type )
+    {
+        case TokenType::USER_STRING:        return "USER_STRING";
+        case TokenType::IMMEDIATE:          return "IMMEDIATE";
+        case TokenType::FUNC_DECLARATION:   return "FUNC_DECLARATION";
+        case TokenType::VAR_DEClARATION:    return "VAR_DECLARATION";
+        case TokenType::LEFT_PARENTHESIS:   return "LEFT_PARENTHESIS";
+        case TokenType::RIGHT_PARENTHESIS:  return "RIGHT_PARENTHESIS";
+        case TokenType::LEFT_SCOPE:         return "LEFT_SCOPE";
+        case TokenType::RIGHT_SCOPE:        return "RIGHT_SCOPE";
+        case TokenType::IF_STATEMENT:       return "IF_STATEMENT";
+        case TokenType::WHILE_STATEMENT:    return "WHILE_STATEMENT";
+        case TokenType::RETURN_STATEMENT:   return "RETURN_STATEMENT";
+        case TokenType::OP_ADD:             return "OP_ADD";
+        case TokenType::OP_SUB:             return "OP_SUB";
+        case TokenType::OP_MUL:             return "OP_MUL";
+        case TokenType::OP_DIV:             return "OP_DIV";
+        case TokenType::ASSIGNMENT:         return "ASSIGNMENT";
+        case TokenType::CMP_LESS:           return "CMP_LESS";
+        case TokenType::CMP_BIGGER:         return "CMP_BIGGER";
+        case TokenType::CMP_EQUAL:          return "CMP_EQUAL";
+        case TokenType::STATEMENT_END:      return "STATEMENT_END";
+        case TokenType::END_OF_PROGRAM:     return "END_OF_PROGRAM";
+        case TokenType::COMMA:              return "COMMA";
+        case TokenType::INPUT_STATEMENT:    return "INPUT_STATEMENT";
+        case TokenType::OUTPUT_STATEMENT:   return "OUTPUT_STATEMENT";
+        case TokenType::USER_QUOTED_STRING: return "USER_QUOTED_STRING";
+    }
+}
 
 template<typename TOutStream>
 TOutStream&
 operator<<( TOutStream& os, TokenType token_type)
 {
-    std::string type_string;
-    switch ( token_type )
-    {
-        case TokenType::USER_STRING:        type_string = "USER_STRING";        break;
-        case TokenType::IMMEDIATE:          type_string = "IMMEDIATE";          break;
-        case TokenType::FUNC_DECLARATION:   type_string = "FUNC_DECLARATION";   break;
-        case TokenType::VAR_DEClARATION:    type_string = "VAR_DECLARATION";    break;
-        case TokenType::LEFT_PARENTHESIS:   type_string = "LEFT_PARENTHESIS";   break;
-        case TokenType::RIGHT_PARENTHESIS:  type_string = "RIGHT_PARENTHESIS";  break;
-        case TokenType::LEFT_SCOPE:         type_string = "LEFT_SCOPE";         break;
-        case TokenType::RIGHT_SCOPE:        type_string = "RIGHT_SCOPE";        break;
-        case TokenType::IF_STATEMENT:       type_string = "IF_STATEMENT";       break;
-        case TokenType::WHILE_STATEMENT:    type_string = "WHILE_STATEMENT";    break;
-        case TokenType::RETURN_STATEMENT:   type_string = "RETURN_STATEMENT";   break;
-        case TokenType::OP_ADD:             type_string = "OP_ADD";             break;
-        case TokenType::OP_SUB:             type_string = "OP_SUB";             break;
-        case TokenType::OP_MUL:             type_string = "OP_MUL";             break;
-        case TokenType::OP_DIV:             type_string = "OP_DIV";             break;
-        case TokenType::ASSIGNMENT:         type_string = "ASSIGNMENT";         break;
-        case TokenType::CMP_LESS:           type_string = "CMP_LESS";           break;
-        case TokenType::CMP_BIGGER:         type_string = "CMP_BIGGER";         break;
-        case TokenType::CMP_EQUAL:          type_string = "CMP_EQUAL";          break;
-        case TokenType::STATEMENT_END:      type_string = "STATEMENT_END";      break;
-        case TokenType::END_OF_PROGRAM:     type_string = "END_OF_PROGRAM";     break;
-        case TokenType::COMMA:              type_string = "COMMA";              break;
-    }
-
-    return (os << type_string);
+    return (os << TypeToStr( token_type));
 }
 
 ///
@@ -116,12 +125,13 @@ private:
     int                column_ {1};
 
 private:
-    void                 advance        ();
-    void                 skip_spaces    ();
-    char                 current_char   ( int offset = 0) const;
-    Token                read_immediate ();
-    Token                read_word      ();
-    std::optional<Token> read_symbol    ();
+    void                 advance            ();
+    void                 skip_spaces        ();
+    char                 current_char       ( int offset = 0) const;
+    Token                read_immediate     ();
+    Token                read_word          ();
+    std::optional<Token> read_symbol        ();
+    Token                read_quoted_string ();
 
 };
 
