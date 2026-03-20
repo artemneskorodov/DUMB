@@ -43,7 +43,7 @@ enum class TokenType
     USER_QUOTED_STRING,
 };
 
-std::string
+inline std::string
 TypeToStr( TokenType type)
 {
     switch ( type )

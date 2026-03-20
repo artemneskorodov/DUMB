@@ -65,14 +65,15 @@ private:
 private:
     inline void
     check( lexer::TokenType type,
-           std::string      error = nullptr,
+           std::string      error = "",
            int              offset = 0)
     {
         if ( !is_type( type, offset) )
         {
             if ( error.empty() )
             {
-                error = "Expected " + lexer::TypeToStr( type) + " token";
+                error = "Expected: " + lexer::TypeToStr( type) + " token, have: " +
+                        lexer::TypeToStr( token().type);
             }
             syntax_error( error);
         }
@@ -112,6 +113,10 @@ private:
     inline const lexer::Token&
     token( int offset = 0) const
     {
+        std::cerr << "On token [" << std::to_string( tokens_[pos_ + offset].line) << ":"
+                  << std::to_string( tokens_[pos_ + offset].column) << "] "
+                  << "type = " << lexer::TypeToStr( tokens_[pos_ + offset].type)
+                  << ", value = '" << tokens_[pos_ + offset].value << "'\n";
         return tokens_[pos_ + offset];
     }
 
@@ -239,6 +244,7 @@ SyntaxParser::get_statement()
     } else
     {
         syntax_error( "Expected statement");
+        return nullptr;
     }
 }
 
@@ -260,6 +266,7 @@ SyntaxParser::get_new_var()
         id = nametable_.AddSymbol( name, nametable::Symbol::Type::GLOBAL_VARIABLE);
     }
     advance();
+
 
     ast::ExprNodePtr initializer = nullptr;
     if ( is_type( lexer::TokenType::ASSIGNMENT) )
@@ -442,6 +449,8 @@ SyntaxParser::get_comparison()
     } else
     {
         syntax_error( "Expected comparison token");
+        // Used to avoid uninitialized variable warning
+        return ast::CompareOp{ ast::CompareOp::Operation::OP_CMP_BIGGER, nullptr, nullptr};
     }
     advance();
 
@@ -521,6 +530,7 @@ SyntaxParser::get_element()
     }else
     {
         syntax_error( "Expected element expression part");
+        return nullptr;
     }
 }
 
@@ -531,8 +541,7 @@ SyntaxParser::get_symbol()
     auto sym = nametable_.GetSymbol( name);
     if ( !sym.has_value() )
     {
-        throw SyntaxError{ line(), column(),
-                           "Undeclared symbol: " + name};
+        syntax_error( "Undeclared symbol: " + name);
     }
     advance();
 

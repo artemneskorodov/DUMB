@@ -238,13 +238,13 @@ public:
     }
 
     void
-    Visit( ast::Input& node) override
+    Visit( ast::Input& /*node*/) override
     {
         // TODO
     };
 
     void
-    Visit( ast::Output &node) override
+    Visit( ast::Output& /*node*/) override
     {
         // TODO
     }
