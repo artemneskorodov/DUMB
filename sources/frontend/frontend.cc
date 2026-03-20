@@ -33,20 +33,3 @@ RunFrontend( const std::string& filename)
 }
 
 } // ! namespace dumb
-
-#if defined( BUILD_FRONTEND_SEPARATELY)
-
-int
-main( int         argc,
-      const char *argv[])
-{
-    if ( argc != 2 )
-    {
-        std::cerr << "No args" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    std::string filename{ argv[1]};
-}
-
-#endif // defined( BUILD_FRONTEND_SEPARATELY)

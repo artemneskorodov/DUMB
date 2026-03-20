@@ -2,7 +2,6 @@
 
 #include "backend.hh"
 #include "frontend.hh"
-#include "ir.hh"
 
 #include "ir_dump.hh"
 
