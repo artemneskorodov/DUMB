@@ -21,6 +21,7 @@ enum class RegName
     RDX,
     RSP,
     RBP,
+    RDI
     // TODO add other registers
 };
 
@@ -33,6 +34,18 @@ struct Register
     }
 
     RegName reg;
+
+};
+
+struct Immediate
+{
+    explicit
+    Immediate( int value)
+     :  value{ value}
+    {
+    }
+
+    int value;
 
 };
 
@@ -66,7 +79,8 @@ using Operand = std::variant
 <
     Register,
     RegMem,
-    Memory
+    Memory,
+    Immediate
 >;
 
 struct MovInstr
@@ -153,6 +167,7 @@ enum class MathType
     DIV,
     MUL,
     XOR,
+    CMP,
 };
 
 struct MathInstr
@@ -184,7 +199,7 @@ struct Label
 
 };
 
-struct System
+struct Syscall
 {
 };
 
@@ -198,7 +213,7 @@ using Instruction = std::variant
     RetInstr,
     Label,
     MathInstr,
-    System,
+    Syscall
 >;
 
 class Program
@@ -257,15 +272,37 @@ public:
     }
 
     void
-    AddSystem()
+    AddSyscall()
     {
-        instructions_.emplace_back( System{});
+        instructions_.emplace_back( Syscall{});
     }
 
     std::string ToStr() const;
 
+    void AddGlobal( std::string label,
+                    int initializer)
+    {
+        global_labels_.emplace_back( Global{ label, initializer});
+    }
+
+private:
+    struct Global
+    {
+        Global( std::string label,
+                int initializer)
+         :  label{ label},
+            initializer{ initializer}
+        {
+        }
+
+        std::string label;
+        int initializer;
+
+    };
+
 private:
     std::vector<Instruction> instructions_{};
+    std::vector<Global> global_labels_;
 
 };
 

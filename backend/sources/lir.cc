@@ -19,6 +19,7 @@ reg_to_str( RegName reg)
         case RegName::RDX: return "rdx";
         case RegName::RSP: return "rsp";
         case RegName::RBP: return "rbx";
+        case RegName::RDI: return "rdi";
     }
 }
 
@@ -42,6 +43,9 @@ operand_to_string( const Operand& operand)
             sign_str = " - ";
         }
         return "[" + reg_to_str( regmem.reg) + sign_str + std::to_string( offset) + "]";
+    } else if ( std::holds_alternative<Immediate>( operand) )
+    {
+        return std::to_string( std::get<Immediate>( operand).value);
     } else
     {
         throw std::runtime_error{ "Unexpected operand type"};
@@ -102,14 +106,15 @@ math_to_str( const MathInstr& instr)
         case MathType::DIV: op_str = "div"; break;
         case MathType::MUL: op_str = "mul"; break;
         case MathType::XOR: op_str = "xor"; break;
+        case MathType::CMP: op_str = "cmp"; break;
     }
     return op_str + " " + operand_to_string( instr.first) + ", " + operand_to_string( instr.second);
 }
 
 std::string
-system_to_str()
+syscall_to_str()
 {
-    return "system";
+    return "syscall";
 }
 
 std::string
@@ -123,7 +128,8 @@ label_to_str( const Label& label)
 std::string
 Program::ToStr() const
 {
-    std::string result{};
+    std::string result = "global __start__:\n"
+                         "section .text\n";
     for ( const Instruction& instr : instructions_ )
     {
         if ( std::holds_alternative<MovInstr>( instr) )
@@ -150,15 +156,21 @@ Program::ToStr() const
         } else if ( std::holds_alternative<MathInstr>( instr) )
         {
             result += math_to_str( std::get<MathInstr>( instr));
-        } else if ( std::holds_alternative<System>( instr) )
+        } else if ( std::holds_alternative<Syscall>( instr) )
         {
-            result += system_to_str();
+            result += syscall_to_str();
         } else
         {
             throw std::runtime_error{ "Unexpected instruction type"};
         }
         result += "\n";
     }
+    result += "section .data\n";
+    for ( const auto& it : global_labels_ )
+    {
+        result += it.label + " dq " + std::to_string( it.initializer) + "\n";
+    }
+    return result;
 }
 
 } // ! namespace lir

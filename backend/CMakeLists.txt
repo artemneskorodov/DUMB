@@ -12,6 +12,7 @@ set(
 set(
     BACKEND_SOURCES
     ${SRC_DIR}/backend.cc
+    ${SRC_DIR}/lir.cc
 )
 
 set(
