@@ -265,6 +265,8 @@ struct Input final : public StmtNode
     {
     }
 
+    void Accept( Visitor& v) override;
+
     ir::VarID identifier;
     std::string string;
 
@@ -281,6 +283,8 @@ struct Output final : public StmtNode
         string     { std::move( string)}
     {
     }
+
+    void Accept( Visitor& v) override;
 
     ExprNodePtr expression;
     std::string string;
@@ -342,6 +346,8 @@ public:
     virtual void Visit( FunctionCall& node) = 0;
     virtual void Visit( Return&       node) = 0;
     virtual void Visit( NewVariable&  node) = 0;
+    virtual void Visit( Input&        node) = 0;
+    virtual void Visit( Output&       node) = 0;
 
 };
 
@@ -357,6 +363,8 @@ inline void While::Accept        ( Visitor& v) { v.Visit( *this); }
 inline void FunctionCall::Accept ( Visitor& v) { v.Visit( *this); }
 inline void Return::Accept       ( Visitor& v) { v.Visit( *this); }
 inline void NewVariable::Accept  ( Visitor& v) { v.Visit( *this); }
+inline void Input::Accept        ( Visitor& v) { v.Visit( *this); }
+inline void Output::Accept       ( Visitor& v) { v.Visit( *this); }
 
 } // ! namespace ast
 } // ! namespace dumb

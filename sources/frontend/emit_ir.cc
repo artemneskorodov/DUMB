@@ -238,6 +238,18 @@ public:
     }
 
     void
+    Visit( ast::Input& node) override
+    {
+        // TODO
+    };
+
+    void
+    Visit( ast::Output &node) override
+    {
+        // TODO
+    }
+
+    void
     EmitFunction( ast::Function *function)
     {
         start_function( function->id);
