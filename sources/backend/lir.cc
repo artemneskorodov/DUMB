@@ -18,7 +18,7 @@ reg_to_str( RegName reg)
         case RegName::RCX: return "rcx";
         case RegName::RDX: return "rdx";
         case RegName::RSP: return "rsp";
-        case RegName::RBP: return "rbx";
+        case RegName::RBP: return "rbp";
         case RegName::RDI: return "rdi";
         case RegName::RSI: return "rsi";
     }
@@ -132,7 +132,7 @@ label_to_str( const Label& label)
 std::string
 Program::ToStr() const
 {
-    std::string result = "global __start__:\n"
+    std::string result = "global _start:\n"
                          "section .text\n";
     for ( const Instruction& instr : instructions_ )
     {
@@ -177,7 +177,7 @@ Program::ToStr() const
 
     for ( std::size_t i = 0; i != global_strings_.size(); ++i )
     {
-        result += "GLOBAL_STRING_" + std::to_string( i) + " dq \"" + global_strings_[i] + "\"\n";
+        result += "GLOBAL_STRING_" + std::to_string( i + 1) + " dq \"" + global_strings_[i] + "\"\n";
     }
     return result;
 }
