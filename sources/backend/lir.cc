@@ -20,6 +20,7 @@ reg_to_str( RegName reg)
         case RegName::RSP: return "rsp";
         case RegName::RBP: return "rbx";
         case RegName::RDI: return "rdi";
+        case RegName::RSI: return "rsi";
     }
 }
 
@@ -46,6 +47,9 @@ operand_to_string( const Operand& operand)
     } else if ( std::holds_alternative<Immediate>( operand) )
     {
         return std::to_string( std::get<Immediate>( operand).value);
+    } else if ( std::holds_alternative<StringImm>( operand) )
+    {
+        return std::get<StringImm>( operand).string;
     } else
     {
         throw std::runtime_error{ "Unexpected operand type"};
@@ -169,6 +173,11 @@ Program::ToStr() const
     for ( const auto& it : global_labels_ )
     {
         result += it.label + " dq " + std::to_string( it.initializer) + "\n";
+    }
+
+    for ( std::size_t i = 0; i != global_strings_.size(); ++i )
+    {
+        result += "GLOBAL_STRING_" + std::to_string( i) + " dq \"" + global_strings_[i] + "\"\n";
     }
     return result;
 }

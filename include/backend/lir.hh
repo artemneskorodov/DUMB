@@ -21,7 +21,8 @@ enum class RegName
     RDX,
     RSP,
     RBP,
-    RDI
+    RDI,
+    RSI,
     // TODO add other registers
 };
 
@@ -75,12 +76,25 @@ struct Memory
 
 };
 
+struct StringImm
+{
+    explicit
+    StringImm( std::string string)
+     :  string{ string}
+    {
+    }
+
+    std::string string;
+
+};
+
 using Operand = std::variant
 <
     Register,
     RegMem,
     Memory,
-    Immediate
+    Immediate,
+    StringImm
 >;
 
 struct MovInstr
@@ -279,10 +293,23 @@ public:
 
     std::string ToStr() const;
 
-    void AddGlobal( std::string label,
-                    int initializer)
+    void
+    AddGlobal( std::string label,
+               int initializer)
     {
-        global_labels_.emplace_back( Global{ label, initializer});
+        global_labels_.emplace_back( Global{ std::move( label), initializer});
+    }
+
+    void
+    AddString( std::string string)
+    {
+        global_strings_.emplace_back( std::move( string));
+    }
+
+    std::size_t
+    StringsNum() const
+    {
+        return global_strings_.size();
     }
 
 private:
@@ -303,6 +330,7 @@ private:
 private:
     std::vector<Instruction> instructions_{};
     std::vector<Global> global_labels_;
+    std::vector<std::string> global_strings_;
 
 };
 

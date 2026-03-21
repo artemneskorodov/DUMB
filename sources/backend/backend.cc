@@ -143,15 +143,25 @@ public:
     }
 
     void
-    Visit( ir::InputInstr& /*node*/) override
+    Visit( ir::InputInstr& node) override
     {
-        // TODO
+        lir_->AddString( node.string);
+        std::string string_label = "GLOBAL_STRING_" + std::to_string( lir_->StringsNum());
+        lir_->AddMov( lir::Register{ lir::RegName::RSI}, lir::StringImm{ string_label});
+        lir_->AddMov( lir::Register{ lir::RegName::RDX}, lir::Immediate{ static_cast<int>( string_label.length())});
+        lir_->AddCall( "__std_input");
+        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register{ lir::RegName::RAX});
     }
 
     void
-    Visit( ir::OutputInstr& /*node*/) override
+    Visit( ir::OutputInstr& node) override
     {
-        // TODO
+        lir_->AddString( node.string);
+        std::string string_label = "GLOBAL_STRING_" + std::to_string( lir_->StringsNum());
+        lir_->AddMov( lir::Register{ lir::RegName::RSI}, lir::StringImm{ string_label});
+        lir_->AddMov( lir::Register{ lir::RegName::RDX}, lir::Immediate{ static_cast<int>( string_label.length())});
+        lir_->AddMov( lir::Register{ lir::RegName::RAX}, op_emitter_.GetOperand( node.expression.get()));
+        lir_->AddCall( "__std_output");
     }
 
     void
@@ -239,9 +249,7 @@ std::string
 RunBackend( ir::Program *program)
 {
     lir::Program lir = EmitLowLevelIR( program);
-    std::string result = lir.ToStr();
-    std::cout << result;
-    return result;
+    return lir.ToStr();
 }
 
 } // ! namespace dumb
