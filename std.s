@@ -5,11 +5,11 @@ section .text
 ; Global API
 ;
 
-; input (RSI = 'string addr', RDX = 'string len') -> RAX = 'value'
-global input
+; __std_input (RSI = 'string addr', RDX = 'string len') -> RAX = 'value'
+global __std_input
 
-; output(RSI = 'string addr', RDX = 'string len', RCX = 'value')
-global output
+; __std_output (RSI = 'string addr', RDX = 'string len', RCX = 'value')
+global __std_output
 
 ;===============================================================================
 ;   Expects:
@@ -22,7 +22,7 @@ global output
 ;   Destroys:
 ;       TODO fix destroys
 ;===============================================================================
-input:
+__std_input:
     ; Calling write of user provided string
     mov rax, 1 ; write syscall
     mov rdi, 1 ; stdout
@@ -53,7 +53,7 @@ input:
 ;   Destroys:
 ;       TODO fix destroys
 ;===============================================================================
-output:
+__std_output:
     mov r10, rcx
     ; Calling write of user provided string
     mov rax, 1
@@ -97,7 +97,7 @@ string_to_int:
     cmp bl, '-'
     jne .loop_start
     ; Multiplier in rbp
-    mov rbp, -1
+    mov r10, -1
     inc rdx
     ; Iterating through digit
     .loop_start:
@@ -121,7 +121,7 @@ string_to_int:
         jmp .loop_start
 
     .done:
-    imul rax, rbp
+    imul rax, r10
     ret
 
 ;===============================================================================
