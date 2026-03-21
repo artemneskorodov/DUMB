@@ -178,7 +178,7 @@ dump_function( ir::Function *function)
         }
     }
     result += ")\n";
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        // hui
+
     for ( auto& basic_block : function->basic_blocks )
     {
         result += dump_basic_block( basic_block.get()) + "\n";
