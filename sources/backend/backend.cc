@@ -23,7 +23,7 @@ public:
     Visit( ir::VarOperand& node) override
     {
         int rbp_offset = rbp_offsets_.find( node.id)->second;
-        result_ = lir::RegMem{ lir::RegName::RBP, rbp_offset};
+        result_ = lir::RegMem{ lir::Register::RBP, rbp_offset};
     }
 
     void
@@ -45,7 +45,7 @@ public:
         return result_;
     }
 private:
-    lir::Operand result_{ lir::Register{ lir::RegName::RAX}}; // TODO unused initialization
+    lir::Operand result_{ lir::Register::RAX};
     const std::unordered_map<ir::VarID, int>& rbp_offsets_;
 
 };
@@ -65,8 +65,8 @@ public:
     void
     Visit( ir::BinaryOpInstr& node) override
     {
-        lir_->AddMov( lir::Register{ lir::RegName::RAX}, op_emitter_.GetOperand( node.first.get()));
-        lir_->AddMov( lir::Register{ lir::RegName::RBX}, op_emitter_.GetOperand( node.second.get()));
+        lir_->AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.first.get()));
+        lir_->AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.second.get()));
 
         lir::MathType type;
 
@@ -78,8 +78,8 @@ public:
             case ir::BinaryOpType::DIV: type = lir::MathType::ADD; break;
         }
 
-        lir_->AddMath( type, lir::Register{ lir::RegName::RAX}, lir::Register{ lir::RegName::RBX});
-        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register{ lir::RegName::RAX});
+        lir_->AddMath( type, lir::Register::RAX, lir::Register::RBX);
+        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
@@ -87,12 +87,12 @@ public:
     {
         if ( node.op == ir::UnaryOpType::MOV )
         {
-            lir_->AddMov( lir::Register{ lir::RegName::RAX}, op_emitter_.GetOperand( node.operand.get()));
-            lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register{ lir::RegName::RAX});
+            lir_->AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
+            lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
         } else if ( node.op == ir::UnaryOpType::RET )
         {
-            lir_->AddMov( lir::Register{ lir::RegName::RAX}, op_emitter_.GetOperand( node.operand.get()));
-            lir_->AddMath( lir::MathType::SUB, lir::Register{ lir::RegName::RSP}, lir::Immediate{ variables_size_});
+            lir_->AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
+            lir_->AddMath( lir::MathType::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
             lir_->AddRet();
         }
     }
@@ -104,11 +104,11 @@ public:
         {
             lir_->AddPush( op_emitter_.GetOperand( it.get()));
         }
-        lir_->AddMath( lir::MathType::ADD, lir::Register{ lir::RegName::RBP}, lir::Immediate{ 1});
-        lir_->AddPush( lir::Register{ lir::RegName::RBP});
+        lir_->AddMath( lir::MathType::ADD, lir::Register::RBP, lir::Immediate{ 1});
+        lir_->AddPush( lir::Register::RBP);
         lir_->AddCall( "FUNC_" + std::to_string( node.func));
-        lir_->AddPop( lir::Register{ lir::RegName::RBP});
-        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register{ lir::RegName::RAX});
+        lir_->AddPop( lir::Register::RBP);
+        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
@@ -121,9 +121,9 @@ public:
         }
 
         node.left->Accept( op_emitter_);
-        lir_->AddMov( lir::Register{ lir::RegName::RAX}, op_emitter_.GetOperand( node.left.get()));
-        lir_->AddMov( lir::Register{ lir::RegName::RBX}, op_emitter_.GetOperand( node.right.get()));
-        lir_->AddMath( lir::MathType::CMP, lir::Register{ lir::RegName::RAX}, lir::Register{ lir::RegName::RBX});
+        lir_->AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.left.get()));
+        lir_->AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.right.get()));
+        lir_->AddMath( lir::MathType::CMP, lir::Register::RAX, lir::Register::RBX);
 
         std::string true_label = ".LOC_" + std::to_string( node.true_dest);
         std::string false_label = ".LOC_" + std::to_string( node.false_dest);
@@ -151,12 +151,12 @@ public:
     {
         lir_->AddString( node.string);
         std::string string_label = "GLOBAL_STRING_" + std::to_string( lir_->StringsNum());
-        lir_->AddMov( lir::Register{ lir::RegName::RSI}, lir::StringImm{ string_label});
-        lir_->AddMov( lir::Register{ lir::RegName::RDX}, lir::Immediate{ static_cast<int>( node.string.length())});
-        lir_->AddPush( lir::Register{ lir::RegName::RBP});
+        lir_->AddMov( lir::Register::RSI, lir::StringImm{ string_label});
+        lir_->AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
+        lir_->AddPush( lir::Register::RBP);
         lir_->AddCall( "__std_input");
-        lir_->AddPop( lir::Register{ lir::RegName::RBP});
-        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register{ lir::RegName::RAX});
+        lir_->AddPop( lir::Register::RBP);
+        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
@@ -164,12 +164,12 @@ public:
     {
         lir_->AddString( node.string);
         std::string string_label = "GLOBAL_STRING_" + std::to_string( lir_->StringsNum());
-        lir_->AddMov( lir::Register{ lir::RegName::RSI}, lir::StringImm{ string_label});
-        lir_->AddMov( lir::Register{ lir::RegName::RDX}, lir::Immediate{ static_cast<int>( node.string.length())});
-        lir_->AddMov( lir::Register{ lir::RegName::RCX}, op_emitter_.GetOperand( node.expression.get()));
-        lir_->AddPush( lir::Register{ lir::RegName::RBP});
+        lir_->AddMov( lir::Register::RSI, lir::StringImm{ string_label});
+        lir_->AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
+        lir_->AddMov( lir::Register::RCX, op_emitter_.GetOperand( node.expression.get()));
+        lir_->AddPush( lir::Register::RBP);
         lir_->AddCall( "__std_output");
-        lir_->AddPop( lir::Register{ lir::RegName::RBP});
+        lir_->AddPop( lir::Register::RBP);
     }
 
     void
@@ -224,10 +224,10 @@ EmitFunction( lir::Program& lir,
         lir.AddLabel( "FUNC_" + std::to_string( function->id));
     }
 
-    lir.AddMov( lir::Register{ lir::RegName::RBP}, lir::Register{ lir::RegName::RSP});
-    lir.AddMath( lir::MathType::SUB, lir::Register{ lir::RegName::RBP}, lir::Immediate{ 8});
+    lir.AddMov( lir::Register::RBP, lir::Register::RSP);
+    lir.AddMath( lir::MathType::SUB, lir::Register::RBP, lir::Immediate{ 8});
     int variables_size = static_cast<int>( function->variables.size() * 8);
-    lir.AddMath( lir::MathType::ADD, lir::Register{ lir::RegName::RSP}, lir::Immediate{ variables_size});
+    lir.AddMath( lir::MathType::ADD, lir::Register::RSP, lir::Immediate{ variables_size});
 
     for ( auto& block : function->basic_blocks )
     {
@@ -245,8 +245,8 @@ EmitLowLevelIR( ir::Program *program)
     EmitFunction( lir, program->preamble.get(), false);
     lir.AddCall( "FUNC_0"); // TODO FIXME, find main in nametable, add nametable to common
 
-    lir.AddMov( lir::Register{ lir::RegName::RAX}, lir::Immediate{ 60});
-    lir.AddMath( lir::MathType::XOR, lir::Register{ lir::RegName::RDI}, lir::Register{ lir::RegName::RDI});
+    lir.AddMov( lir::Register::RAX, lir::Immediate{ 60});
+    lir.AddMath( lir::MathType::XOR, lir::Register::RDI, lir::Register::RDI);
     lir.AddSyscall();
 
     for ( auto& func : program->functions )

@@ -13,29 +13,24 @@ namespace lir
 
 using AddrType = std::int32_t;
 
-enum class RegName
+enum class Register
 {
     RAX,
     RBX,
     RCX,
     RDX,
-    RSP,
-    RBP,
-    RDI,
     RSI,
-    // TODO add other registers
-};
-
-struct Register
-{
-    explicit
-    Register( RegName reg)
-     :  reg{ reg}
-    {
-    }
-
-    RegName reg;
-
+    RDI,
+    RBP,
+    RSP,
+    R8,
+    R9,
+    R10,
+    R11,
+    R12,
+    R13,
+    R14,
+    R15,
 };
 
 struct Immediate
@@ -52,14 +47,14 @@ struct Immediate
 
 struct RegMem
 {
-    RegMem( RegName reg,
+    RegMem( Register reg,
             AddrType offset)
      :  reg{ reg},
         offset{ offset}
     {
     }
 
-    RegName reg;
+    Register reg;
     AddrType offset;
 
 };
