@@ -166,7 +166,7 @@ public:
         std::string string_label = "GLOBAL_STRING_" + std::to_string( lir_->StringsNum());
         lir_->AddMov( lir::Register{ lir::RegName::RSI}, lir::StringImm{ string_label});
         lir_->AddMov( lir::Register{ lir::RegName::RDX}, lir::Immediate{ static_cast<int>( node.string.length())});
-        lir_->AddMov( lir::Register{ lir::RegName::RAX}, op_emitter_.GetOperand( node.expression.get()));
+        lir_->AddMov( lir::Register{ lir::RegName::RCX}, op_emitter_.GetOperand( node.expression.get()));
         lir_->AddPush( lir::Register{ lir::RegName::RBP});
         lir_->AddCall( "__std_output");
         lir_->AddPop( lir::Register{ lir::RegName::RBP});
@@ -212,11 +212,11 @@ EmitFunction( lir::Program& lir,
 
     for ( size_t i = 0; i != function->params.size(); ++i )
     {
-        rbp_offsets[function->params[i]] = static_cast<int>( i) + 1;
+        rbp_offsets[function->params[i]] = 8 * (static_cast<int>( i) + 1);
     }
     for ( size_t i = 0; i != function->variables.size(); ++i )
     {
-        rbp_offsets[function->variables[i]] = -(static_cast<int>( i) + 1);
+        rbp_offsets[function->variables[i]] = - 8 * (static_cast<int>( i) + 1);
     }
 
     if ( need_label )
@@ -225,6 +225,7 @@ EmitFunction( lir::Program& lir,
     }
 
     lir.AddMov( lir::Register{ lir::RegName::RBP}, lir::Register{ lir::RegName::RSP});
+    lir.AddMath( lir::MathType::SUB, lir::Register{ lir::RegName::RBP}, lir::Immediate{ 8});
     int variables_size = static_cast<int>( function->variables.size() * 8);
     lir.AddMath( lir::MathType::ADD, lir::Register{ lir::RegName::RSP}, lir::Immediate{ variables_size});
 

@@ -133,7 +133,9 @@ std::string
 Program::ToStr() const
 {
     std::string result = "global _start:\n"
-                         "section .text\n";
+                         "section .text\n"
+                         "extern __std_input\n"
+                         "extern __std_output\n";
     for ( const Instruction& instr : instructions_ )
     {
         if ( std::holds_alternative<MovInstr>( instr) )

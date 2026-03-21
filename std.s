@@ -38,6 +38,7 @@ __std_input:
     ; string_to_int( RSI = 'string', RDI = 'string length' )
     ; returns value in RAX
     mov rdi, rax
+    ; rsi is already buffer address
     call string_to_int
 
     ret
@@ -80,7 +81,7 @@ __std_output:
 ;       RAX - value represented by string
 ;-------------------------------------------------------------------------------
 ;   Destroys:
-;       RCX, RDX, RBX, RBX
+;       RCX, RDX, RBX, R10
 ;===============================================================================
 string_to_int:
     ; Result in RAX
@@ -92,12 +93,13 @@ string_to_int:
     ; Zero RBX to use BL for digits
     xor rbx, rbx
     ; Checking for minus sign
-    mov rbp, 1
+    ; r10 is minus flag
+    xor r10, r10
     mov bl, byte [rsi + rdx]
     cmp bl, '-'
     jne .loop_start
     ; Multiplier in rbp
-    mov r10, -1
+    mov r10, 1
     inc rdx
     ; Iterating through digit
     .loop_start:
@@ -121,7 +123,11 @@ string_to_int:
         jmp .loop_start
 
     .done:
-    imul rax, r10
+    ; imul rax, r10
+    test r10, r10
+    jz .skip_add_minus
+    neg rax
+    .skip_add_minus:
     ret
 
 ;===============================================================================
@@ -167,7 +173,7 @@ int_to_string:
     .convert_loop:
         ; Checking if zero
         test rax, rax
-        jz .done
+        jz .convert_loop_end
         ; RDX = RAX % RCX
         xor rdx, rdx
         div rcx
@@ -178,12 +184,12 @@ int_to_string:
         dec rsi
         jmp .convert_loop
 
-    .done:
+    .convert_loop_end:
     test bl, bl
-    jz .skip_add_minus
+    jz .done
     mov byte [rsi], bl
     dec rsi
-    .skip_add_minus:
+    .done:
     ; Last digit is not used
     inc rsi
     ; Length in RDX
