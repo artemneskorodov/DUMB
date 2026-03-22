@@ -61,16 +61,8 @@ def build_exec(test_file_name_base, compiler_exec, work_dir) -> str:
     result = subprocess.run(["ld", object_std_file_name, object_file_name, "-o", elf_file_name])
     if result.returncode != 0:
         raise RuntimeError("Linking failed")
-    return elf_file_name
 
-def print_results_table(results):
-    print("+------------+---------+")
-    print("| Test       | Result  |")
-    print("+------------+---------+")
-    for test_name, passed in results.items():
-        status = "PASS" if passed else "FAIL"
-        print(f"| {test_name:<10} | {status:<7} |")
-    print("+------------+---------+")
+    return elf_file_name
 
 def main() -> int:
     compiler_exec : str = sys.argv[1]
