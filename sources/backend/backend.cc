@@ -67,9 +67,9 @@ private:
         switch ( node.op )
         {
             case ir::BinaryOpType::ADD: type = lir::MathType::ADD; break;
-            case ir::BinaryOpType::SUB: type = lir::MathType::ADD; break;
-            case ir::BinaryOpType::MUL: type = lir::MathType::ADD; break;
-            case ir::BinaryOpType::DIV: type = lir::MathType::ADD; break;
+            case ir::BinaryOpType::SUB: type = lir::MathType::SUB; break;
+            case ir::BinaryOpType::MUL: type = lir::MathType::MUL; break;
+            case ir::BinaryOpType::DIV: type = lir::MathType::DIV; break;
         }
 
         lir_.AddMath( type, lir::Register::RAX, lir::Register::RBX);

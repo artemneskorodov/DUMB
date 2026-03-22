@@ -1,0 +1,4 @@
+out: "Input = "
+in:  "10"
+out: "Bigger then zero: "
+out: "10"

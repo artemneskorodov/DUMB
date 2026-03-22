@@ -102,17 +102,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 enable_testing()
 
-set(
-    RUN_TEST_COMMAND
-    ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/benchmarks/test_all.py ${CMAKE_SOURCE_DIR}/build/dumb ${CMAKE_SOURCE_DIR}
-)
-
 add_test(
-    NAME addition
-    COMMAND ${RUN_TEST_COMMAND} addition
-)
-
-add_test(
-    NAME if
-    COMMAND ${RUN_TEST_COMMAND} if
+    NAME tests
+    COMMAND pytest -q ${CMAKE_SOURCE_DIR}/benchmarks --compiler ${CMAKE_SOURCE_DIR}/build/dumb --workdir ${CMAKE_SOURCE_DIR} --tests addition,if,while
 )
