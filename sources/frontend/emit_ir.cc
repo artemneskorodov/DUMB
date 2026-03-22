@@ -1,5 +1,6 @@
 #include <cassert>
 #include <iostream>
+#include <stdexcept>
 
 #include "ast.hh"
 #include "emit_ir.hh"
@@ -60,6 +61,7 @@ private:
             case ast::BinaryOp::OP_SUB: type = ir::BinaryOpType::SUB; break;
             case ast::BinaryOp::OP_MUL: type = ir::BinaryOpType::MUL; break;
             case ast::BinaryOp::OP_DIV: type = ir::BinaryOpType::DIV; break;
+            default: throw std::runtime_error{ "Unexpected binary operation type"};
         }
 
         std::string tmp_id = "tmp_" + std::to_string( tmp_counter_++);
@@ -120,6 +122,7 @@ private:
             case ast::CompareOp::Operation::OP_CMP_LESS:   type = ir::CmpType::LESS;   break;
             case ast::CompareOp::Operation::OP_CMP_EQUAL:  type = ir::CmpType::EQUAL;  break;
             case ast::CompareOp::Operation::OP_CMP_BIGGER: type = ir::CmpType::BIGGER; break;
+            default: throw std::runtime_error{ "Unexpected compare operation type"};
         }
 
         // Saving basic basic block which will go after if
@@ -168,6 +171,7 @@ private:
             case ast::CompareOp::Operation::OP_CMP_LESS:   type = ir::CmpType::LESS;   break;
             case ast::CompareOp::Operation::OP_CMP_EQUAL:  type = ir::CmpType::EQUAL;  break;
             case ast::CompareOp::Operation::OP_CMP_BIGGER: type = ir::CmpType::BIGGER; break;
+            default: throw std::runtime_error{ "Unexpected compare operation type"};
         }
 
         ir::LocalLabelID true_label = basic_blocks_counter_ + 1;
