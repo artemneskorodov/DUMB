@@ -14,10 +14,13 @@ namespace
 class OperandEmitter : public ir::OperandVisitor
 {
 public:
-    OperandEmitter( const std::unordered_map<std::string, int>& rbp_offsets)
-     :  rbp_offsets_{ rbp_offsets}
+    explicit
+    OperandEmitter( std::unordered_map<std::string, int> rbp_offsets)
+     :  rbp_offsets_{ std::move( rbp_offsets)}
     {
     }
+
+    OperandEmitter() = default;
 
     void
     Visit( ir::VarOperand& node) override
@@ -45,28 +48,19 @@ public:
         return result_;
     }
 private:
-    lir::Operand result_{ lir::Register::RAX};
-    const std::unordered_map<std::string, int>& rbp_offsets_;
+    lir::Operand                         result_      { lir::Register::RAX};
+    std::unordered_map<std::string, int> rbp_offsets_ {};
 
 };
 
 class InstructionEmitter : public ir::InstructionVisitor
 {
-public:
-    InstructionEmitter( const std::unordered_map<std::string, int>& rbp_offsets,
-                        lir::Program&                               lir,
-                        int                                         variables_size)
-     :  op_emitter_     { rbp_offsets},
-        lir_            { &lir},
-        variables_size_ { variables_size}
-    {
-    }
-
+private:
     void
     Visit( ir::BinaryOpInstr& node) override
     {
-        lir_->AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.first.get()));
-        lir_->AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.second.get()));
+        lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.first.get()));
+        lir_.AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.second.get()));
 
         lir::MathType type;
 
@@ -78,8 +72,8 @@ public:
             case ir::BinaryOpType::DIV: type = lir::MathType::ADD; break;
         }
 
-        lir_->AddMath( type, lir::Register::RAX, lir::Register::RBX);
-        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
+        lir_.AddMath( type, lir::Register::RAX, lir::Register::RBX);
+        lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
@@ -87,13 +81,13 @@ public:
     {
         if ( node.op == ir::UnaryOpType::MOV )
         {
-            lir_->AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
-            lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
+            lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
+            lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
         } else if ( node.op == ir::UnaryOpType::RET )
         {
-            lir_->AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
-            lir_->AddMath( lir::MathType::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
-            lir_->AddRet();
+            lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
+            lir_.AddMath( lir::MathType::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
+            lir_.AddRet();
         }
     }
 
@@ -102,12 +96,12 @@ public:
     {
         for ( auto& it : node.params )
         {
-            lir_->AddPush( op_emitter_.GetOperand( it.get()));
+            lir_.AddPush( op_emitter_.GetOperand( it.get()));
         }
-        lir_->AddPush( lir::Register::RBP);
-        lir_->AddCall( node.name);
-        lir_->AddPop( lir::Register::RBP);
-        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
+        lir_.AddPush( lir::Register::RBP);
+        lir_.AddCall( node.name);
+        lir_.AddPop( lir::Register::RBP);
+        lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
@@ -115,30 +109,30 @@ public:
     {
         if ( node.type == ir::CmpType::ALWAYS_TRUE )
         {
-            lir_->AddJmp( lir::JmpType::JMP, ".LOC_" + std::to_string( node.true_dest));
+            lir_.AddJmp( lir::JmpType::JMP, ".LOC_" + std::to_string( node.true_dest));
             return ;
         }
 
         node.left->Accept( op_emitter_);
-        lir_->AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.left.get()));
-        lir_->AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.right.get()));
-        lir_->AddMath( lir::MathType::CMP, lir::Register::RAX, lir::Register::RBX);
+        lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.left.get()));
+        lir_.AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.right.get()));
+        lir_.AddMath( lir::MathType::CMP, lir::Register::RAX, lir::Register::RBX);
 
         std::string true_label = ".LOC_" + std::to_string( node.true_dest);
         std::string false_label = ".LOC_" + std::to_string( node.false_dest);
 
         if ( node.type == ir::CmpType::LESS )
         {
-            lir_->AddJmp( lir::JmpType::JL, true_label);
-            lir_->AddJmp( lir::JmpType::JG, false_label);
+            lir_.AddJmp( lir::JmpType::JL, true_label);
+            lir_.AddJmp( lir::JmpType::JG, false_label);
         } else if ( node.type == ir::CmpType::EQUAL )
         {
-            lir_->AddJmp( lir::JmpType::JE,  true_label);
-            lir_->AddJmp( lir::JmpType::JNE, false_label);
+            lir_.AddJmp( lir::JmpType::JE,  true_label);
+            lir_.AddJmp( lir::JmpType::JNE, false_label);
         } else if ( node.type == ir::CmpType::BIGGER )
         {
-            lir_->AddJmp( lir::JmpType::JG, true_label);
-            lir_->AddJmp( lir::JmpType::JL, false_label);
+            lir_.AddJmp( lir::JmpType::JG, true_label);
+            lir_.AddJmp( lir::JmpType::JL, false_label);
         } else
         {
             throw std::runtime_error{ "Unexpected comparison type"};
@@ -149,121 +143,109 @@ public:
     Visit( ir::InputInstr& node) override
     {
         std::string str_label = "STR_CONST_" + std::to_string( str_constr_counter_++);
-        lir_->AddStrConst( str_label, node.string);
-        lir_->AddMov( lir::Register::RSI, lir::StringImm{ str_label});
-        lir_->AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
-        lir_->AddPush( lir::Register::RBP);
-        lir_->AddCall( "__std_input");
-        lir_->AddPop( lir::Register::RBP);
-        lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
+        lir_.AddStrConst( str_label, node.string);
+        lir_.AddMov( lir::Register::RSI, lir::StringImm{ str_label});
+        lir_.AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
+        lir_.AddPush( lir::Register::RBP);
+        lir_.AddCall( "__std_input");
+        lir_.AddPop( lir::Register::RBP);
+        lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
     Visit( ir::OutputInstr& node) override
     {
         std::string str_label = "STR_CONST_" + std::to_string( str_constr_counter_++);
-        lir_->AddStrConst( str_label, node.string);
-        lir_->AddMov( lir::Register::RSI, lir::StringImm{ str_label});
-        lir_->AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
-        lir_->AddMov( lir::Register::RCX, op_emitter_.GetOperand( node.expression.get()));
-        lir_->AddPush( lir::Register::RBP);
-        lir_->AddCall( "__std_output");
-        lir_->AddPop( lir::Register::RBP);
+        lir_.AddStrConst( str_label, node.string);
+        lir_.AddMov( lir::Register::RSI, lir::StringImm{ str_label});
+        lir_.AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
+        lir_.AddMov( lir::Register::RCX, op_emitter_.GetOperand( node.expression.get()));
+        lir_.AddPush( lir::Register::RBP);
+        lir_.AddCall( "__std_output");
+        lir_.AddPop( lir::Register::RBP);
     }
 
     void
-    EmitLIR( lir::Program& lir,
-             ir::Instruction *instr)
+    EmitBasicBlock( ir::BasicBlock *basic_block)
     {
-        lir_ = &lir;
-        instr->Accept( *this);
+        lir_.AddLabel( ".LOC_" + std::to_string( basic_block->id));
+
+        for ( auto& instr : basic_block->instructions )
+        {
+            instr->Accept( *this);
+        }
+    }
+
+    void
+    EmitFunction( ir::Function *function)
+    {
+        std::unordered_map<std::string, int> rbp_offsets;
+
+        for ( size_t i = 0; i != function->params.size(); ++i )
+        {
+            rbp_offsets[function->params[i]] = 8 * (static_cast<int>( i) + 1);
+        }
+        for ( size_t i = 0; i != function->variables.size(); ++i )
+        {
+            rbp_offsets[function->variables[i]] = - 8 * (static_cast<int>( i) + 1);
+        }
+
+        op_emitter_ = OperandEmitter{ std::move (rbp_offsets)};
+
+        lir_.AddLabel( function->name);
+
+        lir_.AddMov( lir::Register::RBP, lir::Register::RSP);
+        lir_.AddMath( lir::MathType::SUB, lir::Register::RBP, lir::Immediate{ 8});
+        variables_size_ = static_cast<int>( function->variables.size() * 8);
+        lir_.AddMath( lir::MathType::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
+
+        for ( auto& block : function->basic_blocks )
+        {
+            EmitBasicBlock( block.get());
+        }
+    }
+
+public:
+    lir::Program
+    EmitLowLevelIR( ir::Program *program)
+    {
+        // Preamble
+        EmitFunction( program->preamble.get());
+        lir_.AddCall( "main"); // TODO check that main appears in nametable
+        lir_.AddMov( lir::Register::RAX, lir::Immediate{ 60});
+        lir_.AddMath( lir::MathType::XOR, lir::Register::RDI, lir::Register::RDI);
+        lir_.AddSyscall();
+
+        // Functions
+        for ( auto& func : program->functions )
+        {
+            EmitFunction( func.get());
+        }
+
+        // Adding globals
+        for ( const std::string& global : program->globals )
+        {
+            lir_.AddGlobal( global, 0);
+        }
+
+        return lir_;
     }
 
 private:
-    OperandEmitter  op_emitter_;
-    lir::Program   *lir_;
+    lir::Program    lir_{};
+    OperandEmitter  op_emitter_{};
     int             variables_size_;
     std::size_t     str_constr_counter_{0};
 
 };
-
-void
-EmitBasicBlock( lir::Program&                               lir,
-                ir::BasicBlock                             *basic_block,
-                const std::unordered_map<std::string, int>& rbp_offsets,
-                int                                         variables_size)
-{
-    InstructionEmitter emitter{ rbp_offsets, lir, variables_size};
-
-    lir.AddLabel( ".LOC_" + std::to_string( basic_block->id));
-
-    for ( auto& instr : basic_block->instructions )
-    {
-        emitter.EmitLIR( lir, instr.get());
-    }
-}
-
-void
-EmitFunction( lir::Program& lir,
-              ir::Function *function)
-{
-    std::unordered_map<std::string, int> rbp_offsets;
-
-    for ( size_t i = 0; i != function->params.size(); ++i )
-    {
-        rbp_offsets[function->params[i]] = 8 * (static_cast<int>( i) + 1);
-    }
-    for ( size_t i = 0; i != function->variables.size(); ++i )
-    {
-        rbp_offsets[function->variables[i]] = - 8 * (static_cast<int>( i) + 1);
-    }
-
-    lir.AddLabel( function->name);
-
-    lir.AddMov( lir::Register::RBP, lir::Register::RSP);
-    lir.AddMath( lir::MathType::SUB, lir::Register::RBP, lir::Immediate{ 8});
-    int variables_size = static_cast<int>( function->variables.size() * 8);
-    lir.AddMath( lir::MathType::ADD, lir::Register::RSP, lir::Immediate{ variables_size});
-
-    for ( auto& block : function->basic_blocks )
-    {
-        EmitBasicBlock( lir, block.get(), rbp_offsets, variables_size);
-    }
-}
-
-lir::Program
-EmitLowLevelIR( ir::Program *program)
-{
-    lir::Program lir;
-
-    // Preamble
-    EmitFunction( lir, program->preamble.get());
-    lir.AddCall( "main"); // TODO check that main appears in nametable
-    lir.AddMov( lir::Register::RAX, lir::Immediate{ 60});
-    lir.AddMath( lir::MathType::XOR, lir::Register::RDI, lir::Register::RDI);
-    lir.AddSyscall();
-
-    // Functions
-    for ( auto& func : program->functions )
-    {
-        EmitFunction( lir, func.get());
-    }
-
-    // Adding globals
-    for ( const std::string& global : program->globals )
-    {
-        lir.AddGlobal( global, 0);
-    }
-
-    return lir;
-}
 
 } // ! anonymous namespace
 
 std::string
 RunBackend( ir::Program *program)
 {
-    lir::Program lir = EmitLowLevelIR( program);
+    InstructionEmitter emitter{};
+    lir::Program lir = emitter.EmitLowLevelIR( program);
     return lir.ToStr();
 }
 

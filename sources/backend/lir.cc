@@ -79,11 +79,11 @@ jmp_to_str( const JmpInstr& instr)
 {
     switch ( instr.type )
     {
-        case JmpType::JMP: return "jmp" + instr.label;
-        case JmpType::JE:  return "je"  + instr.label;
-        case JmpType::JNE: return "jne" + instr.label;
-        case JmpType::JL:  return "jl"  + instr.label;
-        case JmpType::JG:  return "jg"  + instr.label;
+        case JmpType::JMP: return "jmp " + instr.label;
+        case JmpType::JE:  return "je "  + instr.label;
+        case JmpType::JNE: return "jne " + instr.label;
+        case JmpType::JL:  return "jl "  + instr.label;
+        case JmpType::JG:  return "jg "  + instr.label;
         default: throw std::runtime_error{ "Unexpected jump type"};
     }
 }

@@ -14,12 +14,17 @@ def write(fd, string):
     os.write(fd, (string + "\n").encode())
 
 def test_addition(proc : subprocess.Popen, fd : int):
-    check_out(fd, "First = ")
+    check_out (fd, "First = ")
+    write     (fd, "10")
+    check_out (fd, "Second = ")
+    write     (fd, "10")
+    check_out (fd, "First + Second = ")
+    check_out (fd, "20")
+
+def test_if(proc : subprocess.Popen, fd : int):
     write(fd, "10")
-    check_out(fd, "Second = ")
-    write(fd, "10")
-    check_out(fd, "First + Second = ")
-    check_out(fd, "20")
+    check_out(fd, "Bigger then zero: ")
+    check_out(fd, "10")
 
 def get_proc(exec : str):
     master_fd, slave_fd = pty.openpty()
@@ -71,6 +76,7 @@ def main() -> int:
 
     test_map = {
         "addition": test_addition,
+        "if": test_if
     }
 
     test_exec = build_exec(test_name, compiler_exec, work_dir)

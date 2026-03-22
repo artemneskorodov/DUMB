@@ -1,0 +1,18 @@
+function main()
+{
+    variable var = 0;
+    input( var, "Input = ");
+    if ( var > 0 )
+    {
+        output( var, "Bigger then zero: ");
+    }
+    if ( var < 0 )
+    {
+        output( var, "Less then zero: ");
+    }
+    if ( var == 0 )
+    {
+        output( var, "Equals zero: ");
+    }
+    return 0;
+}

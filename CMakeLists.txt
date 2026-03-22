@@ -111,3 +111,8 @@ add_test(
     NAME addition
     COMMAND ${RUN_TEST_COMMAND} addition
 )
+
+add_test(
+    NAME if
+    COMMAND ${RUN_TEST_COMMAND} if
+)
