@@ -4,24 +4,28 @@
 #include "frontend.hh"
 
 #include "ir_dump.hh"
+#include "utils.hh"
 
 int
 main( int argc,
       const char *argv[])
 {
-    if ( argc != 2 )
+    if ( argc != 3 )
     {
-        std::cerr << "No args" << std::endl;
+        std::cerr << "Unexpected parameters number";
         return EXIT_FAILURE;
     }
 
-    std::string filename{ argv[1]};
+    std::string source = argv[1];
+    std::string output = argv[2];
 
-    dumb::ir::Program program_ir = dumb::RunFrontend( filename);
+    dumb::ir::Program program_ir = dumb::RunFrontend( source);
 
     dumb::ir_dump::DumpIR( &program_ir);
 
     std::string result = dumb::RunBackend( &program_ir);
+
+    dumb::utils::WriteTextFile( output, result);
     std::cout << result;
     return 0;
 }

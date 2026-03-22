@@ -1,0 +1,11 @@
+function main()
+{
+    variable first = 0;
+    variable second = 0;
+    input( first, "First = ");
+    input( second, "Second = ");
+
+    variable result = first + second;
+    output( result, "First + Second = ");
+    return 0;
+}
