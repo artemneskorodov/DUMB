@@ -1,3 +1,6 @@
+#include <stdexcept>
+#include <cassert>
+
 #include "lir.hh"
 
 namespace dumb
@@ -29,6 +32,7 @@ reg_to_str( Register reg)
         case Register::R13: return "r13";
         case Register::R14: return "r14";
         case Register::R15: return "r15";
+        default: throw std::runtime_error{ "Unexpected register"};
     }
 }
 
@@ -80,6 +84,7 @@ jmp_to_str( const JmpInstr& instr)
         case JmpType::JNE: return "jne" + instr.label;
         case JmpType::JL:  return "jl"  + instr.label;
         case JmpType::JG:  return "jg"  + instr.label;
+        default: throw std::runtime_error{ "Unexpected jump type"};
     }
 }
 
@@ -185,9 +190,9 @@ Program::ToStr() const
         result += it.label + " dq " + std::to_string( it.initializer) + "\n";
     }
 
-    for ( std::size_t i = 0; i != global_strings_.size(); ++i )
+    for ( const StrConst& str : global_strings_ )
     {
-        result += "GLOBAL_STRING_" + std::to_string( i + 1) + " dq \"" + global_strings_[i] + "\"\n";
+        result += str.label + " db \"" + str.value + "\"\n";
     }
     return result;
 }

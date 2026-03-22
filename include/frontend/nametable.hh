@@ -9,22 +9,24 @@
 
 namespace dumb
 {
-namespace nametable
+namespace nt
 {
+
+using SymbolID = std::size_t;
+
+enum class SymbolType
+{
+    FUNCTION,
+    GLOBAL_VARIABLE,
+    LOCAL_VARIABLE,
+};
 
 class Symbol final
 {
 public:
-    enum class Type
-    {
-        FUNCTION,
-        GLOBAL_VARIABLE,
-        LOCAL_VARIABLE,
-    };
-
     Symbol( const std::string& name,
-            Type               type,
-            ir::VarID          id)
+            SymbolType         type,
+            SymbolID           id)
      :  name_ { name},
         type_ { type},
         id_   { id}
@@ -32,24 +34,23 @@ public:
     }
 
     std::string GetName () const { return name_; }
-    Type        GetType () const { return type_; }
-    ir::VarID   GetID   () const { return id_;   }
-
+    SymbolType  GetType () const { return type_; }
+    SymbolID    GetID   () const { return id_;   }
 private:
     std::string name_;
-    Type        type_;
-    ir::VarID   id_;
+    SymbolType  type_;
+    SymbolID    id_;
 
 };
 
 class NameTable final
 {
 public:
-    ir::VarID
+    SymbolID
     AddSymbol( const std::string& name,
-               Symbol::Type       type)
+               SymbolType         type)
     {
-        ir::VarID id = symbols_counter_;
+        SymbolID id = symbols_counter_;
         ++symbols_counter_;
         nametable_.emplace_back( Symbol{ name, type, id});
 
@@ -83,21 +84,21 @@ public:
         scope_symbols_.pop_back();
     }
 
-    std::optional<Symbol>
+    const Symbol *
     GetSymbol( const std::string& name) const &
     {
         for ( auto it = visible_names_.rbegin(); it != visible_names_.rend(); ++it )
         {
             if ( nametable_[*it].GetName() == name )
             {
-                return nametable_[*it];
+                return &nametable_[*it];
             }
         }
-        return std::nullopt;
+        return nullptr;
     }
 
     const Symbol *
-    GetSymbol( ir::VarID id) const &
+    GetSymbol( SymbolID id) const &
     {
         for ( auto& sym : nametable_ )
         {
@@ -109,12 +110,6 @@ public:
         return nullptr;
     }
 
-    ir::VarID
-    GetMaxSymbolIndex() const
-    {
-        return symbols_counter_;
-    }
-
     const std::vector<Symbol> &
     GetNametable() const &
     {
@@ -123,9 +118,9 @@ public:
 
 private:
     std::vector<Symbol>        nametable_       {};
-    std::vector<ir::VarID>     visible_names_   {};
+    std::vector<SymbolID>      visible_names_   {};
     std::vector<std::size_t>   scope_symbols_   {};
-    ir::VarID                  symbols_counter_ { 0};
+    SymbolID                   symbols_counter_ { 0};
 
 };
 

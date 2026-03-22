@@ -73,14 +73,14 @@ public:
 struct Identifier final : public ExprNode
 {
     explicit
-    Identifier( std::size_t id)
+    Identifier( nt::SymbolID id)
      :  id{ id}
     {
     }
 
     void Accept( Visitor& v) override;
 
-    ir::VarID id;
+    nt::SymbolID id;
 
 };
 
@@ -119,7 +119,7 @@ struct BinaryOp : public ExprNode
 ///
 struct FunctionCall final : public ExprNode
 {
-    FunctionCall( std::size_t            id,
+    FunctionCall( nt::SymbolID           id,
                   std::list<ExprNodePtr> parameters)
      :  id         { id},
         parameters { std::move( parameters)}
@@ -128,7 +128,7 @@ struct FunctionCall final : public ExprNode
 
     void Accept( Visitor& v) override;
 
-    std::size_t            id;
+    nt::SymbolID           id;
     std::list<ExprNodePtr> parameters;
 
 };
@@ -138,8 +138,8 @@ struct FunctionCall final : public ExprNode
 ///
 struct Assignment final : public StmtNode
 {
-    Assignment( ir::VarID   left,
-                ExprNodePtr right)
+    Assignment( nt::SymbolID left,
+                ExprNodePtr  right)
      :  left  { left},
         right { std::move( right)}
     {
@@ -147,8 +147,8 @@ struct Assignment final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    ir::VarID   left;
-    ExprNodePtr right;
+    nt::SymbolID left;
+    ExprNodePtr  right;
 
 };
 
@@ -239,8 +239,8 @@ struct Return final : public StmtNode
 ///
 struct NewVariable final : public StmtNode
 {
-    NewVariable( ir::VarID   identifier,
-                 ExprNodePtr initializer)
+    NewVariable( nt::SymbolID identifier,
+                 ExprNodePtr  initializer)
      :  identifier  { identifier},
         initializer { std::move( initializer)}
     {
@@ -248,8 +248,8 @@ struct NewVariable final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    ir::VarID   identifier;
-    ExprNodePtr initializer;
+    nt::SymbolID identifier;
+    ExprNodePtr  initializer;
 
 };
 
@@ -258,8 +258,8 @@ struct NewVariable final : public StmtNode
 ///
 struct Input final : public StmtNode
 {
-    Input( ir::VarID   identifier,
-           std::string string)
+    Input( nt::SymbolID identifier,
+           std::string  string)
      :  identifier { identifier},
         string     { std::move( string)}
     {
@@ -267,8 +267,8 @@ struct Input final : public StmtNode
 
     void Accept( Visitor& v) override;
 
-    ir::VarID identifier;
-    std::string string;
+    nt::SymbolID identifier;
+    std::string  string;
 
 };
 
@@ -296,18 +296,18 @@ struct Output final : public StmtNode
 ///
 struct Function final
 {
-    Function( std::size_t            id,
-              std::list<ir::VarID>   parameters,
-              std::list<StmtNodePtr> body)
+    Function( nt::SymbolID            id,
+              std::list<nt::SymbolID> parameters,
+              std::list<StmtNodePtr>  body)
      :  id         { id},
         parameters { std::move( parameters)},
         body       { std::move( body)}
     {
     }
 
-    ir::FuncID             id;
-    std::list<ir::VarID>   parameters;
-    std::list<StmtNodePtr> body;
+    nt::SymbolID            id;
+    std::list<nt::SymbolID> parameters;
+    std::list<StmtNodePtr>  body;
 
 };
 
@@ -318,7 +318,7 @@ struct Program final
 {
     Program( std::list<Function>    functions,
              std::list<StmtNodePtr> global_variables,
-             nametable::NameTable   nametable)
+             nt::NameTable          nametable)
      :  functions        { std::move( functions)},
         global_variables { std::move( global_variables)},
         nametable        { std::move( nametable)}
@@ -327,7 +327,7 @@ struct Program final
 
     std::list<Function>    functions;
     std::list<StmtNodePtr> global_variables;
-    nametable::NameTable   nametable;
+    nt::NameTable          nametable;
 
 };
 

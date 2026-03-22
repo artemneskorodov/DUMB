@@ -93,3 +93,21 @@ target_compile_options(dumb PRIVATE ${CXX_COMPILE_OPTIONS})
 target_link_libraries(dumb PRIVATE frontend)
 
 target_link_libraries(dumb PRIVATE backend)
+
+#
+# Testing
+#
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+enable_testing()
+
+set(
+    RUN_TEST_COMMAND
+    ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/benchmarks/test_all.py ${CMAKE_SOURCE_DIR}/build/dumb ${CMAKE_SOURCE_DIR}
+)
+
+add_test(
+    NAME addition
+    COMMAND ${RUN_TEST_COMMAND} addition
+)

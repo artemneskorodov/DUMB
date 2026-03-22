@@ -127,8 +127,8 @@ private:
 
 private:
     const std::vector<lexer::Token> &tokens_;
-    size_t pos_{ 0};
-    nametable::NameTable nametable_{};
+    size_t                           pos_{ 0};
+    nt::NameTable                    nametable_{};
 
 };
 
@@ -165,19 +165,19 @@ SyntaxParser::get_function()
 
     check( lexer::TokenType::USER_STRING);
     std::string name = value();
-    std::size_t id = nametable_.AddSymbol( name, nametable::Symbol::Type::FUNCTION);
+    nt::SymbolID id = nametable_.AddSymbol( name, nt::SymbolType::FUNCTION);
     advance();
 
     check( lexer::TokenType::LEFT_PARENTHESIS);
     advance();
 
     nametable_.EnterScope();
-    std::list<ir::VarID> parameters{};
+    std::list<nt::SymbolID> parameters{};
     while ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
     {
         check( lexer::TokenType::USER_STRING);
         std::string name = value();
-        ir::VarID param_id = nametable_.AddSymbol( name, nametable::Symbol::Type::LOCAL_VARIABLE);
+        nt::SymbolID param_id = nametable_.AddSymbol( name, nt::SymbolType::LOCAL_VARIABLE);
         advance();
 
         parameters.emplace_back( param_id);
@@ -257,13 +257,13 @@ SyntaxParser::get_new_var()
     check( lexer::TokenType::USER_STRING);
     // Adding to nametable
     std::string name = value();
-    ir::VarID id;
+    nt::SymbolID id;
     if ( nametable_.HasScope() )
     {
-        id = nametable_.AddSymbol( name, nametable::Symbol::Type::LOCAL_VARIABLE);
+        id = nametable_.AddSymbol( name, nt::SymbolType::LOCAL_VARIABLE);
     } else
     {
-        id = nametable_.AddSymbol( name, nametable::Symbol::Type::GLOBAL_VARIABLE);
+        id = nametable_.AddSymbol( name, nt::SymbolType::GLOBAL_VARIABLE);
     }
     advance();
 
@@ -332,14 +332,14 @@ SyntaxParser::get_assignment()
     assert( is_type( lexer::TokenType::ASSIGNMENT, 1));
 
     std::string name = value();
-    auto sym = nametable_.GetSymbol( name);
-    if ( !sym.has_value() )
+    const nt::Symbol *sym = nametable_.GetSymbol( name);
+    if ( sym == nullptr )
     {
         syntax_error( "Unknown symbol");
     }
-    if ( sym.value().GetType() == nametable::Symbol::Type::FUNCTION )
+    if ( sym->GetType() == nt::SymbolType::FUNCTION )
     {
-        syntax_error( sym.value().GetName() + " is a function");
+        syntax_error( sym->GetName() + " is a function");
     }
 
     advance( 2); // Skipping 'user-string' and '='
@@ -349,7 +349,7 @@ SyntaxParser::get_assignment()
     check( lexer::TokenType::STATEMENT_END);
     advance();
 
-    return std::make_unique<ast::Assignment>( sym.value().GetID(), std::move( expression));
+    return std::make_unique<ast::Assignment>( sym->GetID(), std::move( expression));
 }
 
 ast::StmtNodePtr
@@ -377,14 +377,14 @@ SyntaxParser::get_input()
 
     check( lexer::TokenType::USER_STRING);
     std::string name = value();
-    auto sym = nametable_.GetSymbol( name);
-    if ( !sym.has_value() )
+    const nt::Symbol *sym = nametable_.GetSymbol( name);
+    if ( sym == nullptr )
     {
         syntax_error( "Unknown symbol");
     }
-    if ( sym.value().GetType() == nametable::Symbol::Type::FUNCTION )
+    if ( sym->GetType() == nt::SymbolType::FUNCTION )
     {
-        syntax_error( sym.value().GetName() + " is a function");
+        syntax_error( sym->GetName() + " is a function");
     }
     advance();
 
@@ -401,7 +401,7 @@ SyntaxParser::get_input()
     check( lexer::TokenType::STATEMENT_END);
     advance();
 
-    return std::make_unique<ast::Input>( sym.value().GetID(), std::move( string));
+    return std::make_unique<ast::Input>( sym->GetID(), std::move( string));
 }
 
 ast::StmtNodePtr
@@ -538,14 +538,14 @@ ast::ExprNodePtr
 SyntaxParser::get_symbol()
 {
     std::string name = value();
-    auto sym = nametable_.GetSymbol( name);
-    if ( !sym.has_value() )
+    const nt::Symbol *sym = nametable_.GetSymbol( name);
+    if ( sym == nullptr )
     {
         syntax_error( "Undeclared symbol: " + name);
     }
     advance();
 
-    if ( sym.value().GetType() == nametable::Symbol::Type::FUNCTION )
+    if ( sym->GetType() == nt::SymbolType::FUNCTION )
     {
         check( lexer::TokenType::LEFT_PARENTHESIS);
         advance();
@@ -557,10 +557,10 @@ SyntaxParser::get_symbol()
         }
         advance();
 
-        return std::make_unique<ast::FunctionCall>( sym.value().GetID(), std::move( parameters));
+        return std::make_unique<ast::FunctionCall>( sym->GetID(), std::move( parameters));
     } else
     {
-        return std::make_unique<ast::Identifier>( sym.value().GetID());
+        return std::make_unique<ast::Identifier>( sym->GetID());
     }
 }
 
@@ -584,7 +584,7 @@ ParseSyntax( const std::vector<lexer::Token>& tokens,
     try
     {
         return parser.GetProgram();
-    } catch ( SyntaxError error )
+    } catch ( const SyntaxError& error )
     {
         std::cout << "\033[1;3;5;38;5;161;49m" << "Syntax error" << "\033[0m " << filename << ":"
                   << error.Line() << ":" << error.Column() << " " << error.what()
