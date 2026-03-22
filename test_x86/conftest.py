@@ -13,12 +13,9 @@ def pytest_generate_tests(metafunc):
 
 def pytest_runtest_logreport(report):
     if report.when == "call":
-        name = report.nodeid.split("[")[-1].rstrip("]")
-
-        index = report.location[2].find('[')
-        global_test_name = report.location[2][0 : index]
+        name = report.location[2]
 
         if report.passed:
-            print(global_test_name + f": {name:20}[" + Fore.GREEN + "PASS" + Fore.RESET + "]")
+            print(f": {name:40}[" + Fore.GREEN + "PASS" + Fore.RESET + "]")
         elif report.failed:
-            print(global_test_name + f": {name:20}[" + Fore.RED   + "FAIL" + Fore.RESET + "]")
+            print(f": {name:40}[" + Fore.RED   + "FAIL" + Fore.RESET + "]")

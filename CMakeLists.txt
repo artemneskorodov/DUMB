@@ -103,6 +103,6 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 enable_testing()
 
 add_test(
-    NAME tests
-    COMMAND pytest -q ${CMAKE_SOURCE_DIR}/benchmarks --compiler ${CMAKE_SOURCE_DIR}/build/dumb --workdir ${CMAKE_SOURCE_DIR} --tests addition,if,while
+    NAME tests_x86
+    COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test_x86 --compiler ${CMAKE_SOURCE_DIR}/build/dumb --workdir ${CMAKE_SOURCE_DIR} --tests addition,if,while
 )
