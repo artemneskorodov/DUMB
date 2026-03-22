@@ -28,16 +28,16 @@ jobs:
         run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
 
       - name: Create artifacts directory
-        run: mkdir -p artifacts
+        run: mkdir -p${{ github.workspace }}/artifacts
 
       - name: Prepare build artifacts
-        run: mv ${{ github.workspace }}/build aritfacts/build
+        run: mv ${{ github.workspace }}/build ${{ github.workspace }}/artifacts/build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
         with:
           name: build
-          path: artifacts
+          path: ${{ github.workspace }}/artifacts
 
   test-all-compiler:
     runs-on: ubuntu-latest
