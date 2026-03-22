@@ -31,7 +31,7 @@ jobs:
         run: mkdir -p artifacts
 
       - name: Prepare build artifacts
-        run: mv build aritfacts/build
+        run: mv ${{ github.workspace }}/build aritfacts/build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
