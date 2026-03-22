@@ -3,6 +3,8 @@
 
 #include <memory>
 #include <unordered_map>
+#include <cstdint>
+#include <variant>
 
 #include "ir.hh"
 

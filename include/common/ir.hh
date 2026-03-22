@@ -2,6 +2,8 @@
 #define DUMB_IR_HH__
 
 #include <vector>
+#include <memory>
+#include <string>
 
 namespace dumb
 {

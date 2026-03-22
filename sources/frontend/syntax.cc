@@ -584,7 +584,7 @@ ParseSyntax( const std::vector<lexer::Token>& tokens,
     try
     {
         return parser.GetProgram();
-    } catch ( SyntaxError error )
+    } catch ( const SyntaxError& error )
     {
         std::cout << "\033[1;3;5;38;5;161;49m" << "Syntax error" << "\033[0m " << filename << ":"
                   << error.Line() << ":" << error.Column() << " " << error.what()

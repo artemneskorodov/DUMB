@@ -5,6 +5,7 @@
 #include <string>
 #include <optional>
 #include <cstdint>
+#include <cassert>
 
 namespace dumb
 {
@@ -73,6 +74,7 @@ TypeToStr( TokenType type)
         case TokenType::INPUT_STATEMENT:    return "INPUT_STATEMENT";
         case TokenType::OUTPUT_STATEMENT:   return "OUTPUT_STATEMENT";
         case TokenType::USER_QUOTED_STRING: return "USER_QUOTED_STRING";
+        default: assert( false);
     }
 }
 
