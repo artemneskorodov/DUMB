@@ -18,10 +18,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Create build directories
-        run: |
-          mkdir -p build
-          mkdir -p benchmarks_build
+      - name: Create build directory
+        run: mkdir -p build
 
       - name: Configure CMake
         run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
@@ -44,10 +42,20 @@ jobs:
         with:
           submodules: recursive  # подтягиваем сабмодули снова для тестовой джобы
 
+      - name: Create tests build directory
+        run: mkdir -p benchmarks_build
+
       - name: Get build artifacts
         uses: actions/download-artifact@v8
         with:
           name: build
+
+      - name: Show downloaded artifact
+        run: |
+          echo "Current directory: $PWD"
+          echo "Workspace: ${{ github.workspace }}"
+          echo "Contents of workspace:"
+          ls -R
 
       - name: Install test dependencies
         run: |
