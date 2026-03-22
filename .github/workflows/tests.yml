@@ -28,7 +28,7 @@ jobs:
         run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
 
       - name: Create artifacts directory
-        run: mkdir -p${{ github.workspace }}/artifacts
+        run: mkdir -p ${{ github.workspace }}/artifacts
 
       - name: Prepare build artifacts
         run: mv ${{ github.workspace }}/build ${{ github.workspace }}/artifacts/build
@@ -54,7 +54,7 @@ jobs:
           name: build
 
       - name: Create tests build directory
-        run: mkdir -p benchmarks_build
+        run: mkdir -p ${{ github.workspace }}/benchmarks_build
 
       - name: Install test dependencies
         run: |
