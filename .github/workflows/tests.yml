@@ -53,6 +53,9 @@ jobs:
         with:
           name: build
 
+      - name: Make compiler executable
+        run: chmod +x ${{ github.workspace }}/build/dumb
+
       - name: Create tests build directory
         run: mkdir -p ${{ github.workspace }}/benchmarks_build
 
