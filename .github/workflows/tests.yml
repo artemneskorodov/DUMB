@@ -27,11 +27,17 @@ jobs:
       - name: Build
         run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
 
+      - name: Prepare build artifacts
+        run: |
+          mkdir -p artifacts
+          mkdir -p artifacts/build
+          mv build aritfacts/build
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
         with:
           name: build
-          path: build
+          path: artifacts
 
   test-all-compiler:
     runs-on: ubuntu-latest
@@ -42,20 +48,13 @@ jobs:
         with:
           submodules: recursive  # подтягиваем сабмодули снова для тестовой джобы
 
-      - name: Create tests build directory
-        run: mkdir -p benchmarks_build
-
       - name: Get build artifacts
         uses: actions/download-artifact@v8
         with:
           name: build
 
-      - name: Show downloaded artifact
-        run: |
-          echo "Current directory: $PWD"
-          echo "Workspace: ${{ github.workspace }}"
-          echo "Contents of workspace:"
-          ls -R
+      - name: Create tests build directory
+        run: mkdir -p benchmarks_build
 
       - name: Install test dependencies
         run: |
