@@ -8,18 +8,27 @@ namespace lir
 namespace
 {
 
-std::string
-reg_to_str( RegName reg)
+inline std::string
+reg_to_str( Register reg)
 {
     switch ( reg )
     {
-        case RegName::RAX: return "rax";
-        case RegName::RBX: return "rbx";
-        case RegName::RCX: return "rcx";
-        case RegName::RDX: return "rdx";
-        case RegName::RSP: return "rsp";
-        case RegName::RBP: return "rbx";
-        case RegName::RDI: return "rdi";
+        case Register::RAX: return "rax";
+        case Register::RBX: return "rbx";
+        case Register::RCX: return "rcx";
+        case Register::RDX: return "rdx";
+        case Register::RSI: return "rsi";
+        case Register::RDI: return "rdi";
+        case Register::RBP: return "rbp";
+        case Register::RSP: return "rsp";
+        case Register::R8:  return "r8";
+        case Register::R9:  return "r9";
+        case Register::R10: return "r10";
+        case Register::R11: return "r11";
+        case Register::R12: return "r12";
+        case Register::R13: return "r13";
+        case Register::R14: return "r14";
+        case Register::R15: return "r15";
     }
 }
 
@@ -28,7 +37,7 @@ operand_to_string( const Operand& operand)
 {
     if ( std::holds_alternative<Register>( operand) )
     {
-        return reg_to_str( std::get<Register>( operand).reg);
+        return reg_to_str( std::get<Register>( operand));
     } else if ( std::holds_alternative<Memory>( operand) )
     {
         return "[" + std::get<Memory>( operand).label + "]";
@@ -46,6 +55,9 @@ operand_to_string( const Operand& operand)
     } else if ( std::holds_alternative<Immediate>( operand) )
     {
         return std::to_string( std::get<Immediate>( operand).value);
+    } else if ( std::holds_alternative<StringImm>( operand) )
+    {
+        return std::get<StringImm>( operand).string;
     } else
     {
         throw std::runtime_error{ "Unexpected operand type"};
@@ -128,8 +140,10 @@ label_to_str( const Label& label)
 std::string
 Program::ToStr() const
 {
-    std::string result = "global __start__:\n"
-                         "section .text\n";
+    std::string result = "global _start:\n"
+                         "section .text\n"
+                         "extern __std_input\n"
+                         "extern __std_output\n";
     for ( const Instruction& instr : instructions_ )
     {
         if ( std::holds_alternative<MovInstr>( instr) )
@@ -169,6 +183,11 @@ Program::ToStr() const
     for ( const auto& it : global_labels_ )
     {
         result += it.label + " dq " + std::to_string( it.initializer) + "\n";
+    }
+
+    for ( std::size_t i = 0; i != global_strings_.size(); ++i )
+    {
+        result += "GLOBAL_STRING_" + std::to_string( i + 1) + " dq \"" + global_strings_[i] + "\"\n";
     }
     return result;
 }

@@ -214,6 +214,38 @@ struct CmpAndJmpInstr : public Instruction
 
 };
 
+struct InputInstr : public Instruction
+{
+    void Accept( InstructionVisitor& v) override;
+
+    InputInstr( OperandPtr dest,
+                std::string string)
+     :  dest{ std::move( dest)},
+        string{ std::move( string)}
+    {
+    }
+
+    OperandPtr dest;
+    std::string string;
+
+};
+
+struct OutputInstr : public Instruction
+{
+    void Accept( InstructionVisitor& v) override;
+
+    OutputInstr( OperandPtr expression,
+                 std::string string)
+     :  expression{ std::move( expression)},
+        string{ std::move( string)}
+    {
+    }
+
+    OperandPtr expression;
+    std::string string;
+
+};
+
 class InstructionVisitor
 {
 public:
@@ -221,13 +253,17 @@ public:
     virtual void Visit( UnaryOpInstr&      node) = 0;
     virtual void Visit( FunctionCallInstr& node) = 0;
     virtual void Visit( CmpAndJmpInstr&    node) = 0;
+    virtual void Visit( InputInstr&        node) = 0;
+    virtual void Visit( OutputInstr&       node) = 0;
 
 };
 
-inline void BinaryOpInstr::Accept( InstructionVisitor& v) { v.Visit( *this); }
-inline void UnaryOpInstr::Accept( InstructionVisitor& v) { v.Visit( *this); }
-inline void FunctionCallInstr::Accept( InstructionVisitor& v) { v.Visit( *this); }
-inline void CmpAndJmpInstr::Accept( InstructionVisitor& v) { v.Visit( *this); }
+inline void BinaryOpInstr::Accept     ( InstructionVisitor& v) { v.Visit( *this); }
+inline void UnaryOpInstr::Accept      ( InstructionVisitor& v) { v.Visit( *this); }
+inline void FunctionCallInstr::Accept ( InstructionVisitor& v) { v.Visit( *this); }
+inline void CmpAndJmpInstr::Accept    ( InstructionVisitor& v) { v.Visit( *this); }
+inline void InputInstr::Accept        ( InstructionVisitor& v) { v.Visit( *this); }
+inline void OutputInstr::Accept       ( InstructionVisitor& v) { v.Visit( *this); }
 
 //
 // Basic block
@@ -276,6 +312,7 @@ struct Program final
     std::vector<FunctionPtr> functions{};
     FunctionPtr preamble{ nullptr};
     std::vector<VarID> globals{};
+    std::vector<std::string> strings{};
 
 };
 

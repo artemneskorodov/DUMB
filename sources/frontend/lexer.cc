@@ -29,29 +29,31 @@ struct KeyWordInfo
 
 };
 
-constexpr std::array<KeyWordInfo, 5> kKeyWordsAlpha
+constexpr std::array<KeyWordInfo, 7> kKeyWordsAlpha
 {{
     KeyWordInfo{ "function", TokenType::FUNC_DECLARATION },
     KeyWordInfo{ "variable", TokenType::VAR_DEClARATION  },
     KeyWordInfo{       "if", TokenType::IF_STATEMENT     },
     KeyWordInfo{    "while", TokenType::WHILE_STATEMENT  },
     KeyWordInfo{   "return", TokenType::RETURN_STATEMENT },
+    KeyWordInfo{    "input", TokenType::INPUT_STATEMENT  },
+    KeyWordInfo{   "output", TokenType::OUTPUT_STATEMENT },
 }};
 
 constexpr std::array<KeyWordInfo, 12> kKeyWordsNormalSymbols
 {{
-    KeyWordInfo{ "+", TokenType::OP_ADD            },
-    KeyWordInfo{ "-", TokenType::OP_SUB            },
-    KeyWordInfo{ "*", TokenType::OP_MUL            },
-    KeyWordInfo{ "/", TokenType::OP_DIV            },
-    KeyWordInfo{ ">", TokenType::CMP_BIGGER        },
-    KeyWordInfo{ "<", TokenType::CMP_LESS          },
-    KeyWordInfo{ ";", TokenType::STATEMENT_END     },
-    KeyWordInfo{ "(", TokenType::LEFT_PARENTHESIS  },
-    KeyWordInfo{ ")", TokenType::RIGHT_PARENTHESIS },
-    KeyWordInfo{ "{", TokenType::LEFT_SCOPE        },
-    KeyWordInfo{ "}", TokenType::RIGHT_SCOPE       },
-    KeyWordInfo{ ",", TokenType::COMMA             },
+    KeyWordInfo{  "+", TokenType::OP_ADD            },
+    KeyWordInfo{  "-", TokenType::OP_SUB            },
+    KeyWordInfo{  "*", TokenType::OP_MUL            },
+    KeyWordInfo{  "/", TokenType::OP_DIV            },
+    KeyWordInfo{  ">", TokenType::CMP_BIGGER        },
+    KeyWordInfo{  "<", TokenType::CMP_LESS          },
+    KeyWordInfo{  ";", TokenType::STATEMENT_END     },
+    KeyWordInfo{  "(", TokenType::LEFT_PARENTHESIS  },
+    KeyWordInfo{  ")", TokenType::RIGHT_PARENTHESIS },
+    KeyWordInfo{  "{", TokenType::LEFT_SCOPE        },
+    KeyWordInfo{  "}", TokenType::RIGHT_SCOPE       },
+    KeyWordInfo{  ",", TokenType::COMMA             },
 }};
 
 } // ! anonymous namespace
@@ -63,7 +65,10 @@ Lexer::Lexer( const std::string &source)
     {
         skip_spaces();
 
-        if ( std::isdigit( current_char()) )
+        if ( current_char() == '\"' )
+        {
+            tokens_.emplace_back( read_quoted_string());
+        } else if ( std::isdigit( current_char()) )
         {
             tokens_.emplace_back( read_immediate());
         } else if ( std::isalpha( current_char()) ||
@@ -229,6 +234,26 @@ Lexer::read_symbol()
     pos_    += value.size();
     column_ += value.size();
     return Token{ type, value, line, column};
+}
+
+Token
+Lexer::read_quoted_string()
+{
+    assert( current_char() == '\"');
+    int line = line_;
+    int column = column_;
+    advance();
+
+    size_t start = pos_;
+    while ( current_char() != '\"' )
+    {
+        advance();
+    }
+
+    std::string value = source_.substr( start, pos_ - start);
+    advance();
+
+    return Token{ TokenType::USER_QUOTED_STRING, value, line, column};
 }
 
 } // ! namespace lexer

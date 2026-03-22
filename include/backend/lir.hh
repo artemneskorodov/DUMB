@@ -13,28 +13,24 @@ namespace lir
 
 using AddrType = std::int32_t;
 
-enum class RegName
+enum class Register
 {
     RAX,
     RBX,
     RCX,
     RDX,
-    RSP,
+    RSI,
+    RDI,
     RBP,
-    RDI
-    // TODO add other registers
-};
-
-struct Register
-{
-    explicit
-    Register( RegName reg)
-     :  reg{ reg}
-    {
-    }
-
-    RegName reg;
-
+    RSP,
+    R8,
+    R9,
+    R10,
+    R11,
+    R12,
+    R13,
+    R14,
+    R15,
 };
 
 struct Immediate
@@ -51,14 +47,14 @@ struct Immediate
 
 struct RegMem
 {
-    RegMem( RegName reg,
+    RegMem( Register reg,
             AddrType offset)
      :  reg{ reg},
         offset{ offset}
     {
     }
 
-    RegName reg;
+    Register reg;
     AddrType offset;
 
 };
@@ -75,12 +71,25 @@ struct Memory
 
 };
 
+struct StringImm
+{
+    explicit
+    StringImm( std::string string)
+     :  string{ string}
+    {
+    }
+
+    std::string string;
+
+};
+
 using Operand = std::variant
 <
     Register,
     RegMem,
     Memory,
-    Immediate
+    Immediate,
+    StringImm
 >;
 
 struct MovInstr
@@ -279,10 +288,23 @@ public:
 
     std::string ToStr() const;
 
-    void AddGlobal( std::string label,
-                    int initializer)
+    void
+    AddGlobal( std::string label,
+               int initializer)
     {
-        global_labels_.emplace_back( Global{ label, initializer});
+        global_labels_.emplace_back( Global{ std::move( label), initializer});
+    }
+
+    void
+    AddString( std::string string)
+    {
+        global_strings_.emplace_back( std::move( string));
+    }
+
+    std::size_t
+    StringsNum() const
+    {
+        return global_strings_.size();
     }
 
 private:
@@ -303,6 +325,7 @@ private:
 private:
     std::vector<Instruction> instructions_{};
     std::vector<Global> global_labels_;
+    std::vector<std::string> global_strings_;
 
 };
 
