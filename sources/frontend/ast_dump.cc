@@ -354,7 +354,7 @@ public:
         std::string parameters_node_id = get_node_id();
 
         label = "{ ";
-        for ( ir::VarID& param : function->parameters )
+        for ( nt::SymbolID& param : function->parameters )
         {
             label += "{ Identifier | " + std::to_string( param) + " }";
             if ( &param != &function->parameters.back() )
@@ -392,9 +392,9 @@ public:
             std::string type{ ""};
             switch ( it.GetType() )
             {
-                case nametable::Symbol::Type::FUNCTION:        type = "function";        break;
-                case nametable::Symbol::Type::GLOBAL_VARIABLE: type = "global variable"; break;
-                case nametable::Symbol::Type::LOCAL_VARIABLE:  type = "local variable";  break;
+                case nt::SymbolType::FUNCTION:        type = "function";        break;
+                case nt::SymbolType::GLOBAL_VARIABLE: type = "global variable"; break;
+                case nt::SymbolType::LOCAL_VARIABLE:  type = "local variable";  break;
             }
             nametable += "{" + std::to_string( it.GetID()) + " | "+ type + " | " + it.GetName() + "}";
             if ( &it != &program->nametable.GetNametable().back() )

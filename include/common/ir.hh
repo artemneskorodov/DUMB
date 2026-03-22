@@ -25,31 +25,34 @@ using OperandPtr = std::unique_ptr<Operand>;
 
 // Variable
 
-using VarID = std::size_t;
-
 struct VarOperand : public Operand
 {
     void Accept( OperandVisitor& v) override;
 
-    VarOperand( VarID id)
-     :  id{ id}
+    explicit
+    VarOperand( std::string name)
+     :  name{ std::move( name)}
     {
     }
 
-    VarID id;
+    std::string name;
 
 };
+
+// Global variable
 
 struct GVarOperand : public Operand
 {
     void Accept( OperandVisitor& v) override;
 
-    GVarOperand( VarID id)
-     :  id{ id}
+    explicit
+    GVarOperand( std::string name)
+     :  name{ std::move( name)}
     {
     }
 
-    VarID id;
+    std::string name;
+
 };
 
 // Immediate
@@ -60,6 +63,7 @@ struct ImmOperand : public Operand
 {
     void Accept( OperandVisitor& v) override;
 
+    explicit
     ImmOperand( ImmType value)
      :  value{ value}
     {
@@ -75,11 +79,12 @@ public:
     virtual void Visit( VarOperand&  node) = 0;
     virtual void Visit( ImmOperand&  node) = 0;
     virtual void Visit( GVarOperand& node) = 0;
+
 };
 
-inline void VarOperand::Accept( OperandVisitor& v) { v.Visit( *this); }
-inline void ImmOperand::Accept( OperandVisitor& v) { v.Visit( *this); }
-inline void GVarOperand::Accept( OperandVisitor& v) { v.Visit( *this); }
+inline void VarOperand::Accept  ( OperandVisitor& v) { v.Visit( *this); }
+inline void ImmOperand::Accept  ( OperandVisitor& v) { v.Visit( *this); }
+inline void GVarOperand::Accept ( OperandVisitor& v) { v.Visit( *this); }
 
 //
 // Instructions
@@ -114,17 +119,17 @@ struct BinaryOpInstr : public Instruction
                    BinaryOpType op,
                    OperandPtr first,
                    OperandPtr second)
-     :  dest{ std::move( dest)},
-        op{ op},
-        first{ std::move( first)},
-        second{ std::move( second)}
+     :  dest   { std::move( dest)},
+        op     { op},
+        first  { std::move( first)},
+        second { std::move( second)}
     {
     }
 
-    OperandPtr dest;
+    OperandPtr   dest;
     BinaryOpType op;
-    OperandPtr first;
-    OperandPtr second;
+    OperandPtr   first;
+    OperandPtr   second;
 
 };
 
@@ -143,37 +148,35 @@ struct UnaryOpInstr : public Instruction
     UnaryOpInstr( OperandPtr dest,
                   UnaryOpType op,
                   OperandPtr operand)
-     :  dest{ std::move( dest)},
-        op{ op},
-        operand{ std::move( operand)}
+     :  dest    { std::move( dest)},
+        op      { op},
+        operand { std::move( operand)}
     {
     }
 
-    OperandPtr dest;
+    OperandPtr  dest;
     UnaryOpType op;
-    OperandPtr operand;
+    OperandPtr  operand;
 
 };
 
 // Function call
 
-using FuncID = std::size_t;
-
 struct FunctionCallInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
 
-    FunctionCallInstr( OperandPtr dest,
-                       FuncID func,
+    FunctionCallInstr( OperandPtr              dest,
+                       std::string             name,
                        std::vector<OperandPtr> params)
-     :  dest{ std::move( dest)},
-        func{ func},
-        params{ std::move( params)}
+     :  dest   { std::move( dest)},
+        name   { std::move( name)},
+        params { std::move( params)}
     {
     }
 
-    OperandPtr dest;
-    FuncID func;
+    OperandPtr              dest;
+    std::string             name;
     std::vector<OperandPtr> params;
 };
 
@@ -193,22 +196,22 @@ struct CmpAndJmpInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
 
-    CmpAndJmpInstr( OperandPtr left,
-                    OperandPtr right,
-                    CmpType type,
+    CmpAndJmpInstr( OperandPtr   left,
+                    OperandPtr   right,
+                    CmpType      type,
                     LocalLabelID true_dest,
                     LocalLabelID false_dest)
-     :  left{ std::move( left)},
-        right{ std::move( right)},
-        type{ type},
-        true_dest{ true_dest},
-        false_dest{ false_dest}
+     :  left       { std::move( left)},
+        right      { std::move( right)},
+        type       { type},
+        true_dest  { true_dest},
+        false_dest { false_dest}
     {
     }
 
-    OperandPtr left;
-    OperandPtr right;
-    CmpType type;
+    OperandPtr   left;
+    OperandPtr   right;
+    CmpType      type;
     LocalLabelID true_dest;
     LocalLabelID false_dest;
 
@@ -218,14 +221,14 @@ struct InputInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
 
-    InputInstr( OperandPtr dest,
+    InputInstr( OperandPtr  dest,
                 std::string string)
-     :  dest{ std::move( dest)},
-        string{ std::move( string)}
+     :  dest   { std::move( dest)},
+        string { std::move( string)}
     {
     }
 
-    OperandPtr dest;
+    OperandPtr  dest;
     std::string string;
 
 };
@@ -234,14 +237,14 @@ struct OutputInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
 
-    OutputInstr( OperandPtr expression,
+    OutputInstr( OperandPtr  expression,
                  std::string string)
-     :  expression{ std::move( expression)},
-        string{ std::move( string)}
+     :  expression { std::move( expression)},
+        string     { std::move( string)}
     {
     }
 
-    OperandPtr expression;
+    OperandPtr  expression;
     std::string string;
 
 };
@@ -277,7 +280,7 @@ struct BasicBlock final
     }
 
     std::vector<InstructionPtr> instructions{};
-    LocalLabelID id;
+    LocalLabelID                id;
 
 };
 
@@ -289,15 +292,16 @@ using BasicBlockPtr = std::unique_ptr<BasicBlock>;
 
 struct Function final
 {
-    Function( FuncID id)
-     :  id{ id}
+    explicit
+    Function( std::string name)
+     :  name{ std::move( name)}
     {
     }
 
-    std::vector<VarID> params{};
-    std::vector<BasicBlockPtr> basic_blocks{};
-    std::vector<VarID> variables{};
-    FuncID id;
+    std::vector<std::string>   params       {};
+    std::vector<BasicBlockPtr> basic_blocks {};
+    std::vector<std::string>   variables    {};
+    std::string                name;
 
 };
 
@@ -309,10 +313,10 @@ using FunctionPtr = std::unique_ptr<Function>;
 
 struct Program final
 {
-    std::vector<FunctionPtr> functions{};
-    FunctionPtr preamble{ nullptr};
-    std::vector<VarID> globals{};
-    std::vector<std::string> strings{};
+    std::vector<FunctionPtr> functions {};
+    FunctionPtr              preamble  { nullptr};
+    std::vector<std::string> globals   {};
+    std::vector<std::string> strings   {};
 
 };
 

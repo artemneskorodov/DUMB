@@ -74,8 +74,8 @@ struct Memory
 struct StringImm
 {
     explicit
-    StringImm( std::string string)
-     :  string{ string}
+    StringImm( std::string label)
+     :  string{ label}
     {
     }
 
@@ -225,6 +225,20 @@ using Instruction = std::variant
     Syscall
 >;
 
+struct StrConst
+{
+    StrConst( std::string label,
+              std::string value)
+     :  label{ std::move( label)},
+        value{ std::move( value)}
+    {
+    }
+
+    std::string label;
+    std::string value;
+
+};
+
 class Program
 {
 public:
@@ -296,15 +310,10 @@ public:
     }
 
     void
-    AddString( std::string string)
+    AddStrConst( std::string label,
+                 std::string value)
     {
-        global_strings_.emplace_back( std::move( string));
-    }
-
-    std::size_t
-    StringsNum() const
-    {
-        return global_strings_.size();
+        global_strings_.emplace_back( StrConst{ label, value});
     }
 
 private:
@@ -323,9 +332,9 @@ private:
     };
 
 private:
-    std::vector<Instruction> instructions_{};
-    std::vector<Global> global_labels_;
-    std::vector<std::string> global_strings_;
+    std::vector<Instruction> instructions_   {};
+    std::vector<Global>      global_labels_  {};
+    std::vector<StrConst>    global_strings_ {};
 
 };
 

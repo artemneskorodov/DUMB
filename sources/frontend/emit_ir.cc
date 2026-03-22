@@ -1,4 +1,5 @@
 #include <cassert>
+#include <iostream>
 
 #include "ast.hh"
 #include "emit_ir.hh"
@@ -15,7 +16,7 @@ namespace
 
 class Emitter : public ast::Visitor
 {
-public:
+private:
     void
     Visit( ast::Immediate& node) override
     {
@@ -25,13 +26,13 @@ public:
     void
     Visit( ast::Identifier& node) override
     {
-        const nametable::Symbol *sym = nametable_->GetSymbol( node.id);
-        if ( sym->GetType() == nametable::Symbol::Type::LOCAL_VARIABLE )
+        const nt::Symbol *sym = nametable_->GetSymbol( node.id);
+        if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            eval_stack_.push_back( std::make_unique<ir::VarOperand>( node.id));
-        } else if ( sym->GetType() == nametable::Symbol::Type::GLOBAL_VARIABLE )
+            eval_stack_.push_back( std::make_unique<ir::VarOperand>( sym->GetName()));
+        } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            eval_stack_.push_back( std::make_unique<ir::GVarOperand>( node.id));
+            eval_stack_.push_back( std::make_unique<ir::GVarOperand>( sym->GetName()));
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
@@ -61,10 +62,14 @@ public:
             case ast::BinaryOp::OP_DIV: type = ir::BinaryOpType::DIV; break;
         }
 
-        ir::VarID tmp_id = tmp_counter_++;
+        std::string tmp_id = "tmp_" + std::to_string( tmp_counter_++);
         function_.variables.emplace_back( tmp_id);
         ir::OperandPtr dest = std::make_unique<ir::VarOperand>( tmp_id);
-        basic_block_.instructions.emplace_back( std::make_unique<ir::BinaryOpInstr>( std::move( dest), type, std::move( left), std::move( right)));
+        ir::InstructionPtr instr = std::make_unique<ir::BinaryOpInstr>( std::move( dest),
+                                                                        type,
+                                                                        std::move( left),
+                                                                        std::move( right));
+        basic_block_.instructions.emplace_back( std::move( instr));
         eval_stack_.push_back( std::make_unique<ir::VarOperand>( tmp_id));
     }
 
@@ -76,21 +81,23 @@ public:
         ir::OperandPtr expression = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
+        const nt::Symbol *sym = nametable_->GetSymbol( node.left);
         ir::OperandPtr dest = nullptr;
-        const nametable::Symbol *sym = nametable_->GetSymbol( node.left);
-        if ( sym->GetType() == nametable::Symbol::Type::LOCAL_VARIABLE )
+        if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            dest = std::make_unique<ir::VarOperand>( node.left);
-        } else if ( sym->GetType() == nametable::Symbol::Type::GLOBAL_VARIABLE )
+            dest = std::make_unique<ir::VarOperand>( sym->GetName());
+        } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            dest = std::make_unique<ir::GVarOperand>( node.left);
+            dest = std::make_unique<ir::GVarOperand>( sym->GetName());
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
         }
 
-        // Adding mov to variable instruction
-        basic_block_.instructions.emplace_back( std::make_unique<ir::UnaryOpInstr>( std::move( dest), ir::UnaryOpType::MOV, std::move( expression)));
+        ir::InstructionPtr instr = std::make_unique<ir::UnaryOpInstr>( std::move( dest),
+                                                                       ir::UnaryOpType::MOV,
+                                                                       std::move( expression));
+        basic_block_.instructions.emplace_back( std::move( instr));
     }
 
     void
@@ -116,11 +123,17 @@ public:
         }
 
         // Saving basic basic block which will go after if
-        ir::LocalLabelID true_label = basic_blocks_counter_ + 1; // +1 is for next basic block, which will be used for false label
+        ir::LocalLabelID true_label = basic_blocks_counter_ + 1;
         ir::LocalLabelID false_label = basic_blocks_counter_ + 2;
-        basic_blocks_counter_ += 2; // Saving two basic blocks which will not be used in body
+        basic_blocks_counter_ += 2;
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::CmpAndJmpInstr>( std::move( left), std::move( right), type, true_label, false_label));
+        ir::InstructionPtr instr = std::make_unique<ir::CmpAndJmpInstr>( std::move( left),
+                                                                         std::move( right),
+                                                                         type,
+                                                                         true_label,
+                                                                         false_label);
+
+        basic_block_.instructions.emplace_back( std::move( instr));
         finish_basic_block( true_label);
 
         for ( auto& it : node.body )
@@ -157,11 +170,17 @@ public:
             case ast::CompareOp::Operation::OP_CMP_BIGGER: type = ir::CmpType::BIGGER; break;
         }
 
-        ir::LocalLabelID true_label = basic_blocks_counter_ + 1; // +1 is for next basic block, which will be used for false label
+        ir::LocalLabelID true_label = basic_blocks_counter_ + 1;
         ir::LocalLabelID false_label = basic_blocks_counter_ + 2;
         basic_blocks_counter_ += 2; // Saving two basic blocks which will not be used in body
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::CmpAndJmpInstr>( std::move( left), std::move( right), type, true_label, false_label));
+        ir::InstructionPtr instr = std::make_unique<ir::CmpAndJmpInstr>( std::move( left),
+                                                                         std::move( right),
+                                                                         type,
+                                                                         true_label,
+                                                                         false_label);
+        basic_block_.instructions.emplace_back( std::move( instr));
+
         finish_basic_block( true_label);
 
         for ( auto& it : node.body )
@@ -169,25 +188,41 @@ public:
             it.get()->Accept( *this);
         }
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::CmpAndJmpInstr>( nullptr, nullptr, ir::CmpType::ALWAYS_TRUE, condition_block, 0));
+        instr = std::make_unique<ir::CmpAndJmpInstr>( nullptr,
+                                                      nullptr,
+                                                      ir::CmpType::ALWAYS_TRUE,
+                                                      condition_block,
+                                                      0);
+
+        basic_block_.instructions.emplace_back( std::move( instr));
         finish_basic_block( false_label);
     }
 
     void
     Visit( ast::FunctionCall& node) override
     {
-        std::vector<ir::OperandPtr> parameters;
+        std::vector<ir::OperandPtr> params;
         for ( auto& it : node.parameters )
         {
             it.get()->Accept( *this);
-            parameters.emplace_back( std::move( eval_stack_.back()));
+            params.emplace_back( std::move( eval_stack_.back()));
             eval_stack_.pop_back();
         }
 
-        ir::VarID tmp_id = tmp_counter_++;
+        const nt::Symbol *sym = nametable_->GetSymbol( node.id);
+        if ( sym->GetType() != nt::SymbolType::FUNCTION )
+        {
+            throw std::runtime_error{ "Unexpected symbol type"};
+        }
+
+        std::string tmp_id = "tmp_" + std::to_string( tmp_counter_++);
         function_.variables.emplace_back( tmp_id);
         ir::OperandPtr dest = std::make_unique<ir::VarOperand>( tmp_id);
-        basic_block_.instructions.emplace_back( std::make_unique<ir::FunctionCallInstr>( std::move( dest), node.id, std::move( parameters)));
+
+        ir::InstructionPtr instr = std::make_unique<ir::FunctionCallInstr>( std::move( dest),
+                                                                            sym->GetName(),
+                                                                            std::move( params));
+        basic_block_.instructions.emplace_back( std::move( instr));
     }
 
     void
@@ -199,7 +234,11 @@ public:
         ir::OperandPtr expression = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::UnaryOpInstr>( nullptr /* unused */, ir::UnaryOpType::RET, std::move( expression)));
+        ir::InstructionPtr instr = std::make_unique<ir::UnaryOpInstr>( nullptr,
+                                                                       ir::UnaryOpType::RET,
+                                                                       std::move( expression));
+
+        basic_block_.instructions.emplace_back( std::move( instr));
         finish_basic_block();
     }
 
@@ -215,42 +254,50 @@ public:
             eval_stack_.push_back( std::make_unique<ir::ImmOperand>( 0));
         }
 
-        // Adding initialization instruction
-        function_.variables.emplace_back( node.identifier);
         ir::OperandPtr initializer = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
+        const nt::Symbol *sym = nametable_->GetSymbol( node.identifier);
         ir::OperandPtr dest = nullptr;
-        const nametable::Symbol *sym = nametable_->GetSymbol( node.identifier);
-        if ( sym->GetType() == nametable::Symbol::Type::LOCAL_VARIABLE )
+        if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            dest = std::make_unique<ir::VarOperand>( node.identifier);
-        } else if ( sym->GetType() == nametable::Symbol::Type::GLOBAL_VARIABLE )
+            function_.variables.emplace_back( sym->GetName());
+            dest = std::make_unique<ir::VarOperand>( sym->GetName());
+        } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            program_.globals.emplace_back( node.identifier);
-            dest = std::make_unique<ir::GVarOperand>( node.identifier);
+            program_.globals.emplace_back( sym->GetName());
+            dest = std::make_unique<ir::GVarOperand>( sym->GetName());
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
         }
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::UnaryOpInstr>( std::move( dest), ir::UnaryOpType::MOV, std::move( initializer)));
+        ir::InstructionPtr instr = std::make_unique<ir::UnaryOpInstr>( std::move( dest),
+                                                                       ir::UnaryOpType::MOV,
+                                                                       std::move( initializer));
+        basic_block_.instructions.emplace_back( std::move( instr));
     }
 
     void
     Visit( ast::Input& node) override
     {
-        ir::OperandPtr dest;
-        const nametable::Symbol *sym = nametable_->GetSymbol( node.identifier);
-        if ( sym->GetType() == nametable::Symbol::Type::LOCAL_VARIABLE )
+        const nt::Symbol *sym = nametable_->GetSymbol( node.identifier);
+
+        ir::OperandPtr dest = nullptr;
+        if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            dest = std::make_unique<ir::VarOperand>( node.identifier);
+            dest = std::make_unique<ir::VarOperand>( sym->GetName());
+        } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
+        {
+            dest = std::make_unique<ir::GVarOperand>( sym->GetName());
         } else
         {
-            dest = std::make_unique<ir::GVarOperand>( node.identifier);
+            throw std::runtime_error{ "Unexpected operand type"};
         }
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::InputInstr>( std::move( dest), node.string));
+        ir::InstructionPtr instr = std::make_unique<ir::InputInstr>( std::move( dest),
+                                                                     node.string);
+        basic_block_.instructions.emplace_back( std::move( instr));
     };
 
     void
@@ -260,18 +307,27 @@ public:
         ir::OperandPtr expression = std::move( eval_stack_.back());
         eval_stack_.pop_back();
 
-        basic_block_.instructions.emplace_back( std::make_unique<ir::OutputInstr>( std::move( expression), node.string));
+        ir::InstructionPtr instr = std::make_unique<ir::OutputInstr>( std::move( expression),
+                                                                      node.string);
+
+        basic_block_.instructions.emplace_back( std::move( instr));
     }
 
     void
     EmitFunction( ast::Function *function)
     {
-        start_function( function->id);
+        const nt::Symbol *sym = nametable_->GetSymbol( function->id);
+        if ( sym->GetType() != nt::SymbolType::FUNCTION )
+        {
+            throw std::runtime_error{ "Unexpected symbol type"};
+        }
+        start_function( sym->GetName());
 
         // Getting function parameters
-        for ( ir::VarID it : function->parameters )
+        for ( nt::SymbolID param : function->parameters )
         {
-            function_.params.emplace_back( it);
+            const nt::Symbol *sym = nametable_->GetSymbol( param);
+            function_.params.emplace_back( sym->GetName());
         }
 
         // Emitting function body
@@ -280,7 +336,6 @@ public:
             it.get()->Accept( *this);
         }
 
-        // TODO check if needed
         // Adding last basic block which can be not full to function
         if ( !basic_block_.instructions.empty() )
         {
@@ -290,22 +345,19 @@ public:
         finish_function();
     }
 
-    void
+public:
+    ir::Program
     EmitProgram( ast::Program *program)
     {
         nametable_ = &program->nametable;
 
-        tmp_counter_ = program->nametable.GetMaxSymbolIndex();
-
-        start_function( 0);
-
-        // Global variables preamble
+        // Preamble
+        start_function( "_start");
         for ( auto& it : program->global_variables )
         {
             it->Accept( *this);
         }
-
-        finish_basic_block(); // TODO check if needed
+        finish_basic_block();
         program_.preamble = std::make_unique<ir::Function>( std::move( function_));
 
         // Functions
@@ -313,29 +365,17 @@ public:
         {
             EmitFunction( &it);
         }
-        program_finished_ = true;
-    }
-
-    ir::Program
-    GetProgram()
-    {
-        if ( !program_finished_ )
-        {
-            throw std::runtime_error{ "Expected to run visit on program tree head first"};
-        }
         return std::move( program_);
     }
 
 private:
-    std::vector<ir::OperandPtr> eval_stack_{};
-    ir::VarID tmp_counter_{ 0};
-
-    ir::Program program_{};
-    bool program_finished_{ false};
-    ir::Function function_{ 0};
-    ir::BasicBlock basic_block_{ 0};
-    ir::LocalLabelID basic_blocks_counter_{ 0};
-    nametable::NameTable *nametable_{ nullptr};
+    std::vector<ir::OperandPtr>  eval_stack_           {};
+    std::size_t                  tmp_counter_          { 0};
+    ir::Program                  program_              {};
+    ir::Function                 function_             { ""};
+    ir::BasicBlock               basic_block_          { 0};
+    ir::LocalLabelID             basic_blocks_counter_ { 0};
+    nt::NameTable               *nametable_            { nullptr};
 
 private:
     void
@@ -345,22 +385,24 @@ private:
     }
 
     void
-    start_function( ir::FuncID id)
+    start_function( std::string id)
     {
-        function_ = ir::Function{ id};
+        function_ = ir::Function{ std::move( id)};
     }
 
     void
     finish_basic_block()
     {
-        function_.basic_blocks.emplace_back( std::make_unique<ir::BasicBlock>( std::move( basic_block_)));
+        ir::BasicBlockPtr bb = std::make_unique<ir::BasicBlock>( std::move( basic_block_));
+        function_.basic_blocks.emplace_back( std::move( bb));
         basic_block_ = ir::BasicBlock{ ++basic_blocks_counter_};
     }
 
     void
     finish_basic_block( ir::LocalLabelID next_bb_id)
     {
-        function_.basic_blocks.emplace_back( std::make_unique<ir::BasicBlock>( std::move( basic_block_)));
+        ir::BasicBlockPtr bb = std::make_unique<ir::BasicBlock>( std::move( basic_block_));
+        function_.basic_blocks.emplace_back( std::move( bb));
         basic_block_ = ir::BasicBlock{ next_bb_id};
     }
 
@@ -371,11 +413,12 @@ private:
 ir::Program
 EmitIR( ast::Program *program)
 {
+    std::cerr << __FILE__ << ":" << __LINE__;
     Emitter emitter{};
+    std::cerr << __FILE__ << ":" << __LINE__;
 
-    emitter.EmitProgram( program);
+    ir::Program program_ir = emitter.EmitProgram( program);
 
-    ir::Program program_ir = emitter.GetProgram();
     return program_ir;
 }
 

@@ -14,7 +14,7 @@ namespace
 class OperandEmitter : public ir::OperandVisitor
 {
 public:
-    OperandEmitter( const std::unordered_map<ir::VarID, int>& rbp_offsets)
+    OperandEmitter( const std::unordered_map<std::string, int>& rbp_offsets)
      :  rbp_offsets_{ rbp_offsets}
     {
     }
@@ -22,20 +22,20 @@ public:
     void
     Visit( ir::VarOperand& node) override
     {
-        int rbp_offset = rbp_offsets_.find( node.id)->second;
+        int rbp_offset = rbp_offsets_.find( node.name)->second;
         result_ = lir::RegMem{ lir::Register::RBP, rbp_offset};
+    }
+
+    void
+    Visit( ir::GVarOperand& node) override
+    {
+        result_ = lir::Memory{ node.name};
     }
 
     void
     Visit( ir::ImmOperand& node) override
     {
         result_ = lir::Immediate{ node.value};
-    }
-
-    void
-    Visit( ir::GVarOperand& node) override
-    {
-        result_ = lir::Memory{ "GLOBAL_" + std::to_string( node.id)};
     }
 
     lir::Operand
@@ -46,19 +46,19 @@ public:
     }
 private:
     lir::Operand result_{ lir::Register::RAX};
-    const std::unordered_map<ir::VarID, int>& rbp_offsets_;
+    const std::unordered_map<std::string, int>& rbp_offsets_;
 
 };
 
 class InstructionEmitter : public ir::InstructionVisitor
 {
 public:
-    InstructionEmitter( const std::unordered_map<ir::VarID, int>& rbp_offsets,
-                        lir::Program& lir,
-                        int variables_size)
-     :  op_emitter_{ rbp_offsets},
-        lir_{ &lir},
-        variables_size_{ variables_size}
+    InstructionEmitter( const std::unordered_map<std::string, int>& rbp_offsets,
+                        lir::Program&                               lir,
+                        int                                         variables_size)
+     :  op_emitter_     { rbp_offsets},
+        lir_            { &lir},
+        variables_size_ { variables_size}
     {
     }
 
@@ -104,9 +104,8 @@ public:
         {
             lir_->AddPush( op_emitter_.GetOperand( it.get()));
         }
-        lir_->AddMath( lir::MathType::ADD, lir::Register::RBP, lir::Immediate{ 1});
         lir_->AddPush( lir::Register::RBP);
-        lir_->AddCall( "FUNC_" + std::to_string( node.func));
+        lir_->AddCall( node.name);
         lir_->AddPop( lir::Register::RBP);
         lir_->AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
@@ -149,9 +148,9 @@ public:
     void
     Visit( ir::InputInstr& node) override
     {
-        lir_->AddString( node.string);
-        std::string string_label = "GLOBAL_STRING_" + std::to_string( lir_->StringsNum());
-        lir_->AddMov( lir::Register::RSI, lir::StringImm{ string_label});
+        std::string str_label = "STR_CONST_" + std::to_string( str_constr_counter_++);
+        lir_->AddStrConst( str_label, node.string);
+        lir_->AddMov( lir::Register::RSI, lir::StringImm{ str_label});
         lir_->AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
         lir_->AddPush( lir::Register::RBP);
         lir_->AddCall( "__std_input");
@@ -162,9 +161,9 @@ public:
     void
     Visit( ir::OutputInstr& node) override
     {
-        lir_->AddString( node.string);
-        std::string string_label = "GLOBAL_STRING_" + std::to_string( lir_->StringsNum());
-        lir_->AddMov( lir::Register::RSI, lir::StringImm{ string_label});
+        std::string str_label = "STR_CONST_" + std::to_string( str_constr_counter_++);
+        lir_->AddStrConst( str_label, node.string);
+        lir_->AddMov( lir::Register::RSI, lir::StringImm{ str_label});
         lir_->AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
         lir_->AddMov( lir::Register::RCX, op_emitter_.GetOperand( node.expression.get()));
         lir_->AddPush( lir::Register::RBP);
@@ -181,17 +180,18 @@ public:
     }
 
 private:
-    OperandEmitter op_emitter_;
-    lir::Program *lir_;
-    int variables_size_;
+    OperandEmitter  op_emitter_;
+    lir::Program   *lir_;
+    int             variables_size_;
+    std::size_t     str_constr_counter_{0};
 
 };
 
 void
-EmitBasicBlock( lir::Program& lir,
-                ir::BasicBlock *basic_block,
-                const std::unordered_map<ir::VarID, int>& rbp_offsets,
-                int variables_size)
+EmitBasicBlock( lir::Program&                               lir,
+                ir::BasicBlock                             *basic_block,
+                const std::unordered_map<std::string, int>& rbp_offsets,
+                int                                         variables_size)
 {
     InstructionEmitter emitter{ rbp_offsets, lir, variables_size};
 
@@ -205,10 +205,9 @@ EmitBasicBlock( lir::Program& lir,
 
 void
 EmitFunction( lir::Program& lir,
-              ir::Function *function,
-              bool need_label = true)
+              ir::Function *function)
 {
-    std::unordered_map<ir::VarID, int> rbp_offsets;
+    std::unordered_map<std::string, int> rbp_offsets;
 
     for ( size_t i = 0; i != function->params.size(); ++i )
     {
@@ -219,10 +218,7 @@ EmitFunction( lir::Program& lir,
         rbp_offsets[function->variables[i]] = - 8 * (static_cast<int>( i) + 1);
     }
 
-    if ( need_label )
-    {
-        lir.AddLabel( "FUNC_" + std::to_string( function->id));
-    }
+    lir.AddLabel( function->name);
 
     lir.AddMov( lir::Register::RBP, lir::Register::RSP);
     lir.AddMath( lir::MathType::SUB, lir::Register::RBP, lir::Immediate{ 8});
@@ -240,23 +236,23 @@ EmitLowLevelIR( ir::Program *program)
 {
     lir::Program lir;
 
-    lir.AddLabel( "_start");
-
-    EmitFunction( lir, program->preamble.get(), false);
-    lir.AddCall( "FUNC_0"); // TODO FIXME, find main in nametable, add nametable to common
-
+    // Preamble
+    EmitFunction( lir, program->preamble.get());
+    lir.AddCall( "main"); // TODO check that main appears in nametable
     lir.AddMov( lir::Register::RAX, lir::Immediate{ 60});
     lir.AddMath( lir::MathType::XOR, lir::Register::RDI, lir::Register::RDI);
     lir.AddSyscall();
 
+    // Functions
     for ( auto& func : program->functions )
     {
         EmitFunction( lir, func.get());
     }
 
-    for ( auto& global : program->globals )
+    // Adding globals
+    for ( const std::string& global : program->globals )
     {
-        lir.AddGlobal( "GLOBAL_" + std::to_string( global), 0);
+        lir.AddGlobal( global, 0);
     }
 
     return lir;

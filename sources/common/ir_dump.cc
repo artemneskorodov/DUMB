@@ -17,19 +17,19 @@ public:
     void
     Visit( ir::VarOperand& node) override
     {
-        result_ = "tmp_" + std::to_string( node.id);
+        result_ = node.name;
+    }
+
+    void
+    Visit( ir::GVarOperand& node) override
+    {
+        result_ = node.name;
     }
 
     void
     Visit( ir::ImmOperand& node) override
     {
         result_ = "imm(" + std::to_string( node.value) + ")";
-    }
-
-    void
-    Visit( ir::GVarOperand& node) override
-    {
-        result_ = "glob_var_" + std::to_string( node.id);
     }
 
     std::string
@@ -54,9 +54,9 @@ public:
     void
     Visit( ir::BinaryOpInstr& node) override
     {
-        std::string left   { operand_dumper_.GetStr( node.first.get())};
-        std::string right  { operand_dumper_.GetStr( node.second.get())};
-        std::string dest   { operand_dumper_.GetStr( node.dest.get())};
+        std::string left   { op_dumper_.GetStr( node.first.get())};
+        std::string right  { op_dumper_.GetStr( node.second.get())};
+        std::string dest   { op_dumper_.GetStr( node.dest.get())};
         std::string op_str {};
         switch ( node.op )
         {
@@ -71,8 +71,8 @@ public:
     void
     Visit( ir::UnaryOpInstr& node) override
     {
-        std::string right  { operand_dumper_.GetStr( node.operand.get())};
-        std::string dest   { operand_dumper_.GetStr( node.dest.get())};
+        std::string right  { op_dumper_.GetStr( node.operand.get())};
+        std::string dest   { op_dumper_.GetStr( node.dest.get())};
         std::string op_str {};
         switch ( node.op )
         {
@@ -84,12 +84,11 @@ public:
     void
     Visit( ir::FunctionCallInstr& node) override
     {
-        std::string dest { operand_dumper_.GetStr( node.dest.get())};
-        std::string func { "FUNC_" + std::to_string( node.func)};
-        result_ = "FunctionCall: " + dest + " call " + func + " (";
+        std::string dest = op_dumper_.GetStr( node.dest.get());
+        result_ = "FunctionCall: " + dest + " call " + node.name + " (";
         for ( auto& it : node.params )
         {
-            std::string param = operand_dumper_.GetStr( it.get());
+            std::string param = op_dumper_.GetStr( it.get());
             result_ += param;
             if ( &it != &node.params.back() )
             {
@@ -108,8 +107,8 @@ public:
             return ;
         }
 
-        std::string left_str = operand_dumper_.GetStr( node.left.get());
-        std::string right_str = operand_dumper_.GetStr( node.right.get());
+        std::string left_str = op_dumper_.GetStr( node.left.get());
+        std::string right_str = op_dumper_.GetStr( node.right.get());
         std::string cmp_str;
         switch ( node.type )
         {
@@ -127,13 +126,13 @@ public:
     void
     Visit( ir::InputInstr& node) override
     {
-        result_ = "input (" + operand_dumper_.GetStr( node.dest.get()) + ", \"" + node.string + "\")";
+        result_ = "input (" + op_dumper_.GetStr( node.dest.get()) + ", \"" + node.string + "\")";
     }
 
     void
     Visit( ir::OutputInstr& node) override
     {
-        result_ = "output (" + operand_dumper_.GetStr( node.expression.get()) + ", \"" + node.string + "\")";
+        result_ = "output (" + op_dumper_.GetStr( node.expression.get()) + ", \"" + node.string + "\")";
     }
 
     std::string
@@ -145,7 +144,7 @@ public:
 
 private:
     std::string result_;
-    OperandDumper operand_dumper_;
+    OperandDumper op_dumper_;
 
 };
 
@@ -168,10 +167,10 @@ dump_basic_block( ir::BasicBlock *basic_block)
 std::string
 dump_function( ir::Function *function)
 {
-    std::string result = "FUNC_" + std::to_string( function->id) + " (";
+    std::string result = function->name + " (";
     for ( auto& param : function->params )
     {
-        result += "tmp_" + std::to_string( param);
+        result += param;
         if ( &param != &function->params.back() )
         {
             result += ", ";
@@ -192,9 +191,9 @@ void
 DumpIR( ir::Program *program)
 {
     std::string result = "# Globals:\n";
-    for ( ir::VarID var : program->globals )
+    for ( const std::string& var : program->globals )
     {
-        result += "    glob_var_" + std::to_string( var) + "\n";
+        result += "    " + var + "\n";
     }
     result += "\n# Preamble:\n" + dump_function( program->preamble.get());
 

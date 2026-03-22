@@ -185,9 +185,9 @@ Program::ToStr() const
         result += it.label + " dq " + std::to_string( it.initializer) + "\n";
     }
 
-    for ( std::size_t i = 0; i != global_strings_.size(); ++i )
+    for ( const StrConst& str : global_strings_ )
     {
-        result += "GLOBAL_STRING_" + std::to_string( i + 1) + " dq \"" + global_strings_[i] + "\"\n";
+        result += str.label + " db \"" + str.value + "\"\n";
     }
     return result;
 }
