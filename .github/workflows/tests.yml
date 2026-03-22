@@ -1,0 +1,69 @@
+name: Test compiler
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  BUILD_TYPE: Debug
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Create build directory
+        run: mkdir -p build
+
+      - name: Configure CMake
+        run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
+
+      - name: Create artifacts directory
+        run: mkdir -p ${{ github.workspace }}/artifacts
+
+      - name: Prepare build artifacts
+        run: mv ${{ github.workspace }}/build ${{ github.workspace }}/artifacts/build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: build
+          path: ${{ github.workspace }}/artifacts
+
+  test-all-compiler:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive  # подтягиваем сабмодули снова для тестовой джобы
+
+      - name: Get build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: build
+
+      - name: Make compiler executable
+        run: chmod +x ${{ github.workspace }}/build/dumb
+
+      - name: Create tests build directory
+        run: mkdir -p ${{ github.workspace }}/benchmarks_build
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip graphviz nasm
+
+      - name: Run tests
+        working-directory: ${{ github.workspace }}/build
+        run: ctest -C ${{ env.BUILD_TYPE }} --output-on-failure

@@ -469,11 +469,12 @@ SyntaxParser::get_expression()
             is_type( lexer::TokenType::OP_SUB) )
     {
         ast::BinaryOp::Operation operation;
-        switch ( token().type )
+        if ( is_type( lexer::TokenType::OP_ADD) )
         {
-            case lexer::TokenType::OP_ADD: operation = ast::BinaryOp::OP_ADD; break;
-            case lexer::TokenType::OP_SUB: operation = ast::BinaryOp::OP_SUB; break;
-            default: assert( false);
+            operation = ast::BinaryOp::OP_ADD;
+        } else
+        {
+            operation = ast::BinaryOp::OP_SUB;
         }
         advance();
 
@@ -493,11 +494,12 @@ SyntaxParser::get_product()
             is_type( lexer::TokenType::OP_DIV) )
     {
         ast::BinaryOp::Operation operation;
-        switch ( token().type )
+        if ( is_type( lexer::TokenType::OP_MUL) )
         {
-            case lexer::TokenType::OP_MUL: operation = ast::BinaryOp::OP_MUL; break;
-            case lexer::TokenType::OP_DIV: operation = ast::BinaryOp::OP_DIV; break;
-            default: assert( false);
+            operation = ast::BinaryOp::OP_MUL;
+        } else
+        {
+            operation = ast::BinaryOp::OP_DIV;
         }
         advance();
 
