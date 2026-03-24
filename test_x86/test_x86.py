@@ -89,7 +89,7 @@ def config(request):
         "tests": request.config.getoption("--tests").split(","),
     }
 
-def tests_on_x86(test_name, config):
+def test_x86(test_name, config):
     compiler = config["compiler"]
     workdir  = config["workdir"]
 

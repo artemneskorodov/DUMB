@@ -1,0 +1,14 @@
+function func( parameter)
+{
+    variable local = parameter + 10;
+    return local;
+}
+
+function main()
+{
+    variable parameter = 0;
+    input( parameter, "Parameter = ");
+    variable result = func(parameter);
+    output( result, "Result = ");
+    return 0;
+}

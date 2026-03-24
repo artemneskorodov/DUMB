@@ -1,0 +1,4 @@
+out: "Parameter = "
+in:  "10"
+out: "Result = "
+out: "20"

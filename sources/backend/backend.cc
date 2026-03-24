@@ -86,7 +86,7 @@ private:
         } else if ( node.op == ir::UnaryOpType::RET )
         {
             lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
-            lir_.AddMath( lir::MathType::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
+            lir_.AddMath( lir::MathType::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
             lir_.AddRet();
         }
     }
@@ -94,12 +94,15 @@ private:
     void
     Visit( ir::FunctionCallInstr& node) override
     {
+        lir_.AddPush( lir::Register::RBP);
+
         for ( auto& it : node.params )
         {
             lir_.AddPush( op_emitter_.GetOperand( it.get()));
         }
-        lir_.AddPush( lir::Register::RBP);
+        int params_num = static_cast<int>( node.params.size());
         lir_.AddCall( node.name);
+        lir_.AddMath( lir::MathType::ADD, lir::Register::RSP, lir::Immediate{ 8 * params_num});
         lir_.AddPop( lir::Register::RBP);
         lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
@@ -195,9 +198,9 @@ private:
         lir_.AddLabel( function->name);
 
         lir_.AddMov( lir::Register::RBP, lir::Register::RSP);
-        lir_.AddMath( lir::MathType::SUB, lir::Register::RBP, lir::Immediate{ 8});
+        // lir_.AddMath( lir::MathType::SUB, lir::Register::RBP, lir::Immediate{ 8});
         variables_size_ = static_cast<int>( function->variables.size() * 8);
-        lir_.AddMath( lir::MathType::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
+        lir_.AddMath( lir::MathType::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
 
         for ( auto& block : function->basic_blocks )
         {

@@ -55,7 +55,7 @@ operand_to_string( const Operand& operand)
             offset = -offset;
             sign_str = " - ";
         }
-        return "[" + reg_to_str( regmem.reg) + sign_str + std::to_string( offset) + "]";
+        return "qword [" + reg_to_str( regmem.reg) + sign_str + std::to_string( offset) + "]";
     } else if ( std::holds_alternative<Immediate>( operand) )
     {
         return std::to_string( std::get<Immediate>( operand).value);

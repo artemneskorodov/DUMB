@@ -16,6 +16,6 @@ def pytest_runtest_logreport(report):
         name = report.location[2]
 
         if report.passed:
-            print(f": {name:40}[" + Fore.GREEN + "PASS" + Fore.RESET + "]")
+            print(f"{name:40}[" + Fore.GREEN + "PASS" + Fore.RESET + "]")
         elif report.failed:
-            print(f": {name:40}[" + Fore.RED   + "FAIL" + Fore.RESET + "]")
+            print(f"{name:40}[" + Fore.RED   + "FAIL" + Fore.RESET + "]")
