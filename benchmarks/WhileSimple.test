@@ -1,3 +1,5 @@
+case:
+
 out: "Input = "
 in:  "5"
 out: "Now var is: "

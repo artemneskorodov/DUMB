@@ -1,0 +1,11 @@
+case:
+
+out: "Parameter = "
+in:  "10"
+out: "Result = 5"
+
+case:
+
+out: "Parameter = "
+in:  "-20"
+out: "Result = -10"

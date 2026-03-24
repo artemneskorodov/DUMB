@@ -69,7 +69,11 @@ private:
             case ir::BinaryOpType::ADD: type = lir::MathType::ADD; break;
             case ir::BinaryOpType::SUB: type = lir::MathType::SUB; break;
             case ir::BinaryOpType::MUL: type = lir::MathType::MUL; break;
-            case ir::BinaryOpType::DIV: type = lir::MathType::DIV; break;
+            case ir::BinaryOpType::DIV:
+            {
+                lir_.AddMath( lir::MathType::XOR, lir::Register::RDX, lir::Register::RDX);
+                type = lir::MathType::DIV; break;
+            }
         }
 
         lir_.AddMath( type, lir::Register::RAX, lir::Register::RBX);
@@ -127,7 +131,7 @@ private:
         if ( node.type == ir::CmpType::LESS )
         {
             lir_.AddJmp( lir::JmpType::JL, true_label);
-            lir_.AddJmp( lir::JmpType::JG, false_label);
+            lir_.AddJmp( lir::JmpType::JGE, false_label);
         } else if ( node.type == ir::CmpType::EQUAL )
         {
             lir_.AddJmp( lir::JmpType::JE,  true_label);
@@ -135,7 +139,7 @@ private:
         } else if ( node.type == ir::CmpType::BIGGER )
         {
             lir_.AddJmp( lir::JmpType::JG, true_label);
-            lir_.AddJmp( lir::JmpType::JL, false_label);
+            lir_.AddJmp( lir::JmpType::JLE, false_label);
         } else
         {
             throw std::runtime_error{ "Unexpected comparison type"};

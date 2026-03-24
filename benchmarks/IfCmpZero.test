@@ -1,4 +1,20 @@
+case:
+
 out: "Input = "
 in:  "10"
 out: "Bigger then zero: "
 out: "10"
+
+case:
+
+out: "Input = "
+in:  "-10"
+out: "Less then zero: "
+out: "-10"
+
+case:
+
+out: "Input = "
+in:  "0"
+out: "Equals zero: "
+out: "0"

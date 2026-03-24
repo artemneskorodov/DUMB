@@ -8,12 +8,19 @@ BENCHMARKS_DIR       = "benchmarks"
 BENCHMARKS_BUILD_DIR = "benchmarks_build"
 
 def parse_test_file(path: str):
+    cases = []
     steps = []
 
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
+                continue
+
+            if line.startswith("case:"):
+                if len(steps) != 0:
+                    cases.append(steps)
+                    steps = []
                 continue
 
             if line.startswith("in:"):
@@ -24,8 +31,10 @@ def parse_test_file(path: str):
                 steps.append(("out", eval(value)))
             else:
                 raise RuntimeError(f"Invalid line in test file: {line}")
+        if len(steps) != 0:
+            cases.append(steps)
 
-    return steps
+    return cases
 
 def get_proc(exec_path: str):
     master_fd, slave_fd = pty.openpty()
@@ -69,17 +78,20 @@ def build_exec(test_name, compiler_exec, work_dir):
 
     return elf
 
-def run_script(master_fd, steps):
-    for operation, value in steps:
-        if operation == "in":
-            os.write(master_fd, (value + "\n").encode())
-        elif operation == "out":
-            output = ""
-            while not output.endswith(value):
-                output += os.read(master_fd, 1).decode()
-            output = output.replace("\n", "")
-            output = output.replace("\r", "")
-            assert output == value, f'Expected: "{value}", got: "{output}"'
+def run_script(exec_path, cases):
+    for steps in cases:
+        proc, master_fd = get_proc(exec_path)
+        for operation, value in steps:
+            if operation == "in":
+                os.write(master_fd, (value + "\n").encode())
+            elif operation == "out":
+                output = ""
+                while not output.endswith(value):
+                    output += os.read(master_fd, 1).decode()
+                output = output.replace("\n", "")
+                output = output.replace("\r", "")
+                assert output == value, f'Expected: "{value}", got: "{output}"'
+        proc.kill()
 
 @pytest.fixture
 def config(request):
@@ -96,11 +108,6 @@ def test_x86(test_name, config):
     exec_path = build_exec(test_name, compiler, workdir)
 
     test_file = f"{workdir}/benchmarks/{test_name}.test"
-    steps = parse_test_file(test_file)
+    cases = parse_test_file(test_file)
 
-    proc, master_fd = get_proc(exec_path)
-
-    try:
-        run_script(master_fd, steps)
-    finally:
-        proc.kill()
+    run_script(exec_path, cases)

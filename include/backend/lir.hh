@@ -115,6 +115,8 @@ enum class JmpType
     JNE,
     JL,
     JG,
+    JLE,
+    JGE,
 };
 
 struct JmpInstr

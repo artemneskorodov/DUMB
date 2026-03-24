@@ -1,6 +1,6 @@
 function func( parameter)
 {
-    variable local = parameter + 10;
+    variable local = parameter / 2;
     return local;
 }
 

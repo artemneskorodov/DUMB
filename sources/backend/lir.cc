@@ -84,6 +84,8 @@ jmp_to_str( const JmpInstr& instr)
         case JmpType::JNE: return "jne " + instr.label;
         case JmpType::JL:  return "jl "  + instr.label;
         case JmpType::JG:  return "jg "  + instr.label;
+        case JmpType::JLE: return "jle " + instr.label;
+        case JmpType::JGE: return "jge " + instr.label;
         default: throw std::runtime_error{ "Unexpected jump type"};
     }
 }
@@ -120,7 +122,13 @@ math_to_str( const MathInstr& instr)
     {
         case MathType::ADD: op_str = "add"; break;
         case MathType::SUB: op_str = "sub"; break;
-        case MathType::DIV: op_str = "div"; break;
+        case MathType::DIV:
+        {
+            // TODO fix sign moving to RDX with CQO instruction, it must be alone
+            assert( std::holds_alternative<lir::Register>( instr.first) &&
+                    std::get<lir::Register>( instr.first) == lir::Register::RAX);
+            return "cqo\nidiv " + operand_to_string( instr.second);
+        }
         case MathType::MUL:
         {
             // TODO move mul and div to another type of instructions (use binary instr and unary instr)
@@ -128,7 +136,7 @@ math_to_str( const MathInstr& instr)
             // Result is in RAX
             assert( std::holds_alternative<lir::Register>( instr.first) &&
                     std::get<lir::Register>( instr.first) == lir::Register::RAX);
-            return "mul " + operand_to_string( instr.second);
+            return "imul " + operand_to_string( instr.second);
         }
         case MathType::XOR: op_str = "xor"; break;
         case MathType::CMP: op_str = "cmp"; break;
