@@ -37,7 +37,6 @@ enum class Register
 
 struct Immediate
 {
-    explicit
     Immediate( int value)
      :  value{ value}
     {
@@ -94,20 +93,6 @@ using Operand = std::variant
     StringImm
 >;
 
-struct MovInstr
-{
-    MovInstr( Operand first,
-              Operand second)
-     :  first{ std::move( first)},
-        second{ std::move( second)}
-    {
-    }
-
-    Operand first;
-    Operand second;
-
-};
-
 enum class JmpType
 {
     JMP,
@@ -133,30 +118,6 @@ struct JmpInstr
 
 };
 
-struct PushInstr
-{
-    explicit
-    PushInstr( Operand operand)
-     :  operand{ operand}
-    {
-    }
-
-    Operand operand;
-
-};
-
-struct PopInstr
-{
-    explicit
-    PopInstr( Operand operand)
-     :  operand{ operand}
-    {
-    }
-
-    Operand operand;
-
-};
-
 struct CallInstr
 {
     explicit
@@ -169,87 +130,59 @@ struct CallInstr
 
 };
 
-struct RetInstr
+enum class NoOpInstr
 {
+    SYSCALL,
+    RET,
+    CQO,
 };
 
-struct AddInstr
+enum class UnaryOp
 {
-    AddInstr( Operand first,
-              Operand second)
-     :  first  { std::move( first)},
-        second { std::move( second)}
-    {
-    }
-
-    Operand first;
-    Operand second;
-
+    IMUL,
+    IDIV,
+    PUSH,
+    POP,
 };
 
-struct SubInstr
-{
-    SubInstr( Operand first,
-              Operand second)
-     :  first  { std::move( first)},
-        second { std::move( second)}
-    {
-    }
-
-    Operand first;
-    Operand second;
-
-};
-
-struct XorInstr
-{
-    XorInstr( Operand first,
-              Operand second)
-     :  first  { std::move( first)},
-        second { std::move( second)}
-    {
-    }
-
-    Operand first;
-    Operand second;
-
-};
-
-struct CmpInstr
-{
-    CmpInstr( Operand first,
-              Operand second)
-     :  first  { std::move( first)},
-        second { std::move( second)}
-    {
-    }
-
-    Operand first;
-    Operand second;
-
-};
-
-struct MulInstr
+struct UnaryOpInstr
 {
     explicit
-    MulInstr( Operand mult)
-     :  mult { std::move( mult)}
+    UnaryOpInstr( UnaryOp instr,
+                  Operand operand)
+     :  instr   { instr},
+        operand { std::move( operand)}
     {
     }
 
-    Operand mult;
+    UnaryOp instr;
+    Operand operand;
 
 };
 
-struct DivInstr
+enum class BinaryOp
 {
-    explicit
-    DivInstr( Operand divider)
-     :  divider { std::move( divider)}
+    MOV,
+    ADD,
+    SUB,
+    XOR,
+    CMP,
+};
+
+struct BinaryOpInstr
+{
+    BinaryOpInstr( BinaryOp instr,
+                   Operand  first,
+                   Operand  second)
+     :  instr  { instr},
+        first  { std::move( first)},
+        second { std::move( second)}
     {
     }
 
-    Operand divider;
+    BinaryOp instr;
+    Operand  first;
+    Operand  second;
 
 };
 
@@ -265,31 +198,14 @@ struct Label
 
 };
 
-struct Syscall
-{
-};
-
-struct Cqo
-{
-};
-
 using Instruction = std::variant
 <
-    MovInstr,
     JmpInstr,
-    PushInstr,
-    PopInstr,
     CallInstr,
-    RetInstr,
     Label,
-    AddInstr,
-    SubInstr,
-    XorInstr,
-    CmpInstr,
-    MulInstr,
-    DivInstr,
-    Syscall,
-    Cqo
+    NoOpInstr,
+    UnaryOpInstr,
+    BinaryOpInstr
 >;
 
 struct StrConst
@@ -310,10 +226,24 @@ class Program
 {
 public:
     void
-    AddMov( Operand first,
-            Operand second)
+    Add( NoOpInstr instr)
     {
-        instructions_.emplace_back( MovInstr{ first, second});
+        instructions_.emplace_back( instr);
+    }
+
+    void
+    Add( UnaryOp instr,
+         Operand operand)
+    {
+        instructions_.emplace_back( UnaryOpInstr{ instr, std::move( operand)});
+    }
+
+    void
+    Add( BinaryOp instr,
+         Operand  first,
+         Operand  second)
+    {
+        instructions_.emplace_back( BinaryOpInstr{ instr, std::move( first), std::move( second)});
     }
 
     void
@@ -324,85 +254,15 @@ public:
     }
 
     void
-    AddPush( Operand op)
-    {
-        instructions_.emplace_back( PushInstr{ op});
-    }
-
-    void
-    AddPop( Operand op)
-    {
-        instructions_.emplace_back( PopInstr{ op});
-    }
-
-    void
     AddCall( std::string label)
     {
         instructions_.emplace_back( CallInstr{ std::move( label)});
     }
 
     void
-    AddRet()
-    {
-        instructions_.emplace_back( RetInstr{});
-    }
-
-    void
     AddLabel( std::string label)
     {
         instructions_.emplace_back( Label{ std::move( label)});
-    }
-
-    void
-    AddAdd( Operand first,
-            Operand second)
-    {
-        instructions_.emplace_back( AddInstr{ std::move( first), std::move( second)});
-    }
-
-    void
-    AddSub( Operand first,
-            Operand second)
-    {
-        instructions_.emplace_back( SubInstr{ std::move( first), std::move( second)});
-    }
-
-    void
-    AddXor( Operand first,
-            Operand second)
-    {
-        instructions_.emplace_back( XorInstr{ std::move( first), std::move( second)});
-    }
-
-    void
-    AddCmp( Operand first,
-            Operand second)
-    {
-        instructions_.emplace_back( CmpInstr{ std::move( first), std::move( second)});
-    }
-
-    void
-    AddMul( Operand mult)
-    {
-        instructions_.emplace_back( MulInstr{ std::move( mult)});
-    }
-
-    void
-    AddDiv( Operand divider)
-    {
-        instructions_.emplace_back( DivInstr{ std::move( divider)});
-    }
-
-    void
-    AddSyscall()
-    {
-        instructions_.emplace_back( Syscall{});
-    }
-
-    void
-    AddCqo()
-    {
-        instructions_.emplace_back( Cqo{});
     }
 
     std::string ToStr() const;

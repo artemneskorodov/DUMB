@@ -59,31 +59,31 @@ private:
     void
     Visit( ir::BinaryOpInstr& node) override
     {
-        lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.first.get()));
-        lir_.AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.second.get()));
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, op_emitter_.GetOperand( node.first.get()));
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RBX, op_emitter_.GetOperand( node.second.get()));
 
         switch ( node.op )
         {
             case ir::BinaryOpType::ADD:
             {
-                lir_.AddAdd( lir::Register::RAX, lir::Register::RBX);
+                lir_.Add( lir::BinaryOp::ADD, lir::Register::RAX, lir::Register::RBX);
                 break;
             }
             case ir::BinaryOpType::SUB:
             {
-                lir_.AddSub( lir::Register::RAX, lir::Register::RBX);
+                lir_.Add( lir::BinaryOp::SUB, lir::Register::RAX, lir::Register::RBX);
                 break;
             }
             case ir::BinaryOpType::MUL:
             {
-                lir_.AddMul( lir::Register::RBX);
+                lir_.Add( lir::UnaryOp::IMUL, lir::Register::RBX);
                 break;
             }
             case ir::BinaryOpType::DIV:
             {
-                lir_.AddXor( lir::Register::RDX, lir::Register::RDX);
-                lir_.AddCqo();
-                lir_.AddDiv( lir::Register::RBX);
+                lir_.Add( lir::BinaryOp::XOR, lir::Register::RDX, lir::Register::RDX);
+                lir_.Add( lir::NoOpInstr::CQO);
+                lir_.Add( lir::UnaryOp::IDIV, lir::Register::RBX);
                 break;
             }
             default:
@@ -92,7 +92,7 @@ private:
             }
         }
 
-        lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
+        lir_.Add( lir::BinaryOp::MOV, op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
@@ -100,30 +100,30 @@ private:
     {
         if ( node.op == ir::UnaryOpType::MOV )
         {
-            lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
-            lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
+            lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
+            lir_.Add( lir::BinaryOp::MOV, op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
         } else if ( node.op == ir::UnaryOpType::RET )
         {
-            lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
-            lir_.AddAdd( lir::Register::RSP, lir::Immediate{ variables_size_});
-            lir_.AddRet();
+            lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
+            lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
+            lir_.Add( lir::NoOpInstr::RET);
         }
     }
 
     void
     Visit( ir::FunctionCallInstr& node) override
     {
-        lir_.AddPush( lir::Register::RBP);
+        lir_.Add( lir::UnaryOp::PUSH, lir::Register::RBP);
 
         for ( auto& it : node.params )
         {
-            lir_.AddPush( op_emitter_.GetOperand( it.get()));
+            lir_.Add( lir::UnaryOp::PUSH, op_emitter_.GetOperand( it.get()));
         }
         int params_num = static_cast<int>( node.params.size());
         lir_.AddCall( node.name);
-        lir_.AddAdd( lir::Register::RSP, lir::Immediate{ 8 * params_num});
-        lir_.AddPop( lir::Register::RBP);
-        lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
+        lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ 8 * params_num});
+        lir_.Add( lir::UnaryOp::POP, lir::Register::RBP);
+        lir_.Add( lir::BinaryOp::MOV, op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
@@ -136,9 +136,9 @@ private:
         }
 
         node.left->Accept( op_emitter_);
-        lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.left.get()));
-        lir_.AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.right.get()));
-        lir_.AddCmp( lir::Register::RAX, lir::Register::RBX);
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, op_emitter_.GetOperand( node.left.get()));
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RBX, op_emitter_.GetOperand( node.right.get()));
+        lir_.Add( lir::BinaryOp::CMP, lir::Register::RAX, lir::Register::RBX);
 
         std::string true_label = ".LOC_" + std::to_string( node.true_dest);
         std::string false_label = ".LOC_" + std::to_string( node.false_dest);
@@ -166,12 +166,12 @@ private:
     {
         std::string str_label = "STR_CONST_" + std::to_string( str_constr_counter_++);
         lir_.AddStrConst( str_label, node.string);
-        lir_.AddMov( lir::Register::RSI, lir::StringImm{ str_label});
-        lir_.AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
-        lir_.AddPush( lir::Register::RBP);
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RSI, lir::StringImm{ str_label});
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RDX, node.string.length());
+        lir_.Add( lir::UnaryOp::PUSH, lir::Register::RBP);
         lir_.AddCall( "__std_input");
-        lir_.AddPop( lir::Register::RBP);
-        lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
+        lir_.Add( lir::UnaryOp::POP, lir::Register::RBP);
+        lir_.Add( lir::BinaryOp::MOV, op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
     void
@@ -179,12 +179,12 @@ private:
     {
         std::string str_label = "STR_CONST_" + std::to_string( str_constr_counter_++);
         lir_.AddStrConst( str_label, node.string);
-        lir_.AddMov( lir::Register::RSI, lir::StringImm{ str_label});
-        lir_.AddMov( lir::Register::RDX, lir::Immediate{ static_cast<int>( node.string.length())});
-        lir_.AddMov( lir::Register::RCX, op_emitter_.GetOperand( node.expression.get()));
-        lir_.AddPush( lir::Register::RBP);
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RSI, lir::StringImm{ str_label});
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RDX, node.string.length());
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RCX, op_emitter_.GetOperand( node.expression.get()));
+        lir_.Add( lir::UnaryOp::PUSH, lir::Register::RBP);
         lir_.AddCall( "__std_output");
-        lir_.AddPop( lir::Register::RBP);
+        lir_.Add( lir::UnaryOp::POP, lir::Register::RBP);
     }
 
     void
@@ -216,10 +216,10 @@ private:
 
         lir_.AddLabel( function->name);
 
-        lir_.AddMov( lir::Register::RBP, lir::Register::RSP);
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RBP, lir::Register::RSP);
         // lir_.AddMath( lir::MathType::SUB, lir::Register::RBP, lir::Immediate{ 8});
         variables_size_ = static_cast<int>( function->variables.size() * 8);
-        lir_.AddSub( lir::Register::RSP, lir::Immediate{ variables_size_});
+        lir_.Add( lir::BinaryOp::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
 
         for ( auto& block : function->basic_blocks )
         {
@@ -234,9 +234,9 @@ public:
         // Preamble
         EmitFunction( program->preamble.get());
         lir_.AddCall( "main"); // TODO check that main appears in nametable
-        lir_.AddMov( lir::Register::RAX, lir::Immediate{ 60});
-        lir_.AddXor( lir::Register::RDI, lir::Register::RDI);
-        lir_.AddSyscall();
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, lir::Immediate{ 60});
+        lir_.Add( lir::BinaryOp::XOR, lir::Register::RDI, lir::Register::RDI);
+        lir_.Add( lir::NoOpInstr::SYSCALL);
 
         // Functions
         for ( auto& func : program->functions )
