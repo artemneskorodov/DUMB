@@ -1,0 +1,6 @@
+out: "First = "
+in:  "5"
+out: "Second = "
+in:  "4"
+out: "Result = "
+out: "20"

@@ -556,6 +556,13 @@ SyntaxParser::get_symbol()
         while ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
         {
             parameters.emplace_back( get_expression());
+            if ( is_type( lexer::TokenType::COMMA) )
+            {
+                advance();
+            } else
+            {
+                check( lexer::TokenType::RIGHT_PARENTHESIS);
+            }
         }
         advance();
 

@@ -104,7 +104,7 @@ enable_testing()
 
 set(
     TESTS_LIST
-    addition,if,while,functions
+    Addition,IfCmpZero,WhileSimple,FuncitonsSingleParam,FunctionsMultipleParam
 )
 
 add_test(

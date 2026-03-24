@@ -1,0 +1,17 @@
+function func(parameter1, parameter2)
+{
+    variable result = parameter1 * parameter2;
+    return result;
+}
+
+function main()
+{
+    variable first = 1;
+    variable second = 2;
+    input(first, "First = ");
+    input(second, "Second = ");
+
+    variable result = func(first, second);
+    output(result, "Result = ");
+    return 0;
+}
