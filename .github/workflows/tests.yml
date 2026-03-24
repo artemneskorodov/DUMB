@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive  # подтягиваем сабмодули снова для тестовой джобы
+          submodules: recursive
 
       - name: Get build artifacts
         uses: actions/download-artifact@v8

@@ -4,8 +4,7 @@ out: "First = "
 in:  "10"
 out: "Second = "
 in:  "10"
-out: "First + Second = "
-out: "20"
+out: "First + Second = 20"
 
 case:
 
@@ -13,5 +12,4 @@ out: "First = "
 in:  "10"
 out: "Second = "
 in:  "-10"
-out: "First + Second = "
-out: "0"
+out: "First + Second = 0"

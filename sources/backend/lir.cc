@@ -115,33 +115,45 @@ ret_to_str()
 }
 
 std::string
-math_to_str( const MathInstr& instr)
+add_to_str( const AddInstr& instr)
 {
-    std::string op_str{};
-    switch ( instr.type )
-    {
-        case MathType::ADD: op_str = "add"; break;
-        case MathType::SUB: op_str = "sub"; break;
-        case MathType::DIV:
-        {
-            // TODO fix sign moving to RDX with CQO instruction, it must be alone
-            assert( std::holds_alternative<lir::Register>( instr.first) &&
-                    std::get<lir::Register>( instr.first) == lir::Register::RAX);
-            return "cqo\nidiv " + operand_to_string( instr.second);
-        }
-        case MathType::MUL:
-        {
-            // TODO move mul and div to another type of instructions (use binary instr and unary instr)
-            // Only RAX can be first operand of mul instruction.
-            // Result is in RAX
-            assert( std::holds_alternative<lir::Register>( instr.first) &&
-                    std::get<lir::Register>( instr.first) == lir::Register::RAX);
-            return "imul " + operand_to_string( instr.second);
-        }
-        case MathType::XOR: op_str = "xor"; break;
-        case MathType::CMP: op_str = "cmp"; break;
-    }
-    return op_str + " " + operand_to_string( instr.first) + ", " + operand_to_string( instr.second);
+    return "add " + operand_to_string( instr.first) + ", " + operand_to_string( instr.second);
+}
+
+std::string
+sub_to_str( const SubInstr& instr)
+{
+    return "sub " + operand_to_string( instr.first) + ", " + operand_to_string( instr.second);
+}
+
+std::string
+xor_to_str( const XorInstr& instr)
+{
+    return "xor " + operand_to_string( instr.first) + ", " + operand_to_string( instr.second);
+}
+
+std::string
+cmp_to_str( const CmpInstr& instr)
+{
+    return "cmp " + operand_to_string( instr.first) + ", " + operand_to_string( instr.second);
+}
+
+std::string
+mul_to_str( const MulInstr& instr)
+{
+    return "imul " + operand_to_string( instr.mult);
+}
+
+std::string
+div_to_str( const DivInstr& instr)
+{
+    return "idiv " + operand_to_string( instr.divider);
+}
+
+std::string
+cqo_to_str()
+{
+    return "cqo";
 }
 
 std::string
@@ -188,12 +200,30 @@ Program::ToStr() const
         } else if ( std::holds_alternative<Label>( instr) )
         {
             result += label_to_str( std::get<Label>( instr));
-        } else if ( std::holds_alternative<MathInstr>( instr) )
+        } else if ( std::holds_alternative<AddInstr>( instr) )
         {
-            result += math_to_str( std::get<MathInstr>( instr));
+            result += add_to_str( std::get<AddInstr>( instr));
+        } else if ( std::holds_alternative<SubInstr>( instr) )
+        {
+            result += sub_to_str( std::get<SubInstr>( instr));
+        } else if ( std::holds_alternative<XorInstr>( instr) )
+        {
+            result += xor_to_str( std::get<XorInstr>( instr));
+        } else if ( std::holds_alternative<CmpInstr>( instr) )
+        {
+            result += cmp_to_str( std::get<CmpInstr>( instr));
+        } else if ( std::holds_alternative<MulInstr>( instr) )
+        {
+            result += mul_to_str( std::get<MulInstr>( instr));
+        } else if ( std::holds_alternative<DivInstr>( instr) )
+        {
+            result += div_to_str( std::get<DivInstr>( instr));
         } else if ( std::holds_alternative<Syscall>( instr) )
         {
             result += syscall_to_str();
+        } else if ( std::holds_alternative<Cqo>( instr) )
+        {
+            result += cqo_to_str();
         } else
         {
             throw std::runtime_error{ "Unexpected instruction type"};

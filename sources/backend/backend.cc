@@ -62,21 +62,36 @@ private:
         lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.first.get()));
         lir_.AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.second.get()));
 
-        lir::MathType type;
-
         switch ( node.op )
         {
-            case ir::BinaryOpType::ADD: type = lir::MathType::ADD; break;
-            case ir::BinaryOpType::SUB: type = lir::MathType::SUB; break;
-            case ir::BinaryOpType::MUL: type = lir::MathType::MUL; break;
+            case ir::BinaryOpType::ADD:
+            {
+                lir_.AddAdd( lir::Register::RAX, lir::Register::RBX);
+                break;
+            }
+            case ir::BinaryOpType::SUB:
+            {
+                lir_.AddSub( lir::Register::RAX, lir::Register::RBX);
+                break;
+            }
+            case ir::BinaryOpType::MUL:
+            {
+                lir_.AddMul( lir::Register::RBX);
+                break;
+            }
             case ir::BinaryOpType::DIV:
             {
-                lir_.AddMath( lir::MathType::XOR, lir::Register::RDX, lir::Register::RDX);
-                type = lir::MathType::DIV; break;
+                lir_.AddXor( lir::Register::RDX, lir::Register::RDX);
+                lir_.AddCqo();
+                lir_.AddDiv( lir::Register::RBX);
+                break;
+            }
+            default:
+            {
+                throw std::runtime_error{ "Unexpected binary op type"};
             }
         }
 
-        lir_.AddMath( type, lir::Register::RAX, lir::Register::RBX);
         lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
 
@@ -90,7 +105,7 @@ private:
         } else if ( node.op == ir::UnaryOpType::RET )
         {
             lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.operand.get()));
-            lir_.AddMath( lir::MathType::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
+            lir_.AddAdd( lir::Register::RSP, lir::Immediate{ variables_size_});
             lir_.AddRet();
         }
     }
@@ -106,7 +121,7 @@ private:
         }
         int params_num = static_cast<int>( node.params.size());
         lir_.AddCall( node.name);
-        lir_.AddMath( lir::MathType::ADD, lir::Register::RSP, lir::Immediate{ 8 * params_num});
+        lir_.AddAdd( lir::Register::RSP, lir::Immediate{ 8 * params_num});
         lir_.AddPop( lir::Register::RBP);
         lir_.AddMov( op_emitter_.GetOperand( node.dest.get()), lir::Register::RAX);
     }
@@ -123,7 +138,7 @@ private:
         node.left->Accept( op_emitter_);
         lir_.AddMov( lir::Register::RAX, op_emitter_.GetOperand( node.left.get()));
         lir_.AddMov( lir::Register::RBX, op_emitter_.GetOperand( node.right.get()));
-        lir_.AddMath( lir::MathType::CMP, lir::Register::RAX, lir::Register::RBX);
+        lir_.AddCmp( lir::Register::RAX, lir::Register::RBX);
 
         std::string true_label = ".LOC_" + std::to_string( node.true_dest);
         std::string false_label = ".LOC_" + std::to_string( node.false_dest);
@@ -204,7 +219,7 @@ private:
         lir_.AddMov( lir::Register::RBP, lir::Register::RSP);
         // lir_.AddMath( lir::MathType::SUB, lir::Register::RBP, lir::Immediate{ 8});
         variables_size_ = static_cast<int>( function->variables.size() * 8);
-        lir_.AddMath( lir::MathType::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
+        lir_.AddSub( lir::Register::RSP, lir::Immediate{ variables_size_});
 
         for ( auto& block : function->basic_blocks )
         {
@@ -220,7 +235,7 @@ public:
         EmitFunction( program->preamble.get());
         lir_.AddCall( "main"); // TODO check that main appears in nametable
         lir_.AddMov( lir::Register::RAX, lir::Immediate{ 60});
-        lir_.AddMath( lir::MathType::XOR, lir::Register::RDI, lir::Register::RDI);
+        lir_.AddXor( lir::Register::RDI, lir::Register::RDI);
         lir_.AddSyscall();
 
         // Functions

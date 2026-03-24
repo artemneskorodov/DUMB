@@ -173,30 +173,83 @@ struct RetInstr
 {
 };
 
-enum class MathType
+struct AddInstr
 {
-    ADD,
-    SUB,
-    DIV,
-    MUL,
-    XOR,
-    CMP,
-};
-
-struct MathInstr
-{
-    MathInstr( MathType type,
-               Operand first,
-               Operand second)
-     :  type{ type},
-        first{ std::move( first)},
-        second{ std::move( second)}
+    AddInstr( Operand first,
+              Operand second)
+     :  first  { std::move( first)},
+        second { std::move( second)}
     {
     }
 
-    MathType type;
     Operand first;
     Operand second;
+
+};
+
+struct SubInstr
+{
+    SubInstr( Operand first,
+              Operand second)
+     :  first  { std::move( first)},
+        second { std::move( second)}
+    {
+    }
+
+    Operand first;
+    Operand second;
+
+};
+
+struct XorInstr
+{
+    XorInstr( Operand first,
+              Operand second)
+     :  first  { std::move( first)},
+        second { std::move( second)}
+    {
+    }
+
+    Operand first;
+    Operand second;
+
+};
+
+struct CmpInstr
+{
+    CmpInstr( Operand first,
+              Operand second)
+     :  first  { std::move( first)},
+        second { std::move( second)}
+    {
+    }
+
+    Operand first;
+    Operand second;
+
+};
+
+struct MulInstr
+{
+    explicit
+    MulInstr( Operand mult)
+     :  mult { std::move( mult)}
+    {
+    }
+
+    Operand mult;
+
+};
+
+struct DivInstr
+{
+    explicit
+    DivInstr( Operand divider)
+     :  divider { std::move( divider)}
+    {
+    }
+
+    Operand divider;
 
 };
 
@@ -216,6 +269,10 @@ struct Syscall
 {
 };
 
+struct Cqo
+{
+};
+
 using Instruction = std::variant
 <
     MovInstr,
@@ -225,8 +282,14 @@ using Instruction = std::variant
     CallInstr,
     RetInstr,
     Label,
-    MathInstr,
-    Syscall
+    AddInstr,
+    SubInstr,
+    XorInstr,
+    CmpInstr,
+    MulInstr,
+    DivInstr,
+    Syscall,
+    Cqo
 >;
 
 struct StrConst
@@ -291,17 +354,55 @@ public:
     }
 
     void
-    AddMath( MathType type,
-             Operand first,
-             Operand second)
+    AddAdd( Operand first,
+            Operand second)
     {
-        instructions_.emplace_back( MathInstr{ type, std::move( first), std::move( second)});
+        instructions_.emplace_back( AddInstr{ std::move( first), std::move( second)});
+    }
+
+    void
+    AddSub( Operand first,
+            Operand second)
+    {
+        instructions_.emplace_back( SubInstr{ std::move( first), std::move( second)});
+    }
+
+    void
+    AddXor( Operand first,
+            Operand second)
+    {
+        instructions_.emplace_back( XorInstr{ std::move( first), std::move( second)});
+    }
+
+    void
+    AddCmp( Operand first,
+            Operand second)
+    {
+        instructions_.emplace_back( CmpInstr{ std::move( first), std::move( second)});
+    }
+
+    void
+    AddMul( Operand mult)
+    {
+        instructions_.emplace_back( MulInstr{ std::move( mult)});
+    }
+
+    void
+    AddDiv( Operand divider)
+    {
+        instructions_.emplace_back( DivInstr{ std::move( divider)});
     }
 
     void
     AddSyscall()
     {
         instructions_.emplace_back( Syscall{});
+    }
+
+    void
+    AddCqo()
+    {
+        instructions_.emplace_back( Cqo{});
     }
 
     std::string ToStr() const;

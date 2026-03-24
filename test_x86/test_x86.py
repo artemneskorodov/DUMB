@@ -86,10 +86,9 @@ def run_script(exec_path, cases):
                 os.write(master_fd, (value + "\n").encode())
             elif operation == "out":
                 output = ""
-                while not output.endswith(value):
-                    output += os.read(master_fd, 1).decode()
-                output = output.replace("\n", "")
-                output = output.replace("\r", "")
+                while len(output) != len(value):
+                    data = os.read(master_fd, 1).decode('ascii')
+                    output += data.replace("\r", "").replace("\n", "")
                 assert output == value, f'Expected: "{value}", got: "{output}"'
         proc.kill()
 
