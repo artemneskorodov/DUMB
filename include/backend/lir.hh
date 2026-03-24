@@ -37,7 +37,6 @@ enum class Register
 
 struct Immediate
 {
-    explicit
     Immediate( int value)
      :  value{ value}
     {
@@ -94,20 +93,6 @@ using Operand = std::variant
     StringImm
 >;
 
-struct MovInstr
-{
-    MovInstr( Operand first,
-              Operand second)
-     :  first{ std::move( first)},
-        second{ std::move( second)}
-    {
-    }
-
-    Operand first;
-    Operand second;
-
-};
-
 enum class JmpType
 {
     JMP,
@@ -115,6 +100,8 @@ enum class JmpType
     JNE,
     JL,
     JG,
+    JLE,
+    JGE,
 };
 
 struct JmpInstr
@@ -131,30 +118,6 @@ struct JmpInstr
 
 };
 
-struct PushInstr
-{
-    explicit
-    PushInstr( Operand operand)
-     :  operand{ operand}
-    {
-    }
-
-    Operand operand;
-
-};
-
-struct PopInstr
-{
-    explicit
-    PopInstr( Operand operand)
-     :  operand{ operand}
-    {
-    }
-
-    Operand operand;
-
-};
-
 struct CallInstr
 {
     explicit
@@ -167,34 +130,59 @@ struct CallInstr
 
 };
 
-struct RetInstr
+enum class NoOpInstr
 {
+    SYSCALL,
+    RET,
+    CQO,
 };
 
-enum class MathType
+enum class UnaryOp
 {
+    IMUL,
+    IDIV,
+    PUSH,
+    POP,
+};
+
+struct UnaryOpInstr
+{
+    explicit
+    UnaryOpInstr( UnaryOp instr,
+                  Operand operand)
+     :  instr   { instr},
+        operand { std::move( operand)}
+    {
+    }
+
+    UnaryOp instr;
+    Operand operand;
+
+};
+
+enum class BinaryOp
+{
+    MOV,
     ADD,
     SUB,
-    DIV,
-    MUL,
     XOR,
     CMP,
 };
 
-struct MathInstr
+struct BinaryOpInstr
 {
-    MathInstr( MathType type,
-               Operand first,
-               Operand second)
-     :  type{ type},
-        first{ std::move( first)},
-        second{ std::move( second)}
+    BinaryOpInstr( BinaryOp instr,
+                   Operand  first,
+                   Operand  second)
+     :  instr  { instr},
+        first  { std::move( first)},
+        second { std::move( second)}
     {
     }
 
-    MathType type;
-    Operand first;
-    Operand second;
+    BinaryOp instr;
+    Operand  first;
+    Operand  second;
 
 };
 
@@ -210,21 +198,14 @@ struct Label
 
 };
 
-struct Syscall
-{
-};
-
 using Instruction = std::variant
 <
-    MovInstr,
     JmpInstr,
-    PushInstr,
-    PopInstr,
     CallInstr,
-    RetInstr,
     Label,
-    MathInstr,
-    Syscall
+    NoOpInstr,
+    UnaryOpInstr,
+    BinaryOpInstr
 >;
 
 struct StrConst
@@ -245,10 +226,24 @@ class Program
 {
 public:
     void
-    AddMov( Operand first,
-            Operand second)
+    Add( NoOpInstr instr)
     {
-        instructions_.emplace_back( MovInstr{ first, second});
+        instructions_.emplace_back( instr);
+    }
+
+    void
+    Add( UnaryOp instr,
+         Operand operand)
+    {
+        instructions_.emplace_back( UnaryOpInstr{ instr, std::move( operand)});
+    }
+
+    void
+    Add( BinaryOp instr,
+         Operand  first,
+         Operand  second)
+    {
+        instructions_.emplace_back( BinaryOpInstr{ instr, std::move( first), std::move( second)});
     }
 
     void
@@ -259,47 +254,15 @@ public:
     }
 
     void
-    AddPush( Operand op)
-    {
-        instructions_.emplace_back( PushInstr{ op});
-    }
-
-    void
-    AddPop( Operand op)
-    {
-        instructions_.emplace_back( PopInstr{ op});
-    }
-
-    void
     AddCall( std::string label)
     {
         instructions_.emplace_back( CallInstr{ std::move( label)});
     }
 
     void
-    AddRet()
-    {
-        instructions_.emplace_back( RetInstr{});
-    }
-
-    void
     AddLabel( std::string label)
     {
         instructions_.emplace_back( Label{ std::move( label)});
-    }
-
-    void
-    AddMath( MathType type,
-             Operand first,
-             Operand second)
-    {
-        instructions_.emplace_back( MathInstr{ type, std::move( first), std::move( second)});
-    }
-
-    void
-    AddSyscall()
-    {
-        instructions_.emplace_back( Syscall{});
     }
 
     std::string ToStr() const;

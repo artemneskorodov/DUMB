@@ -180,6 +180,7 @@ struct FunctionCallInstr : public Instruction
     OperandPtr              dest;
     std::string             name;
     std::vector<OperandPtr> params;
+
 };
 
 // Compare and jump instruction

@@ -1,0 +1,11 @@
+function main()
+{
+    variable var;
+    input( var, "Input = ");
+    while ( var > 0 )
+    {
+        output( var, "Now var is: ");
+        var = var - 1;
+    }
+    return 0;
+}

@@ -1,0 +1,9 @@
+case:
+
+out: "Input = "
+in:  "5"
+out: "Now var is: 5"
+out: "Now var is: 4"
+out: "Now var is: 3"
+out: "Now var is: 2"
+out: "Now var is: 1"

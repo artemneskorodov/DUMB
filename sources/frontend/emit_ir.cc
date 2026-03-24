@@ -21,12 +21,14 @@ private:
     void
     Visit( ast::Immediate& node) override
     {
+        assert( eval_stack_.empty());
         eval_stack_.push_back( std::make_unique<ir::ImmOperand>( node.value));
     }
 
     void
     Visit( ast::Identifier& node) override
     {
+        assert( eval_stack_.empty());
         const nt::Symbol *sym = nametable_->GetSymbol( node.id);
         if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
@@ -43,6 +45,7 @@ private:
     void
     Visit( ast::BinaryOp& node) override
     {
+        assert( eval_stack_.empty());
         // Emitting left side of operation
         node.left->Accept( *this);
         ir::OperandPtr left = std::move( eval_stack_.back());
@@ -78,6 +81,7 @@ private:
     void
     Visit( ast::Assignment& node) override
     {
+        assert( eval_stack_.empty());
         // Emitting expression
         node.right->Accept( *this);
         ir::OperandPtr expression = std::move( eval_stack_.back());
@@ -105,8 +109,7 @@ private:
     void
     Visit( ast::If& node) override
     {
-        // Emitting condition
-
+        assert( eval_stack_.empty());
         // Left
         node.condition.left->Accept( *this);
         ir::OperandPtr left = std::move( eval_stack_.back());
@@ -151,6 +154,7 @@ private:
     void
     Visit( ast::While& node) override
     {
+        assert( eval_stack_.empty());
         // Adding condition basic block
         finish_basic_block();
         ir::LocalLabelID condition_block = basic_blocks_counter_;
@@ -205,6 +209,7 @@ private:
     void
     Visit( ast::FunctionCall& node) override
     {
+        assert( eval_stack_.empty());
         std::vector<ir::OperandPtr> params;
         for ( auto& it : node.parameters )
         {
@@ -227,11 +232,15 @@ private:
                                                                             sym->GetName(),
                                                                             std::move( params));
         basic_block_.instructions.emplace_back( std::move( instr));
+
+        ir::OperandPtr result = std::make_unique<ir::VarOperand>( tmp_id);
+        eval_stack_.push_back( std::move( result));
     }
 
     void
     Visit( ast::Return& node) override
     {
+        assert( eval_stack_.empty());
         // Emitting expression to return
         node.expression.get()->Accept( *this);
 
@@ -249,6 +258,7 @@ private:
     void
     Visit( ast::NewVariable& node) override
     {
+        assert( eval_stack_.empty());
         // Counting new variable in stack, adds instructions to basic blocks
         if ( node.initializer != nullptr )
         {
@@ -285,6 +295,7 @@ private:
     void
     Visit( ast::Input& node) override
     {
+        assert( eval_stack_.empty());
         const nt::Symbol *sym = nametable_->GetSymbol( node.identifier);
 
         ir::OperandPtr dest = nullptr;
@@ -307,6 +318,7 @@ private:
     void
     Visit( ast::Output& node) override
     {
+        assert( eval_stack_.empty());
         node.expression->Accept( *this);
         ir::OperandPtr expression = std::move( eval_stack_.back());
         eval_stack_.pop_back();
@@ -320,6 +332,7 @@ private:
     void
     EmitFunction( ast::Function *function)
     {
+        assert( eval_stack_.empty());
         const nt::Symbol *sym = nametable_->GetSymbol( function->id);
         if ( sym->GetType() != nt::SymbolType::FUNCTION )
         {
@@ -353,6 +366,7 @@ public:
     ir::Program
     EmitProgram( ast::Program *program)
     {
+        assert( eval_stack_.empty());
         nametable_ = &program->nametable;
 
         // Preamble
@@ -417,12 +431,9 @@ private:
 ir::Program
 EmitIR( ast::Program *program)
 {
-    std::cerr << __FILE__ << ":" << __LINE__;
     Emitter emitter{};
-    std::cerr << __FILE__ << ":" << __LINE__;
 
     ir::Program program_ir = emitter.EmitProgram( program);
-
     return program_ir;
 }
 
