@@ -116,5 +116,11 @@ set(
 
 add_test(
     NAME tests_x86
-    COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test_x86 --compiler ${CMAKE_SOURCE_DIR}/build/dumb --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
+    COMMAND pytest ${CMAKE_SOURCE_DIR}/test/test_x86.py --compiler ${CMAKE_SOURCE_DIR}/build/dumb --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
 )
+
+add_test(
+    NAME tests_ast
+    COMMAND pytest ${CMAKE_SOURCE_DIR}/test/test_ast.py --compiler ${CMAKE_SOURCE_DIR}/build/dumb_ast_interpreter --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
+)
+

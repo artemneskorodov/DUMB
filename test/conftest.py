@@ -24,9 +24,9 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture
 def config(request):
     return {
-        "compiler": request.config.getoption("--compiler"),
-        "workdir": request.config.getoption("--workdir"),
-        "tests": request.config.getoption("--tests").split(","),
+        "compiler":  request.config.getoption("--compiler"),
+        "workdir":   request.config.getoption("--workdir"),
+        "tests":     request.config.getoption("--tests").split(","),
         "test_type": request.config.getoption("--test-type"),
     }
 

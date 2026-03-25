@@ -25,7 +25,7 @@ class X86CompilerTest(CompilerTestBase):
     def run_test(self, test_name: str) -> None:
         exec_path = self.build_executable(test_name)
         test_cases = self.parse_tests(test_name)
-        run_test_cases(exec_path, test_cases)
+        run_test_cases([exec_path], test_cases)
 
 @pytest.fixture
 def x86_test(config):

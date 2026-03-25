@@ -108,9 +108,9 @@ private:
             bool result;
             switch ( node.condition.operation )
             {
-                case CompareOp::OP_CMP_LESS:    result = (left <  right);
-                case CompareOp::OP_CMP_EQUAL:   result = (left == right);
-                case CompareOp::OP_CMP_BIGGER:  result = (left >  right);
+                case CompareOp::OP_CMP_LESS:    result = (left <  right); break;
+                case CompareOp::OP_CMP_EQUAL:   result = (left == right); break;
+                case CompareOp::OP_CMP_BIGGER:  result = (left >  right); break;
                 default: throw std::runtime_error{ "Unexpected compare operation"};
             }
             if ( !result )
