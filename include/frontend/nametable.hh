@@ -84,6 +84,13 @@ public:
         scope_symbols_.pop_back();
     }
 
+    ///
+    /// @brief Find symbol in nametable by name in current scope.
+    /// @param name Name of symbol
+    /// @return Pointer to Symbol
+    /// @warning This function can only be used before syntax analysis, as it is only looks for names in visible_names_
+    /// @todo Fix this making different classes for syntax parser nametable and other nametables, or use std::string after syntax parsing
+    ///
     const Symbol *
     GetSymbol( const std::string& name) const &
     {

@@ -12,6 +12,8 @@ namespace dump
 
 ///
 /// @brief
+/// @param program
+/// @param output
 ///
 void DumpAST( ast::Program *program, const std::string& output);
 

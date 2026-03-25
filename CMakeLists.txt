@@ -95,6 +95,13 @@ target_link_libraries(dumb PRIVATE frontend)
 target_link_libraries(dumb PRIVATE backend)
 
 #
+# AST interpreter build rules
+#
+add_executable(dumb_ast_interpreter ${SRC_DIR}/dumb_ast_interpreter.cc)
+
+target_link_libraries(dumb_ast_interpreter PRIVATE frontend)
+
+#
 # Testing
 #
 
@@ -109,5 +116,11 @@ set(
 
 add_test(
     NAME tests_x86
-    COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test_x86 --compiler ${CMAKE_SOURCE_DIR}/build/dumb --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
+    COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test/test_x86.py --compiler ${CMAKE_SOURCE_DIR}/build/dumb --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
 )
+
+add_test(
+    NAME tests_ast
+    COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test/test_ast.py --compiler ${CMAKE_SOURCE_DIR}/build/dumb_ast_interpreter --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
+)
+
