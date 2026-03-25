@@ -1,9 +1,7 @@
-# conftest.py
 import pytest
 from colorama import Fore, Style
 
 def pytest_addoption(parser):
-    # Проверяем, не добавлена ли уже опция
     if not hasattr(parser, '_added_compiler_option'):
         parser.addoption("--compiler", action="store", required=True,
                          help="Path to compiler executable")
@@ -37,4 +35,4 @@ def pytest_runtest_logreport(report):
         if report.passed:
             print(f"{name:50} [" + Fore.GREEN + "PASS" + Fore.RESET + "]")
         elif report.failed:
-            print(f"{name:50} [" + Fore.RED + "FAIL" + Fore.RESET + "]")
+            print(f"{name:50} [" + Fore.RED   + "FAIL" + Fore.RESET + "]")

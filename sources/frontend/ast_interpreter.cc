@@ -44,9 +44,9 @@ private:
         switch ( node.operation )
         {
             case BinaryOp::OP_ADD: result = left + right; break;
-            case BinaryOp::OP_SUB: result = left + right; break;
-            case BinaryOp::OP_MUL: result = left + right; break;
-            case BinaryOp::OP_DIV: result = left + right; break;
+            case BinaryOp::OP_SUB: result = left - right; break;
+            case BinaryOp::OP_MUL: result = left * right; break;
+            case BinaryOp::OP_DIV: result = left / right; break;
             default: throw std::runtime_error{ "Unexpected binary operation"};
         }
         eval_stack_.push_back( result);

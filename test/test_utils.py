@@ -16,9 +16,6 @@ class TestCase:
         self.steps.append(("out", value))
 
 def create_pty_process(run_exec_command: List[str]):
-    """
-    Creating test process
-    """
     master_fd, slave_fd = pty.openpty()
 
     attrs = termios.tcgetattr(slave_fd)
@@ -37,7 +34,6 @@ def create_pty_process(run_exec_command: List[str]):
     return proc, master_fd
 
 def read_from_pty(master_fd, expected_length: int) -> str:
-    """Чтение из PTY"""
     output = ""
     while len(output) < expected_length:
         data = os.read(master_fd, 1).decode('ascii')
@@ -45,9 +41,6 @@ def read_from_pty(master_fd, expected_length: int) -> str:
     return output
 
 def run_test_cases(run_exec_command: List[str], test_cases: List[TestCase]) -> None:
-    """
-    Running all test cases for path
-    """
     for case in test_cases:
         proc, master_fd = create_pty_process(run_exec_command)
 

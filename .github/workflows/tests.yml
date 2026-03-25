@@ -56,9 +56,6 @@ jobs:
       - name: Make compiler executable
         run: chmod +x ${{ github.workspace }}/build/dumb
 
-      - name: Create tests build directory
-        run: mkdir -p ${{ github.workspace }}/benchmarks_build
-
       - name: Install test dependencies
         run: |
           sudo apt-get update
@@ -67,4 +64,31 @@ jobs:
 
       - name: Run tests
         working-directory: ${{ github.workspace }}/build
-        run: ctest -V --timeout 1000 -C ${{ env.BUILD_TYPE }} --output-on-failure
+        run: ctest -V --timeout 1000 -C ${{ env.BUILD_TYPE }} --output-on-failure -R tests_x86
+
+  test-ast:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Get build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: build
+
+      - name: Make interpreter executable
+        run: chmod +x ${{ github.workspace }}/build/dumb_ast_interpreter
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip graphviz
+          pip3 install -r ${{ github.workspace }}/requirements.txt
+
+      - name: Run tests
+        working-directory: ${{ github.workspace }}/build
+        run: ctest -V --timeout 1000 -C ${{ env.BUILD_TYPE }} --output-on-failure -R tests_ast
