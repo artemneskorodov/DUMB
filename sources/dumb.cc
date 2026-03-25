@@ -7,12 +7,12 @@
 #include "utils.hh"
 
 int
-main( int argc,
+main( int         argc,
       const char *argv[])
 {
     if ( argc != 3 )
     {
-        std::cerr << "Unexpected parameters number";
+        std::cerr << "Unexpected parameters number" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -26,6 +26,6 @@ main( int argc,
     std::string result = dumb::RunBackend( &program_ir);
 
     dumb::utils::WriteTextFile( output, result);
-    std::cout << result;
+
     return 0;
 }

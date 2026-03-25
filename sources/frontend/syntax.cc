@@ -113,10 +113,6 @@ private:
     inline const lexer::Token&
     token( int offset = 0) const
     {
-        std::cerr << "On token [" << std::to_string( tokens_[pos_ + offset].line) << ":"
-                  << std::to_string( tokens_[pos_ + offset].column) << "] "
-                  << "type = " << lexer::TypeToStr( tokens_[pos_ + offset].type)
-                  << ", value = '" << tokens_[pos_ + offset].value << "'\n";
         return tokens_[pos_ + offset];
     }
 
@@ -159,8 +155,8 @@ ast::Function
 SyntaxParser::get_function()
 {
     assert( !nametable_.HasScope());
+    assert( is_type( lexer::TokenType::FUNC_DECLARATION));
 
-    check( lexer::TokenType::FUNC_DECLARATION);
     advance();
 
     check( lexer::TokenType::USER_STRING);

@@ -95,6 +95,13 @@ target_link_libraries(dumb PRIVATE frontend)
 target_link_libraries(dumb PRIVATE backend)
 
 #
+# AST interpreter build rules
+#
+add_executable(dumb_ast_interpreter ${SRC_DIR}/dumb_ast_interpreter.cc)
+
+target_link_libraries(dumb_ast_interpreter PRIVATE frontend)
+
+#
 # Testing
 #
 
