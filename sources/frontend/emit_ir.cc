@@ -32,10 +32,10 @@ private:
         const nt::Symbol *sym = nametable_->GetSymbol( node.id);
         if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            eval_stack_.push_back( std::make_unique<ir::VarOperand>( sym->GetName()));
+            eval_stack_.push_back( std::make_unique<ir::VarOperand>( sym->GetSafeName()));
         } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            eval_stack_.push_back( std::make_unique<ir::GVarOperand>( sym->GetName()));
+            eval_stack_.push_back( std::make_unique<ir::GVarOperand>( sym->GetSafeName()));
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
@@ -91,10 +91,10 @@ private:
         ir::OperandPtr dest = nullptr;
         if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            dest = std::make_unique<ir::VarOperand>( sym->GetName());
+            dest = std::make_unique<ir::VarOperand>( sym->GetSafeName());
         } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            dest = std::make_unique<ir::GVarOperand>( sym->GetName());
+            dest = std::make_unique<ir::GVarOperand>( sym->GetSafeName());
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
@@ -275,12 +275,12 @@ private:
         ir::OperandPtr dest = nullptr;
         if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            function_.variables.emplace_back( sym->GetName());
-            dest = std::make_unique<ir::VarOperand>( sym->GetName());
+            function_.variables.emplace_back( sym->GetSafeName());
+            dest = std::make_unique<ir::VarOperand>( sym->GetSafeName());
         } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            program_.globals.emplace_back( sym->GetName());
-            dest = std::make_unique<ir::GVarOperand>( sym->GetName());
+            program_.globals.emplace_back( sym->GetSafeName());
+            dest = std::make_unique<ir::GVarOperand>( sym->GetSafeName());
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
@@ -301,10 +301,10 @@ private:
         ir::OperandPtr dest = nullptr;
         if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            dest = std::make_unique<ir::VarOperand>( sym->GetName());
+            dest = std::make_unique<ir::VarOperand>( sym->GetSafeName());
         } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            dest = std::make_unique<ir::GVarOperand>( sym->GetName());
+            dest = std::make_unique<ir::GVarOperand>( sym->GetSafeName());
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
@@ -344,7 +344,7 @@ private:
         for ( nt::SymbolID param : function->parameters )
         {
             const nt::Symbol *sym = nametable_->GetSymbol( param);
-            function_.params.emplace_back( sym->GetName());
+            function_.params.emplace_back( sym->GetSafeName());
         }
 
         // Emitting function body

@@ -111,7 +111,7 @@ enable_testing()
 
 set(
     TESTS_LIST
-    Addition,IfCmpZero,WhileSimple,FunctionsSingleParam,FunctionsMultipleParam
+    Addition,IfCmpZero,WhileSimple,FunctionsSingleParam,FunctionsMultipleParam,SameVarName
 )
 
 add_test(

@@ -1,0 +1,38 @@
+function case1()
+{
+    variable local_variable = 1;
+    variable copy_if_inner_value;
+    input(local_variable, "First = ");
+    if ( 1 > 0 )
+    {
+        variable local_variable = 2;
+        input(local_variable, "Second = ");
+        copy_if_inner_value = local_variable;
+    }
+    output(local_variable, "First = ");
+    output(copy_if_inner_value, "Second = ");
+    return 0;
+}
+
+variable global_variable_name = 1;
+
+function case2()
+{
+    input(global_variable_name, "Global variable = ");
+    if ( 1 > 0 )
+    {
+        variable global_variable_name = 2;
+        input(global_variable_name, "Local with same name = ");
+        output(global_variable_name, "Local = ");
+    }
+    output(global_variable_name, "Global = ");
+    return 0;
+}
+
+function main()
+{
+    variable result = 0;
+    result = case1();
+    result = case2();
+    return 0;
+}

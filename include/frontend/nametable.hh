@@ -33,9 +33,10 @@ public:
     {
     }
 
-    std::string GetName () const { return name_; }
-    SymbolType  GetType () const { return type_; }
-    SymbolID    GetID   () const { return id_;   }
+    std::string GetName     () const { return name_; }
+    SymbolType  GetType     () const { return type_; }
+    SymbolID    GetID       () const { return id_;   }
+    std::string GetSafeName () const { return name_ + "__nt_id_" + std::to_string( id_); }
 private:
     std::string name_;
     SymbolType  type_;
