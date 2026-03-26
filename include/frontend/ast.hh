@@ -101,9 +101,9 @@ struct BinaryOp : public ExprNode
         OP_DIV,
     };
 
-    BinaryOp( Operation  op,
-              ASTNodePtr left,
-              ASTNodePtr right)
+    BinaryOp( Operation   op,
+              ExprNodePtr left,
+              ExprNodePtr right)
      :  operation { op},
         left      { std::move( left)},
         right     { std::move( right)}
@@ -113,9 +113,9 @@ struct BinaryOp : public ExprNode
     void Accept( Visitor& v) override;
     void Accept( ConstantVisitor& v) const override;
 
-    Operation  operation;
-    ASTNodePtr left;
-    ASTNodePtr right;
+    Operation   operation;
+    ExprNodePtr left;
+    ExprNodePtr right;
 
 };
 

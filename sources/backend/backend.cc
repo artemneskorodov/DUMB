@@ -257,10 +257,10 @@ public:
     }
 
 private:
-    lir::Program    lir_{};
-    OperandEmitter  op_emitter_{};
-    int             variables_size_;
-    std::size_t     str_constr_counter_{0};
+    lir::Program   lir_{};
+    OperandEmitter op_emitter_{};
+    int            variables_size_;
+    std::size_t    str_constr_counter_{0};
 
 };
 

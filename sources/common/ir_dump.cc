@@ -143,7 +143,7 @@ public:
     }
 
 private:
-    std::string result_;
+    std::string   result_;
     OperandDumper op_dumper_;
 
 };

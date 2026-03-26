@@ -383,6 +383,7 @@ public:
         {
             EmitFunction( func);
         }
+        nametable_ = nullptr;
         return std::move( program_);
     }
 

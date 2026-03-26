@@ -216,6 +216,7 @@ public:
         program_ = &ast;
         const Function& func = find_function( "main");
         VisitFunction( func);
+        program_ = nullptr;
     }
 
 private:
@@ -247,12 +248,12 @@ private:
     }
 
 private:
-    const ast::Program *program_;
-    std::unordered_map<nt::SymbolID, int> values_{};
-    int function_result_;
-    std::vector<int> eval_stack_{};
-    std::vector<int> parameters_{};
-    bool need_return_{ false};
+    const ast::Program                    *program_;
+    std::unordered_map<nt::SymbolID, int>  values_{};
+    int                                    function_result_;
+    std::vector<int>                       eval_stack_{};
+    std::vector<int>                       parameters_{};
+    bool                                   need_return_{ false};
 
 };
 
