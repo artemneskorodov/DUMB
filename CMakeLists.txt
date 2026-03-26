@@ -98,8 +98,19 @@ target_link_libraries(dumb PRIVATE backend)
 # AST interpreter build rules
 #
 add_executable(dumb_ast_interpreter ${SRC_DIR}/dumb_ast_interpreter.cc)
+target_compile_options(dumb PRIVATE ${CXX_COMPILE_OPTIONS})
 
 target_link_libraries(dumb_ast_interpreter PRIVATE frontend)
+
+#
+# IR interpreter build rules
+#
+add_executable(dumb_ir_interpreter ${SRC_DIR}/dumb_ir_interpreter.cc)
+target_compile_options(dumb PRIVATE ${CXX_COMPILE_OPTIONS})
+
+target_link_libraries(dumb_ir_interpreter PRIVATE frontend)
+
+target_link_libraries(dumb_ir_interpreter PRIVATE common)
 
 #
 # Testing
@@ -122,5 +133,10 @@ add_test(
 add_test(
     NAME tests_ast
     COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test/test_ast.py --compiler ${CMAKE_SOURCE_DIR}/build/dumb_ast_interpreter --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
+)
+
+add_test(
+    NAME tests_ir
+    COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test/test_ir.py --compiler ${CMAKE_SOURCE_DIR}/build/dumb_ir_interpreter --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
 )
 

@@ -43,14 +43,18 @@ def read_from_pty(master_fd, expected_length: int) -> str:
 def run_test_cases(run_exec_command: List[str], test_cases: List[TestCase]) -> None:
     for case in test_cases:
         proc, master_fd = create_pty_process(run_exec_command)
-
+        all_output = ""
         try:
             for operation, value in case.steps:
                 if operation == "in":
                     os.write(master_fd, (value + "\n").encode())
                 elif operation == "out":
-                    output = read_from_pty(master_fd, len(value))
-                    assert output == value, f'Expected: "{value}", got: "{output}"'
+                    output = ""
+                    while len(output) < len(value):
+                        data = os.read(master_fd, 1).decode('ascii')
+                        output += data.replace("\r", "").replace("\n", "")
+                        all_output += data
+                    assert output == value, f'Expected: "{value}", got: "{output}".\nOutput:\n{all_output}'
         finally:
             proc.kill()
 

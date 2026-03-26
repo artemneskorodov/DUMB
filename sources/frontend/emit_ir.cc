@@ -147,6 +147,13 @@ private:
             it.get()->Accept( *this);
         }
 
+        instr = std::make_unique<ir::CmpAndJmpInstr>( nullptr /* unused */,
+                                                      nullptr /* unused */,
+                                                      ir::CmpType::ALWAYS_TRUE,
+                                                      false_label,
+                                                      0 /* unused */);
+        basic_block_.instructions.emplace_back( std::move( instr));
+
         // Finishing basic block with new basic block label equals to false label which we saved previously
         finish_basic_block( false_label);
     }
@@ -156,6 +163,12 @@ private:
     {
         assert( eval_stack_.empty());
         // Adding condition basic block
+        ir::InstructionPtr instr = std::make_unique<ir::CmpAndJmpInstr>( nullptr /* unused */,
+                                                                         nullptr /* unused */,
+                                                                         ir::CmpType::ALWAYS_TRUE,
+                                                                         basic_blocks_counter_ + 1,
+                                                                         0 /* unused */);
+        basic_block_.instructions.emplace_back( std::move( instr));
         finish_basic_block();
         ir::LocalLabelID condition_block = basic_blocks_counter_;
 
@@ -182,11 +195,11 @@ private:
         ir::LocalLabelID false_label = basic_blocks_counter_ + 2;
         basic_blocks_counter_ += 2; // Saving two basic blocks which will not be used in body
 
-        ir::InstructionPtr instr = std::make_unique<ir::CmpAndJmpInstr>( std::move( left),
-                                                                         std::move( right),
-                                                                         type,
-                                                                         true_label,
-                                                                         false_label);
+        instr = std::make_unique<ir::CmpAndJmpInstr>( std::move( left),
+                                                      std::move( right),
+                                                      type,
+                                                      true_label,
+                                                      false_label);
         basic_block_.instructions.emplace_back( std::move( instr));
 
         finish_basic_block( true_label);
