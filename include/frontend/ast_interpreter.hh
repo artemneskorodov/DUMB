@@ -10,7 +10,7 @@ namespace ast
 namespace interpreter
 {
 
-void Run( ast::Program *ast);
+void Run( const ast::Program& ast);
 
 } // ! namespace interpreter
 } // ! namespace ast

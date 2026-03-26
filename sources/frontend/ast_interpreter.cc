@@ -15,23 +15,23 @@ namespace interpreter
 namespace
 {
 
-class Interpreter : public Visitor
+class Interpreter : public ConstantVisitor
 {
 private:
     void
-    Visit( Immediate& node) override
+    Visit( const Immediate& node) override
     {
         eval_stack_.push_back( node.value);
     }
 
     void
-    Visit( Identifier& node) override
+    Visit( const Identifier& node) override
     {
         eval_stack_.push_back(values_[node.id]);
     }
 
     void
-    Visit( BinaryOp& node) override
+    Visit( const BinaryOp& node) override
     {
         node.left->Accept( *this);
         int left = eval_stack_.back();
@@ -53,7 +53,7 @@ private:
     }
 
     void
-    Visit( Assignment& node) override
+    Visit( const Assignment& node) override
     {
         node.right->Accept( *this);
         int value = eval_stack_.back();
@@ -62,7 +62,7 @@ private:
     }
 
     void
-    Visit( If& node) override
+    Visit( const If& node) override
     {
         node.condition.left->Accept( *this);
         int left = eval_stack_.back();
@@ -94,7 +94,7 @@ private:
     }
 
     void
-    Visit( While& node) override
+    Visit( const While& node) override
     {
         for ( ; ; )
         {
@@ -129,9 +129,9 @@ private:
     }
 
     void
-    Visit( FunctionCall& node) override
+    Visit( const FunctionCall& node) override
     {
-        Function &func = find_function( node.id);
+        const Function &func = find_function( node.id);
         for ( auto& param : node.parameters )
         {
             param->Accept( *this);
@@ -144,7 +144,7 @@ private:
     }
 
     void
-    Visit( Return& node) override
+    Visit( const Return& node) override
     {
         node.expression->Accept( *this);
         function_result_ = eval_stack_.back();
@@ -153,7 +153,7 @@ private:
     }
 
     void
-    Visit( NewVariable& node) override
+    Visit( const NewVariable& node) override
     {
         if ( node.initializer != nullptr )
         {
@@ -167,7 +167,7 @@ private:
     }
 
     void
-    Visit( Input& node) override
+    Visit( const Input& node) override
     {
         std::cout << node.string;
         int value;
@@ -176,7 +176,7 @@ private:
     }
 
     void
-    Visit( Output& node) override
+    Visit( const Output& node) override
     {
         node.expression->Accept( *this);
         int value = eval_stack_.back();
@@ -186,7 +186,7 @@ private:
     }
 
     void
-    VisitFunction( Function& function)
+    VisitFunction( const Function& function)
     {
         for ( auto param_it = function.parameters.rbegin();
               param_it != function.parameters.rend();
@@ -211,18 +211,18 @@ private:
 
 public:
     void
-    Run( ast::Program &ast)
+    Run( const ast::Program &ast)
     {
         program_ = &ast;
-        Function& func = find_function( "main");
+        const Function& func = find_function( "main");
         VisitFunction( func);
     }
 
 private:
-    Function&
+    const Function&
     find_function( nt::SymbolID id)
     {
-        for ( Function& func : program_->functions )
+        for ( const Function& func : program_->functions )
         {
             if ( id == func.id )
             {
@@ -232,10 +232,10 @@ private:
         throw std::runtime_error{ "No function with id = " + std::to_string( id)};
     }
 
-    Function&
+    const Function&
     find_function( std::string name)
     {
-        for ( Function& func : program_->functions )
+        for ( const Function& func : program_->functions )
         {
             const nt::Symbol *sym = program_->nametable.GetSymbol( func.id);
             if ( sym->GetName() == name )
@@ -247,7 +247,7 @@ private:
     }
 
 private:
-    ast::Program *program_;
+    const ast::Program *program_;
     std::unordered_map<nt::SymbolID, int> values_{};
     int function_result_;
     std::vector<int> eval_stack_{};
@@ -259,10 +259,10 @@ private:
 } // ! anonymous namespace
 
 void
-Run( ast::Program *ast)
+Run( const ast::Program& ast)
 {
     Interpreter interpreter{};
-    interpreter.Run( *ast);
+    interpreter.Run( ast);
 }
 
 } // ! namespace interpreter
