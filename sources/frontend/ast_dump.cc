@@ -28,7 +28,7 @@ static constexpr std::string_view kProgramNodeColor         = "#727272";
 static constexpr std::string_view kNewVariableNodeColor     = "#96eb0c";
 static constexpr std::string_view kNametableNodeColor       = "#176383";
 
-class ASTDumper final : public Visitor
+class ASTDumper final : public ConstantVisitor
 {
 public:
     ASTDumper( const std::string& filename)
@@ -43,7 +43,7 @@ public:
     }
 
     void
-    Visit( Immediate& node) override
+    Visit( const Immediate& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> Immediate | { <Value> Value | " + std::to_string( node.value) + " } }";
@@ -58,7 +58,7 @@ public:
     }
 
     void
-    Visit( Identifier& node) override
+    Visit( const Identifier& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> Identifier | <Name> " + std::to_string( node.id) + " }";
@@ -73,7 +73,7 @@ public:
     }
 
     void
-    Visit( BinaryOp& node) override
+    Visit( const BinaryOp& node) override
     {
         std::string this_node_id = get_node_id();
         std::string op_string{};
@@ -102,7 +102,7 @@ public:
     }
 
     void
-    Visit( Assignment& node) override
+    Visit( const Assignment& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> Assignment | { <Prev> Prev | { <Left> Identifier | " + std::to_string( node.left) + " } | <Right> Right | <Next> Next } }";
@@ -120,7 +120,7 @@ public:
     }
 
     void
-    Visit( If& node) override
+    Visit( const If& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> If | { <Prev> Prev | <Condition> Condition | <Body> Body | <Next> Next } }";
@@ -177,7 +177,7 @@ public:
         current_subgraph_ = old_subgraph;
     }
 
-    void Visit( While& node) override
+    void Visit( const While& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> If | { <Prev> Prev | <Condition> Condition | <Body> Body | <Next> Next } }";
@@ -227,7 +227,7 @@ public:
         for ( auto& stmt : node.body )
         {
             std::string current_stmt_id = next_node_id();
-            stmt.get()->Accept( *this);
+            stmt->Accept( *this);
             set_parent_id( current_stmt_id + ":Next");
         }
 
@@ -235,7 +235,7 @@ public:
     }
 
     void
-    Visit( FunctionCall& node) override
+    Visit( const FunctionCall& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> FunctionCall | <Name> " +
@@ -265,7 +265,7 @@ public:
     }
 
     void
-    Visit( Return& node) override
+    Visit( const Return& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> Return | { <Prev> Prev | <Expression> Expression | <Next> Next } }";
@@ -282,7 +282,7 @@ public:
     }
 
     void
-    Visit( Input& node) override
+    Visit( const Input& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> Input | { <Prev> Prev | { <Identifier> Identifier | " +
@@ -297,7 +297,7 @@ public:
     }
 
     void
-    Visit( Output& node) override
+    Visit( const Output& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> Output | { <Prev> Prev | <Expression> Expression | { <String> String | " +
@@ -315,7 +315,7 @@ public:
     }
 
     void
-    Visit( NewVariable& node) override
+    Visit( const NewVariable& node) override
     {
         std::string this_node_id = get_node_id();
         std::string label = "{ <Type> NewVariable | { <Prev> Prev | { <Identifier> Identifier | " + std::to_string( node.identifier) + " }| <Initializer> Initializer | <Next> Next } }";
@@ -331,16 +331,16 @@ public:
         if ( node.initializer != nullptr )
         {
             set_parent_id( this_node_id + ":Initializer");
-            node.initializer.get()->Accept( *this);
+            node.initializer->Accept( *this);
         }
     }
 
     void
-    DumpFunction( ast::Function *function)
+    DumpFunction( const ast::Function &function)
     {
         // Function header node
         std::string this_node_id = get_node_id();
-        std::string label = "{ <Type> Function | <Name> " + std::to_string( function->id) +
+        std::string label = "{ <Type> Function | <Name> " + std::to_string( function.id) +
                             " | { <Prev> Prev | <Parameters> Parameters | <Body> Body | <Next> Next } }";
 
         graph_.addNode( this_node_id)
@@ -354,10 +354,10 @@ public:
         std::string parameters_node_id = get_node_id();
 
         label = "{ ";
-        for ( nt::SymbolID& param : function->parameters )
+        for ( nt::SymbolID param : function.parameters )
         {
             label += "{ Identifier | " + std::to_string( param) + " }";
-            if ( &param != &function->parameters.back() )
+            if ( &param != &function.parameters.back() )
             {
                 label += " | ";
             }
@@ -375,19 +375,19 @@ public:
                                    .setColor( "#646464");
 
         set_parent_id( this_node_id + ":Body");
-        for ( auto& stmt : function->body )
+        for ( const auto& stmt : function.body )
         {
             std::string current_stmt_id = next_node_id();
-            stmt.get()->Accept( *this);
+            stmt->Accept( *this);
             set_parent_id( current_stmt_id + ":Next");
         }
     }
 
     void
-    DumpProgram( ast::Program *program)
+    DumpProgram( const ast::Program& program)
     {
         std::string nametable{ ""};
-        for ( const auto& it : program->nametable.GetNametable() )
+        for ( const auto& it : program.nametable.GetNametable() )
         {
             std::string type{ ""};
             switch ( it.GetType() )
@@ -397,7 +397,7 @@ public:
                 case nt::SymbolType::LOCAL_VARIABLE:  type = "local variable";  break;
             }
             nametable += "{" + std::to_string( it.GetID()) + " | "+ type + " | " + it.GetName() + "}";
-            if ( &it != &program->nametable.GetNametable().back() )
+            if ( &it != &program.nametable.GetNametable().back() )
             {
                 nametable += " | ";
             }
@@ -422,7 +422,7 @@ public:
         current_subgraph_ = &graph_.addSubgraph( "global_variables_" + this_node_id)
                                    .setColor( "#646464");
 
-        for ( auto& var : program->global_variables )
+        for ( const auto& var : program.global_variables )
         {
             set_parent_id( this_node_id);
             var->Accept( *this);
@@ -430,10 +430,10 @@ public:
 
         current_subgraph_ = nullptr;
 
-        for ( auto& function : program->functions )
+        for ( const auto& function : program.functions )
         {
             set_parent_id( this_node_id);
-            DumpFunction( &function);
+            DumpFunction( function);
         }
     }
 
@@ -444,20 +444,33 @@ private:
     std::string          parent_node_id_    {};
 
 private:
-    std::string get_node_id() { return "node_" + std::to_string( nodes_counter_++); }
-    std::string next_node_id() const { return "node_" + std::to_string( nodes_counter_); }
-    void set_parent_id( const std::string &id) { parent_node_id_ = id; }
+    std::string
+    get_node_id()
+    {
+        return "node_" + std::to_string( nodes_counter_++);
+    }
+
+    std::string
+    next_node_id() const
+    {
+        return "node_" + std::to_string( nodes_counter_);
+    }
+
+    void
+    set_parent_id( const std::string &id)
+    {
+        parent_node_id_ = id;
+    }
 
 };
 
 } // ! anonymous namespace
 
 void
-DumpAST( ast::Program      *program,
-         const std::string& output)
+DumpAST( const ast::Program& program,
+         const std::string&  output)
 {
     ASTDumper dumper{ output};
-    std::string nametable{ ""};
     dumper.DumpProgram( program);
 
     std::cout << dumper.GetGraph();

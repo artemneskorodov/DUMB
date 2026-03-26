@@ -21,9 +21,9 @@ main( int         argc,
 
     dumb::ir::Program program_ir = dumb::RunFrontend( source);
 
-    dumb::ir_dump::DumpIR( &program_ir);
+    dumb::ir_dump::DumpIR( program_ir);
 
-    std::string result = dumb::RunBackend( &program_ir);
+    std::string result = dumb::RunBackend( program_ir);
 
     dumb::utils::WriteTextFile( output, result);
 

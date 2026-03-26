@@ -15,7 +15,7 @@ namespace dump
 /// @param program
 /// @param output
 ///
-void DumpAST( ast::Program *program, const std::string& output);
+void DumpAST( const ast::Program& program, const std::string& output);
 
 } // ! namespace dump
 } // ! namespace ast

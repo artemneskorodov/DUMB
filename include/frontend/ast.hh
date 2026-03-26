@@ -14,6 +14,7 @@ namespace ast
 {
 
 class Visitor;
+class ConstantVisitor;
 
 ///
 /// @brief
@@ -22,6 +23,7 @@ struct ASTNode
 {
     virtual ~ASTNode() = default;
     virtual void Accept( Visitor& v) = 0;
+    virtual void Accept( ConstantVisitor& v) const = 0;
 
 };
 
@@ -62,6 +64,7 @@ public:
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     ir::ImmType value;
 
@@ -79,6 +82,7 @@ struct Identifier final : public ExprNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     nt::SymbolID id;
 
@@ -97,9 +101,9 @@ struct BinaryOp : public ExprNode
         OP_DIV,
     };
 
-    BinaryOp( Operation  op,
-              ASTNodePtr left,
-              ASTNodePtr right)
+    BinaryOp( Operation   op,
+              ExprNodePtr left,
+              ExprNodePtr right)
      :  operation { op},
         left      { std::move( left)},
         right     { std::move( right)}
@@ -107,10 +111,11 @@ struct BinaryOp : public ExprNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
-    Operation  operation;
-    ASTNodePtr left;
-    ASTNodePtr right;
+    Operation   operation;
+    ExprNodePtr left;
+    ExprNodePtr right;
 
 };
 
@@ -127,6 +132,7 @@ struct FunctionCall final : public ExprNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     nt::SymbolID           id;
     std::list<ExprNodePtr> parameters;
@@ -146,6 +152,7 @@ struct Assignment final : public StmtNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     nt::SymbolID left;
     ExprNodePtr  right;
@@ -192,6 +199,7 @@ struct If final : public StmtNode
     }
 
     void Accept( Visitor &v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     CompareOp              condition;
     std::list<StmtNodePtr> body;
@@ -211,6 +219,7 @@ struct While final : public StmtNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     CompareOp              condition;
     std::list<StmtNodePtr> body;
@@ -229,6 +238,7 @@ struct Return final : public StmtNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     ExprNodePtr expression;
 
@@ -247,6 +257,7 @@ struct NewVariable final : public StmtNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     nt::SymbolID identifier;
     ExprNodePtr  initializer;
@@ -266,6 +277,7 @@ struct Input final : public StmtNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     nt::SymbolID identifier;
     std::string  string;
@@ -285,6 +297,7 @@ struct Output final : public StmtNode
     }
 
     void Accept( Visitor& v) override;
+    void Accept( ConstantVisitor& v) const override;
 
     ExprNodePtr expression;
     std::string string;
@@ -351,8 +364,25 @@ public:
 
 };
 
+class ConstantVisitor
+{
+public:
+    virtual void Visit( const Immediate&    node) = 0;
+    virtual void Visit( const Identifier&   node) = 0;
+    virtual void Visit( const BinaryOp&     node) = 0;
+    virtual void Visit( const Assignment&   node) = 0;
+    virtual void Visit( const If&           node) = 0;
+    virtual void Visit( const While&        node) = 0;
+    virtual void Visit( const FunctionCall& node) = 0;
+    virtual void Visit( const Return&       node) = 0;
+    virtual void Visit( const NewVariable&  node) = 0;
+    virtual void Visit( const Input&        node) = 0;
+    virtual void Visit( const Output&       node) = 0;
+
+};
+
 ///
-/// @brief
+/// @brief Accept functions to forward call to visitor of particular node
 ///
 inline void Immediate::Accept    ( Visitor& v) { v.Visit( *this); }
 inline void Identifier::Accept   ( Visitor& v) { v.Visit( *this); }
@@ -365,6 +395,21 @@ inline void Return::Accept       ( Visitor& v) { v.Visit( *this); }
 inline void NewVariable::Accept  ( Visitor& v) { v.Visit( *this); }
 inline void Input::Accept        ( Visitor& v) { v.Visit( *this); }
 inline void Output::Accept       ( Visitor& v) { v.Visit( *this); }
+
+///
+/// @brief Same as accept functions for Visitor but for constant visitor
+///
+inline void Immediate::Accept    ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void Identifier::Accept   ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void BinaryOp::Accept     ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void Assignment::Accept   ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void If::Accept           ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void While::Accept        ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void FunctionCall::Accept ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void Return::Accept       ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void NewVariable::Accept  ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void Input::Accept        ( ConstantVisitor& v) const { v.Visit( *this); }
+inline void Output::Accept       ( ConstantVisitor& v) const { v.Visit( *this); }
 
 } // ! namespace ast
 } // ! namespace dumb
