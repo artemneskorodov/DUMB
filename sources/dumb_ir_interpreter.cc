@@ -16,7 +16,9 @@ main( int         argc,
     std::string source = argv[1];
 
     dumb::ir::Program program = dumb::RunFrontend( source);
-    // dumb::ir_dump::DumpIR( &program);
-    dumb::ir::interpreter::Run( &program);
+    #if 0
+    dumb::ir_dump::DumpIR( program);
+    #endif
+    dumb::ir::interpreter::Run( program);
     return 0;
 }

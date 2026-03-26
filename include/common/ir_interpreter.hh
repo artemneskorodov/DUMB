@@ -10,7 +10,7 @@ namespace ir
 namespace interpreter
 {
 
-void Run( Program *ir);
+void Run( const Program& ir);
 
 } // ! namespace interpreter
 } // ! namespace ir

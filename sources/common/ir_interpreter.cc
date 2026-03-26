@@ -22,25 +22,28 @@ struct ProgramMemory
 
 };
 
-class OperandsInterpreter : public OperandVisitor
+class OperandsInterpreter : public ConstantOperandVisitor
 {
 private:
     void
-    Visit( VarOperand& node) override
+    Visit( const VarOperand& node) override
     {
         result_position_ = &memory_.locals[node.name];
+        result_value_ = *result_position_;
     }
 
     void
-    Visit( ImmOperand& node) override
+    Visit( const ImmOperand& node) override
     {
-        result_position_ = &node.value;
+        result_position_ = nullptr;
+        result_value_ = node.value;
     }
 
     void
-    Visit( GVarOperand& node) override
+    Visit( const GVarOperand& node) override
     {
         result_position_ = &memory_.locals[node.name];
+        result_value_ = *result_position_;
     }
 
 public:
@@ -50,33 +53,34 @@ public:
     }
 
     int
-    GetValue( Operand *op)
+    GetValue( const Operand& op)
     {
-        op->Accept( *this);
-        return *result_position_;
+        op.Accept( *this);
+        return result_value_;
     }
 
     void
-    PutValue( Operand *op, int value)
+    PutValue( const Operand& op, int value)
     {
-        op->Accept( *this);
+        op.Accept( *this);
         *result_position_ = value;
     }
 
 private:
+    int result_value_;
     int *result_position_;
     ProgramMemory& memory_;
 
 };
 
-class Interpreter : public InstructionVisitor
+class Interpreter : public ConstantInstructionVisitor
 {
 private:
     void
-    Visit( BinaryOpInstr& node) override
+    Visit( const BinaryOpInstr& node) override
     {
-        int first = op_interpreter_.GetValue( node.first.get());
-        int second = op_interpreter_.GetValue( node.second.get());
+        int first  = op_interpreter_.GetValue( *node.first);
+        int second = op_interpreter_.GetValue( *node.second);
 
         int result;
 
@@ -88,19 +92,19 @@ private:
             case BinaryOpType::DIV: result = first / second; break;
         }
 
-        op_interpreter_.PutValue( node.dest.get(), result);
+        op_interpreter_.PutValue( *node.dest, result);
     }
 
     void
-    Visit( UnaryOpInstr& node) override
+    Visit( const UnaryOpInstr& node) override
     {
         if ( node.op == UnaryOpType::MOV )
         {
-            int value = op_interpreter_.GetValue( node.operand.get());
-            op_interpreter_.PutValue( node.dest.get(), value);
+            int value = op_interpreter_.GetValue( *node.operand);
+            op_interpreter_.PutValue( *node.dest, value);
         } else if ( node.op == UnaryOpType::RET )
         {
-            func_return_value_ = op_interpreter_.GetValue( node.operand.get());
+            func_return_value_ = op_interpreter_.GetValue( *node.operand);
             need_return_ = true;
         } else
         {
@@ -109,28 +113,28 @@ private:
     }
 
     void
-    Visit( FunctionCallInstr& node) override
+    Visit( const FunctionCallInstr& node) override
     {
-        for ( auto& it : node.params )
+        for ( const OperandPtr& param : node.params )
         {
-            params_stack_.emplace_back( op_interpreter_.GetValue( it.get()));
+            params_stack_.emplace_back( op_interpreter_.GetValue( *param));
         }
-        Function *func = find_function( node.name);
-        VisitFunction( *func);
-        op_interpreter_.PutValue( node.dest.get(), func_return_value_);
+        const Function& func = find_function( node.name);
+        VisitFunction( func);
+        op_interpreter_.PutValue( *node.dest, func_return_value_);
     }
 
     void
-    Visit( CmpAndJmpInstr& node) override
+    Visit( const CmpAndJmpInstr& node) override
     {
         if ( node.type == CmpType::ALWAYS_TRUE )
         {
-            BasicBlock *basic_block = find_basic_block( node.true_dest);
-            VisitBasicBlock( *basic_block);
+            const BasicBlock& basic_block = find_basic_block( node.true_dest);
+            VisitBasicBlock( basic_block);
             return ;
         }
-        int left  = op_interpreter_.GetValue( node.left.get());
-        int right = op_interpreter_.GetValue( node.right.get());
+        int left  = op_interpreter_.GetValue( *node.left);
+        int right = op_interpreter_.GetValue( *node.right);
         bool result;
         switch ( node.type )
         {
@@ -142,34 +146,34 @@ private:
 
         if ( result )
         {
-            BasicBlock *basic_block = find_basic_block( node.true_dest);
-            VisitBasicBlock( *basic_block);
+            const BasicBlock& basic_block = find_basic_block( node.true_dest);
+            VisitBasicBlock( basic_block);
         } else
         {
-            BasicBlock *basic_block = find_basic_block( node.false_dest);
-            VisitBasicBlock( *basic_block);
+            const BasicBlock& basic_block = find_basic_block( node.false_dest);
+            VisitBasicBlock( basic_block);
         }
     }
 
     void
-    Visit( InputInstr& node) override
+    Visit( const InputInstr& node) override
     {
         int value;
         std::cout << node.string;
         std::cin >> value;
-        op_interpreter_.PutValue( node.dest.get(), value);
+        op_interpreter_.PutValue( *node.dest, value);
     }
 
     void
-    Visit( OutputInstr& node) override
+    Visit( const OutputInstr& node) override
     {
-        std::cout << node.string << op_interpreter_.GetValue( node.expression.get()) << std::endl;
+        std::cout << node.string << op_interpreter_.GetValue( *node.expression) << std::endl;
     }
 
     void
-    VisitBasicBlock( BasicBlock& node)
+    VisitBasicBlock( const BasicBlock& node)
     {
-        for ( auto& instr : node.instructions )
+        for ( const InstructionPtr& instr : node.instructions )
         {
             instr->Accept( *this);
             if ( need_return_ )
@@ -180,7 +184,7 @@ private:
     }
 
     void
-    VisitFunction( Function& node)
+    VisitFunction( const Function& node)
     {
         basic_blocks_ = &node.basic_blocks;
         for ( std::size_t i = 0; i != node.params.size(); ++i )
@@ -195,12 +199,13 @@ private:
         }
 
         VisitBasicBlock( *basic_blocks_->at( 0));
+        basic_blocks_ = nullptr;
         need_return_ = false;
     }
 
 public:
     void
-    RunProgram( Program& program)
+    RunProgram( const Program& program)
     {
         functions_ = &program.functions;
         for ( auto& global : program.globals )
@@ -209,56 +214,57 @@ public:
         }
         VisitFunction( *program.preamble.get());
 
-        Function *main = find_function( "main");
-        VisitFunction( *main);
+        const Function& main = find_function( "main");
+        VisitFunction( main);
+        functions_ = nullptr;
     }
 
 private:
-    Function *
+    const Function&
     find_function( std::string name)
     {
         for ( std::size_t i = 0; i != functions_->size(); ++i )
         {
             if ( functions_->at(i)->name == name )
             {
-                return functions_->at( i).get();
+                return *functions_->at( i);
             }
         }
-        return nullptr;
+        throw std::runtime_error{ "No function \"" + name + "\""};
     }
 
-    BasicBlock *
+    const BasicBlock&
     find_basic_block( ir::LocalLabelID id)
     {
         for ( std::size_t i = 0; i != basic_blocks_->size(); ++i )
         {
             if ( basic_blocks_->at( i)->id == id )
             {
-                return basic_blocks_->at( i).get();
+                return *basic_blocks_->at( i);
             }
         }
-        return nullptr;
+        throw std::runtime_error{ "No basic block with id = " + std::to_string( id)};
     }
 
 private:
-    std::vector<FunctionPtr> *functions_;
-    std::vector<BasicBlockPtr> *basic_blocks_;
-    ProgramMemory memory_{};
-    std::vector<int> eval_stack_{};
-    std::vector<int> params_stack_{};
-    OperandsInterpreter op_interpreter_{ memory_};
-    bool need_return_{ false};
-    int func_return_value_;
+    const std::vector<FunctionPtr>   *functions_;
+    const std::vector<BasicBlockPtr> *basic_blocks_;
+    ProgramMemory                     memory_{};
+    std::vector<int>                  eval_stack_{};
+    std::vector<int>                  params_stack_{};
+    OperandsInterpreter               op_interpreter_{ memory_};
+    bool                              need_return_{ false};
+    int                               func_return_value_;
 
 };
 
 } // ! anonymous namespace
 
 void
-Run( Program *ir)
+Run( const Program& ir)
 {
     Interpreter interpreter{};
-    interpreter.RunProgram( *ir);
+    interpreter.RunProgram( ir);
 }
 
 } // ! namespace interpreter
