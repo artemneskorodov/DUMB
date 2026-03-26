@@ -15,11 +15,13 @@ namespace ir
 //
 
 class OperandVisitor;
+class ConstantOperandVisitor;
 
 struct Operand
 {
     virtual ~Operand() = default;
     virtual void Accept( OperandVisitor& v) = 0;
+    virtual void Accept( ConstantOperandVisitor& v) const = 0;
 
 };
 
@@ -30,6 +32,7 @@ using OperandPtr = std::unique_ptr<Operand>;
 struct VarOperand : public Operand
 {
     void Accept( OperandVisitor& v) override;
+    void Accept( ConstantOperandVisitor& v) const override;
 
     explicit
     VarOperand( std::string name)
@@ -46,6 +49,7 @@ struct VarOperand : public Operand
 struct GVarOperand : public Operand
 {
     void Accept( OperandVisitor& v) override;
+    void Accept( ConstantOperandVisitor& v) const override;
 
     explicit
     GVarOperand( std::string name)
@@ -64,6 +68,7 @@ using ImmType = int;
 struct ImmOperand : public Operand
 {
     void Accept( OperandVisitor& v) override;
+    void Accept( ConstantOperandVisitor& v) const override;
 
     explicit
     ImmOperand( ImmType value)
@@ -84,20 +89,35 @@ public:
 
 };
 
+class ConstantOperandVisitor
+{
+public:
+    virtual void Visit( const VarOperand&  node) = 0;
+    virtual void Visit( const ImmOperand&  node) = 0;
+    virtual void Visit( const GVarOperand& node) = 0;
+
+};
+
 inline void VarOperand::Accept  ( OperandVisitor& v) { v.Visit( *this); }
 inline void ImmOperand::Accept  ( OperandVisitor& v) { v.Visit( *this); }
 inline void GVarOperand::Accept ( OperandVisitor& v) { v.Visit( *this); }
+
+inline void VarOperand::Accept  ( ConstantOperandVisitor& v) const { v.Visit( *this); }
+inline void ImmOperand::Accept  ( ConstantOperandVisitor& v) const { v.Visit( *this); }
+inline void GVarOperand::Accept ( ConstantOperandVisitor& v) const { v.Visit( *this); }
 
 //
 // Instructions
 //
 
 class InstructionVisitor;
+class ConstantInstructionVisitor;
 
 struct Instruction
 {
     virtual ~Instruction() = default;
     virtual void Accept( InstructionVisitor& v) = 0;
+    virtual void Accept( ConstantInstructionVisitor &v) const = 0;
 
 };
 
@@ -116,6 +136,7 @@ enum class BinaryOpType
 struct BinaryOpInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
+    void Accept( ConstantInstructionVisitor& v) const override;
 
     BinaryOpInstr( OperandPtr dest,
                    BinaryOpType op,
@@ -146,6 +167,7 @@ enum class UnaryOpType
 struct UnaryOpInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
+    void Accept( ConstantInstructionVisitor& v) const override;
 
     UnaryOpInstr( OperandPtr dest,
                   UnaryOpType op,
@@ -167,6 +189,7 @@ struct UnaryOpInstr : public Instruction
 struct FunctionCallInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
+    void Accept( ConstantInstructionVisitor& v) const override;
 
     FunctionCallInstr( OperandPtr              dest,
                        std::string             name,
@@ -198,6 +221,7 @@ enum class CmpType
 struct CmpAndJmpInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
+    void Accept( ConstantInstructionVisitor& v) const override;
 
     CmpAndJmpInstr( OperandPtr   left,
                     OperandPtr   right,
@@ -223,6 +247,7 @@ struct CmpAndJmpInstr : public Instruction
 struct InputInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
+    void Accept( ConstantInstructionVisitor& v) const override;
 
     InputInstr( OperandPtr  dest,
                 std::string string)
@@ -239,6 +264,7 @@ struct InputInstr : public Instruction
 struct OutputInstr : public Instruction
 {
     void Accept( InstructionVisitor& v) override;
+    void Accept( ConstantInstructionVisitor& v) const override;
 
     OutputInstr( OperandPtr  expression,
                  std::string string)
@@ -264,12 +290,31 @@ public:
 
 };
 
+class ConstantInstructionVisitor
+{
+public:
+    virtual void Visit( const BinaryOpInstr&     node) = 0;
+    virtual void Visit( const UnaryOpInstr&      node) = 0;
+    virtual void Visit( const FunctionCallInstr& node) = 0;
+    virtual void Visit( const CmpAndJmpInstr&    node) = 0;
+    virtual void Visit( const InputInstr&        node) = 0;
+    virtual void Visit( const OutputInstr&       node) = 0;
+
+};
+
 inline void BinaryOpInstr::Accept     ( InstructionVisitor& v) { v.Visit( *this); }
 inline void UnaryOpInstr::Accept      ( InstructionVisitor& v) { v.Visit( *this); }
 inline void FunctionCallInstr::Accept ( InstructionVisitor& v) { v.Visit( *this); }
 inline void CmpAndJmpInstr::Accept    ( InstructionVisitor& v) { v.Visit( *this); }
 inline void InputInstr::Accept        ( InstructionVisitor& v) { v.Visit( *this); }
 inline void OutputInstr::Accept       ( InstructionVisitor& v) { v.Visit( *this); }
+
+inline void BinaryOpInstr::Accept     ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
+inline void UnaryOpInstr::Accept      ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
+inline void FunctionCallInstr::Accept ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
+inline void CmpAndJmpInstr::Accept    ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
+inline void InputInstr::Accept        ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
+inline void OutputInstr::Accept       ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
 
 //
 // Basic block

@@ -11,29 +11,29 @@ namespace ir_dump
 namespace
 {
 
-class OperandDumper : public ir::OperandVisitor
+class OperandDumper : public ir::ConstantOperandVisitor
 {
 public:
     void
-    Visit( ir::VarOperand& node) override
+    Visit( const ir::VarOperand& node) override
     {
         result_ = node.name;
     }
 
     void
-    Visit( ir::GVarOperand& node) override
+    Visit( const ir::GVarOperand& node) override
     {
         result_ = node.name;
     }
 
     void
-    Visit( ir::ImmOperand& node) override
+    Visit( const ir::ImmOperand& node) override
     {
         result_ = "imm(" + std::to_string( node.value) + ")";
     }
 
     std::string
-    GetStr( ir::Operand *operand)
+    GetStr( const ir::Operand *operand)
     {
         if ( operand == nullptr )
         {
@@ -48,11 +48,11 @@ private:
 
 };
 
-class InstructionDumper : public ir::InstructionVisitor
+class InstructionDumper : public ir::ConstantInstructionVisitor
 {
 public:
     void
-    Visit( ir::BinaryOpInstr& node) override
+    Visit( const ir::BinaryOpInstr& node) override
     {
         std::string left   { op_dumper_.GetStr( node.first.get())};
         std::string right  { op_dumper_.GetStr( node.second.get())};
@@ -69,7 +69,7 @@ public:
     }
 
     void
-    Visit( ir::UnaryOpInstr& node) override
+    Visit( const ir::UnaryOpInstr& node) override
     {
         std::string right  { op_dumper_.GetStr( node.operand.get())};
         std::string dest   { op_dumper_.GetStr( node.dest.get())};
@@ -82,7 +82,7 @@ public:
     }
 
     void
-    Visit( ir::FunctionCallInstr& node) override
+    Visit( const ir::FunctionCallInstr& node) override
     {
         std::string dest = op_dumper_.GetStr( node.dest.get());
         result_ = "FunctionCall: " + dest + " call " + node.name + " (";
@@ -99,7 +99,7 @@ public:
     }
 
     void
-    Visit( ir::CmpAndJmpInstr& node) override
+    Visit( const ir::CmpAndJmpInstr& node) override
     {
         if ( node.type == ir::CmpType::ALWAYS_TRUE )
         {
@@ -124,19 +124,19 @@ public:
     }
 
     void
-    Visit( ir::InputInstr& node) override
+    Visit( const ir::InputInstr& node) override
     {
         result_ = "input (" + op_dumper_.GetStr( node.dest.get()) + ", \"" + node.string + "\")";
     }
 
     void
-    Visit( ir::OutputInstr& node) override
+    Visit( const ir::OutputInstr& node) override
     {
         result_ = "output (" + op_dumper_.GetStr( node.expression.get()) + ", \"" + node.string + "\")";
     }
 
     std::string
-    GetStr( ir::Instruction *instr)
+    GetStr( const ir::Instruction *instr)
     {
         instr->Accept( *this);
         return result_;
@@ -149,13 +149,13 @@ private:
 };
 
 std::string
-dump_basic_block( ir::BasicBlock *basic_block)
+dump_basic_block( const ir::BasicBlock& basic_block)
 {
     InstructionDumper dumper{};
 
-    std::string result = "    BasicBlock_" + std::to_string( basic_block->id) + "\n";
+    std::string result = "    BasicBlock_" + std::to_string( basic_block.id) + "\n";
 
-    for ( auto& instr : basic_block->instructions )
+    for ( auto& instr : basic_block.instructions )
     {
         std::string instr_string = dumper.GetStr( instr.get());
         std::cerr << instr_string << std::endl;
@@ -165,22 +165,22 @@ dump_basic_block( ir::BasicBlock *basic_block)
 }
 
 std::string
-dump_function( ir::Function *function)
+dump_function( const ir::Function& function)
 {
-    std::string result = function->name + " (";
-    for ( auto& param : function->params )
+    std::string result = function.name + " (";
+    for ( const auto& param : function.params )
     {
         result += param;
-        if ( &param != &function->params.back() )
+        if ( &param != &function.params.back() )
         {
             result += ", ";
         }
     }
     result += ")\n";
 
-    for ( auto& basic_block : function->basic_blocks )
+    for ( const auto& basic_block : function.basic_blocks )
     {
-        result += dump_basic_block( basic_block.get()) + "\n";
+        result += dump_basic_block( *basic_block) + "\n";
     }
     return result;
 }
@@ -188,18 +188,18 @@ dump_function( ir::Function *function)
 } // ! anonymous namespace
 
 void
-DumpIR( ir::Program *program)
+DumpIR( const ir::Program& program)
 {
     std::string result = "# Globals:\n";
-    for ( const std::string& var : program->globals )
+    for ( const std::string& var : program.globals )
     {
         result += "    " + var + "\n";
     }
-    result += "\n# Preamble:\n" + dump_function( program->preamble.get());
+    result += "\n# Preamble:\n" + dump_function( *program.preamble);
 
-    for ( auto& it : program->functions )
+    for ( const auto& it : program.functions )
     {
-        result += dump_function( it.get());
+        result += dump_function( *it);
     }
     std::cout << result;
 }
