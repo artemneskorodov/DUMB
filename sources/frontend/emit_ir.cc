@@ -15,18 +15,18 @@ namespace emit_ir
 namespace
 {
 
-class Emitter : public ast::Visitor
+class Emitter : public ast::ConstantVisitor
 {
 private:
     void
-    Visit( ast::Immediate& node) override
+    Visit( const ast::Immediate& node) override
     {
         assert( eval_stack_.empty());
         eval_stack_.push_back( std::make_unique<ir::ImmOperand>( node.value));
     }
 
     void
-    Visit( ast::Identifier& node) override
+    Visit( const ast::Identifier& node) override
     {
         assert( eval_stack_.empty());
         const nt::Symbol *sym = nametable_->GetSymbol( node.id);
@@ -43,7 +43,7 @@ private:
     }
 
     void
-    Visit( ast::BinaryOp& node) override
+    Visit( const ast::BinaryOp& node) override
     {
         assert( eval_stack_.empty());
         // Emitting left side of operation
@@ -79,7 +79,7 @@ private:
     }
 
     void
-    Visit( ast::Assignment& node) override
+    Visit( const ast::Assignment& node) override
     {
         assert( eval_stack_.empty());
         // Emitting expression
@@ -107,7 +107,7 @@ private:
     }
 
     void
-    Visit( ast::If& node) override
+    Visit( const ast::If& node) override
     {
         assert( eval_stack_.empty());
         // Left
@@ -152,7 +152,7 @@ private:
     }
 
     void
-    Visit( ast::While& node) override
+    Visit( const ast::While& node) override
     {
         assert( eval_stack_.empty());
         // Adding condition basic block
@@ -207,7 +207,7 @@ private:
     }
 
     void
-    Visit( ast::FunctionCall& node) override
+    Visit( const ast::FunctionCall& node) override
     {
         assert( eval_stack_.empty());
         std::vector<ir::OperandPtr> params;
@@ -238,7 +238,7 @@ private:
     }
 
     void
-    Visit( ast::Return& node) override
+    Visit( const ast::Return& node) override
     {
         assert( eval_stack_.empty());
         // Emitting expression to return
@@ -256,7 +256,7 @@ private:
     }
 
     void
-    Visit( ast::NewVariable& node) override
+    Visit( const ast::NewVariable& node) override
     {
         assert( eval_stack_.empty());
         // Counting new variable in stack, adds instructions to basic blocks
@@ -293,7 +293,7 @@ private:
     }
 
     void
-    Visit( ast::Input& node) override
+    Visit( const ast::Input& node) override
     {
         assert( eval_stack_.empty());
         const nt::Symbol *sym = nametable_->GetSymbol( node.identifier);
@@ -316,7 +316,7 @@ private:
     };
 
     void
-    Visit( ast::Output& node) override
+    Visit( const ast::Output& node) override
     {
         assert( eval_stack_.empty());
         node.expression->Accept( *this);
@@ -330,10 +330,10 @@ private:
     }
 
     void
-    EmitFunction( ast::Function *function)
+    EmitFunction( const ast::Function& function)
     {
         assert( eval_stack_.empty());
-        const nt::Symbol *sym = nametable_->GetSymbol( function->id);
+        const nt::Symbol *sym = nametable_->GetSymbol( function.id);
         if ( sym->GetType() != nt::SymbolType::FUNCTION )
         {
             throw std::runtime_error{ "Unexpected symbol type"};
@@ -341,14 +341,14 @@ private:
         start_function( sym->GetName());
 
         // Getting function parameters
-        for ( nt::SymbolID param : function->parameters )
+        for ( nt::SymbolID param : function.parameters )
         {
             const nt::Symbol *sym = nametable_->GetSymbol( param);
             function_.params.emplace_back( sym->GetSafeName());
         }
 
         // Emitting function body
-        for ( auto& it : function->body )
+        for ( auto& it : function.body )
         {
             it.get()->Accept( *this);
         }
@@ -364,24 +364,24 @@ private:
 
 public:
     ir::Program
-    EmitProgram( ast::Program *program)
+    EmitProgram( const ast::Program& program)
     {
         assert( eval_stack_.empty());
-        nametable_ = &program->nametable;
+        nametable_ = &program.nametable;
 
         // Preamble
         start_function( "_start");
-        for ( auto& it : program->global_variables )
+        for ( const ast::StmtNodePtr& global : program.global_variables )
         {
-            it->Accept( *this);
+            global->Accept( *this);
         }
         finish_basic_block();
         program_.preamble = std::make_unique<ir::Function>( std::move( function_));
 
         // Functions
-        for ( auto& it : program->functions )
+        for ( const ast::Function& func : program.functions )
         {
-            EmitFunction( &it);
+            EmitFunction( func);
         }
         return std::move( program_);
     }
@@ -393,7 +393,7 @@ private:
     ir::Function                 function_             { ""};
     ir::BasicBlock               basic_block_          { 0};
     ir::LocalLabelID             basic_blocks_counter_ { 0};
-    nt::NameTable               *nametable_            { nullptr};
+    const nt::NameTable         *nametable_            { nullptr};
 
 private:
     void
@@ -429,7 +429,7 @@ private:
 } // ! anonymous namespace
 
 ir::Program
-EmitIR( ast::Program *program)
+EmitIR( const ast::Program& program)
 {
     Emitter emitter{};
 
