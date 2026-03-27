@@ -17,7 +17,7 @@ main( int         argc,
 
     dumb::ir::Program program = dumb::RunFrontend( source);
     #if 0
-    dumb::ir_dump::DumpIR( program);
+    dumb::ir::dump::DumpIR( program);
     #endif
     dumb::ir::interpreter::Run( program);
     return 0;

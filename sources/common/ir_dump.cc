@@ -3,43 +3,46 @@
 #include "ir_dump.hh"
 #include "ir.hh"
 
+#include "dot_graph/html.h"
+#include "dot_graph/graph.h"
+
 namespace dumb
 {
-namespace ir_dump
+namespace ir
+{
+namespace dump
 {
 
 namespace
 {
 
-class OperandDumper : public ir::ConstantOperandVisitor
+constexpr std::string_view kFunctionClusterColor = "#75b560";
+
+class OperandDumper : public ConstantOperandVisitor
 {
 public:
     void
-    Visit( const ir::VarOperand& node) override
+    Visit( const VarOperand& node) override
     {
         result_ = node.name;
     }
 
     void
-    Visit( const ir::GVarOperand& node) override
+    Visit( const GVarOperand& node) override
     {
         result_ = node.name;
     }
 
     void
-    Visit( const ir::ImmOperand& node) override
+    Visit( const ImmOperand& node) override
     {
         result_ = "imm(" + std::to_string( node.value) + ")";
     }
 
     std::string
-    GetStr( const ir::Operand *operand)
+    GetStr( const ir::Operand& operand)
     {
-        if ( operand == nullptr )
-        {
-            return "";
-        }
-        operand->Accept( *this);
+        operand.Accept( *this);
         return result_;
     }
 
@@ -54,9 +57,9 @@ public:
     void
     Visit( const ir::BinaryOpInstr& node) override
     {
-        std::string left   { op_dumper_.GetStr( node.first.get())};
-        std::string right  { op_dumper_.GetStr( node.second.get())};
-        std::string dest   { op_dumper_.GetStr( node.dest.get())};
+        std::string left   { op_dumper_.GetStr( *node.first)};
+        std::string right  { op_dumper_.GetStr( *node.second)};
+        std::string dest   { op_dumper_.GetStr( *node.dest)};
         std::string op_str {};
         switch ( node.op )
         {
@@ -71,24 +74,33 @@ public:
     void
     Visit( const ir::UnaryOpInstr& node) override
     {
-        std::string right  { op_dumper_.GetStr( node.operand.get())};
-        std::string dest   { op_dumper_.GetStr( node.dest.get())};
-        std::string op_str {};
-        switch ( node.op )
+        if ( node.op == ir::UnaryOpType::MOV )
         {
-            case ir::UnaryOpType::MOV: result_ = "UnaryOp: " + dest + " = " + right; break;
-            case ir::UnaryOpType::RET: result_ = "UnaryOp: RET " + right; break;
+            std::string operand = op_dumper_.GetStr( *node.operand);
+            std::string dest    = op_dumper_.GetStr( *node.dest);
+            result_ = "UnaryOp: " + dest + " = " + operand;
+        } else if ( node.op == UnaryOpType::RET )
+        {
+            std::string operand = "";
+            if ( node.operand != nullptr )
+            {
+                operand = op_dumper_.GetStr( *node.operand);
+            }
+            result_ = "UnaryOp: RET " + operand;
+        } else
+        {
+            throw std::runtime_error{ "Unexpected unary operand"};
         }
     }
 
     void
     Visit( const ir::FunctionCallInstr& node) override
     {
-        std::string dest = op_dumper_.GetStr( node.dest.get());
+        std::string dest = op_dumper_.GetStr( *node.dest);
         result_ = "FunctionCall: " + dest + " call " + node.name + " (";
         for ( auto& it : node.params )
         {
-            std::string param = op_dumper_.GetStr( it.get());
+            std::string param = op_dumper_.GetStr( *it);
             result_ += param;
             if ( &it != &node.params.back() )
             {
@@ -107,14 +119,14 @@ public:
             return ;
         }
 
-        std::string left_str = op_dumper_.GetStr( node.left.get());
-        std::string right_str = op_dumper_.GetStr( node.right.get());
+        std::string left_str = op_dumper_.GetStr( *node.left);
+        std::string right_str = op_dumper_.GetStr( *node.right);
         std::string cmp_str;
         switch ( node.type )
         {
-            case ir::CmpType::LESS:   cmp_str = " < ";  break;
+            case ir::CmpType::LESS:   cmp_str = " @lt ";  break;
             case ir::CmpType::EQUAL:  cmp_str = " == "; break;
-            case ir::CmpType::BIGGER: cmp_str = " > ";  break;
+            case ir::CmpType::BIGGER: cmp_str = " @gt ";  break;
             case ir::CmpType::ALWAYS_TRUE: break;
         }
 
@@ -126,19 +138,19 @@ public:
     void
     Visit( const ir::InputInstr& node) override
     {
-        result_ = "input (" + op_dumper_.GetStr( node.dest.get()) + ", \"" + node.string + "\")";
+        result_ = "input (" + op_dumper_.GetStr( *node.dest) + ", \"" + node.string + "\")";
     }
 
     void
     Visit( const ir::OutputInstr& node) override
     {
-        result_ = "output (" + op_dumper_.GetStr( node.expression.get()) + ", \"" + node.string + "\")";
+        result_ = "output (" + op_dumper_.GetStr( *node.expression) + ", \"" + node.string + "\")";
     }
 
     std::string
-    GetStr( const ir::Instruction *instr)
+    GetStr( const ir::Instruction& instr)
     {
-        instr->Accept( *this);
+        instr.Accept( *this);
         return result_;
     }
 
@@ -153,36 +165,64 @@ dump_basic_block( const ir::BasicBlock& basic_block)
 {
     InstructionDumper dumper{};
 
-    std::string result = "    BasicBlock_" + std::to_string( basic_block.id) + "\n";
+    html::HTMLTable result{};
+    result.addRow()
+          .addCell( "BasicBlock_" + std::to_string( basic_block.id))
+          .setColSpan( 2)
+          .setPort( "Prev");
 
-    for ( auto& instr : basic_block.instructions )
+    for ( size_t i = 0; i != basic_block.instructions.size(); ++i )
     {
-        std::string instr_string = dumper.GetStr( instr.get());
-        std::cerr << instr_string << std::endl;
-        result += "        " + instr_string + "\n";
+        std::string instr_string = dumper.GetStr( *basic_block.instructions[i]);
+        html::HTMLRow& row = result.addRow();
+        row.addCell( std::to_string( i));
+        row.addCell( instr_string);
     }
-    return result;
+
+    result.addRow()
+          .addCell( "Next")
+          .setColSpan( 2)
+          .setPort( "Next");
+
+    return static_cast<std::string>( result);
 }
 
-std::string
-dump_function( const ir::Function& function)
+void
+dump_function( const ir::Function& function,
+               dot_graph::Subgraph& subgraph,
+               dot_graph::Graph& graph)
 {
-    std::string result = function.name + " (";
+    html::HTMLTable func_start{};
+
+    html::HTMLRow& func_row = func_start.addRow();
+    func_row.addCell( "Function " + function.name)
+            .setPort( "Prev");
     for ( const auto& param : function.params )
     {
-        result += param;
-        if ( &param != &function.params.back() )
-        {
-            result += ", ";
-        }
+        html::HTMLRow& row = func_start.addRow();
+        row.addCell( param);
     }
-    result += ")\n";
+    html::HTMLRow& start_row = func_start.addRow();
+    start_row.addCell( "Start")
+             .setPort( "Next");
+
+    std::string prev_basic_block_id = "__START_OF_" + function.name;
+
+    subgraph.addNode( prev_basic_block_id)
+            .setHtmlLabel( static_cast<std::string>( func_start))
+            .setShape( "box");
+
+    graph.addEdge( "__PROGRAM__:Functions", prev_basic_block_id + ":Prev");
 
     for ( const auto& basic_block : function.basic_blocks )
     {
-        result += dump_basic_block( *basic_block) + "\n";
+        std::string basic_block_id = "__BASIC_BLOCK_" + std::to_string( basic_block->id);
+        subgraph.addNode( basic_block_id)
+                .setHtmlLabel( dump_basic_block( *basic_block))
+                .setShape( "box");
+        graph.addEdge( prev_basic_block_id + ":Next", basic_block_id + ":Prev");
+        prev_basic_block_id = std::move( basic_block_id);
     }
-    return result;
 }
 
 } // ! anonymous namespace
@@ -190,19 +230,44 @@ dump_function( const ir::Function& function)
 void
 DumpIR( const ir::Program& program)
 {
-    std::string result = "# Globals:\n";
+    dot_graph::Graph graph{ "Program"};
+
+    html::HTMLTable header{};
+    html::HTMLRow& row = header.addRow();
+    row.addCell( "Program header")
+       .setColSpan( 2);
+
+    html::HTMLRow& globals_header = header.addRow();
+    globals_header.addCell( "Globals");
+    globals_header.addCell( "Functions")
+                  .setRowSpan( program.globals.size() + 1)
+                  .setPort( "Functions");
+
     for ( const std::string& var : program.globals )
     {
-        result += "    " + var + "\n";
+        html::HTMLRow& var_row = header.addRow();
+        var_row.addCell( var);
     }
-    result += "\n# Preamble:\n" + dump_function( *program.preamble);
+
+    graph.addNode( "__PROGRAM__")
+         .setHtmlLabel( static_cast<std::string>( header))
+         .setShape( "box");
+
+    dot_graph::Subgraph& preamble = graph.addSubgraph( "cluster__PREAMBLE__")
+                                         .setColor( kFunctionClusterColor);
+
+    dump_function( *program.preamble, preamble, graph);
 
     for ( const auto& it : program.functions )
     {
-        result += dump_function( *it);
+        dot_graph::Subgraph& func = graph.addSubgraph( "cluster_function_" + it->name)
+                                         .setColor( kFunctionClusterColor);
+        dump_function( *it, func, graph);
     }
-    std::cout << result;
+
+    graph.translateWithDot( "output1.svg", "svg");
 }
 
-} // ! namespace ir_dump
+} // ! namespace dump
+} // ! namespace ir
 } // ! namespace dumb
