@@ -21,7 +21,7 @@ main( int         argc,
 
     dumb::ir::Program program_ir = dumb::RunFrontend( source);
 
-    #if 0
+    #if 1
     dumb::ir::dump::DumpIR( program_ir, "ir_dump.svg");
     #endif
 

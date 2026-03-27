@@ -18,6 +18,12 @@ namespace
 
 constexpr std::string_view kFunctionClusterColor = "#75b560";
 
+inline std::string
+basic_block_id( LocalLabelID id)
+{
+    return "__BASIC_BLOCK_" + std::to_string( id);
+}
+
 class OperandDumper : public ConstantOperandVisitor
 {
 public:
@@ -97,7 +103,7 @@ public:
     Visit( const ir::FunctionCallInstr& node) override
     {
         std::string dest = op_dumper_.GetStr( *node.dest);
-        result_ = "FunctionCall: " + dest + " call " + node.name + " (";
+        result_ = "FunctionCall: " + dest + " = call " + node.name + " (";
         for ( auto& it : node.params )
         {
             std::string param = op_dumper_.GetStr( *it);
@@ -108,31 +114,6 @@ public:
             }
         }
         result_ += ")";
-    }
-
-    void
-    Visit( const ir::CmpAndJmpInstr& node) override
-    {
-        if ( node.type == ir::CmpType::ALWAYS_TRUE )
-        {
-            result_ = "Jmp: goto BasicBlock_" + std::to_string( node.true_dest);
-            return ;
-        }
-
-        std::string left_str = op_dumper_.GetStr( *node.left);
-        std::string right_str = op_dumper_.GetStr( *node.right);
-        std::string cmp_str;
-        switch ( node.type )
-        {
-            case ir::CmpType::LESS:   cmp_str = " @lt ";  break;
-            case ir::CmpType::EQUAL:  cmp_str = " == "; break;
-            case ir::CmpType::BIGGER: cmp_str = " @gt ";  break;
-            case ir::CmpType::ALWAYS_TRUE: break;
-        }
-
-        result_ = "CmpAndJmp: if ( " + left_str + cmp_str + right_str + " ) "
-                  "goto BasicBlock_" + std::to_string( node.true_dest) +
-                  " else goto BasicBlock_" + std::to_string( node.false_dest);
     }
 
     void
@@ -157,24 +138,26 @@ public:
     std::string
     GetStr( const ir::BasicBlockTerminator& terminator)
     {
+        if ( terminator.type == ir::CmpType::INVALID )
+        {
+            return "Invalid";
+        }
         if ( terminator.type == ir::CmpType::ALWAYS_TRUE )
         {
-            return "Terminator: goto BasicBlock_" + std::to_string( terminator.true_dest);
+            return "True";
         }
-        std::string left_str = op_dumper_.GetStr( terminator.left.get());
-        std::string right_str = op_dumper_.GetStr( terminator.right.get());
+        std::string left_str  = op_dumper_.GetStr( *terminator.left);
+        std::string right_str = op_dumper_.GetStr( *terminator.right);
         std::string cmp_str;
         switch ( terminator.type )
         {
-            case ir::CmpType::LESS:   cmp_str = " < ";  break;
-            case ir::CmpType::EQUAL:  cmp_str = " == "; break;
-            case ir::CmpType::BIGGER: cmp_str = " > ";  break;
-            case ir::CmpType::ALWAYS_TRUE: break;
+            case ir::CmpType::LESS:   cmp_str = " &lt; ";  break;
+            case ir::CmpType::EQUAL:  cmp_str =  " == "; break;
+            case ir::CmpType::BIGGER: cmp_str = " &gt; ";  break;
+            default: throw std::runtime_error{ "Unexpected compare type"};
         }
 
-        return "Terminator: if ( " + left_str + cmp_str + right_str + " ) "
-               "goto BasicBlock_" + std::to_string( terminator.true_dest) +
-               " else goto BasicBlock_" + std::to_string( terminator.false_dest);
+        return left_str + cmp_str + right_str;
     }
 
 private:
@@ -184,14 +167,15 @@ private:
 };
 
 std::string
-dump_basic_block( const ir::BasicBlock& basic_block)
+dump_basic_block( const ir::BasicBlock& basic_block,
+                  dot_graph::Graph& graph)
 {
     InstructionDumper dumper{};
 
     html::HTMLTable result{};
     result.addRow()
           .addCell( "BasicBlock_" + std::to_string( basic_block.id))
-          .setColSpan( 2)
+          .setColSpan( 4)
           .setPort( "Prev");
 
     for ( size_t i = 0; i != basic_block.instructions.size(); ++i )
@@ -199,13 +183,27 @@ dump_basic_block( const ir::BasicBlock& basic_block)
         std::string instr_string = dumper.GetStr( *basic_block.instructions[i]);
         html::HTMLRow& row = result.addRow();
         row.addCell( std::to_string( i));
-        row.addCell( instr_string);
+        row.addCell( instr_string).setColSpan( 3);
     }
 
-    result.addRow()
-          .addCell( "Next")
-          .setColSpan( 2)
-          .setPort( "Next");
+    html::HTMLRow& row = result.addRow();
+    row.addCell( "Terminator")
+       .setPort( "Next");
+    row.addCell( dumper.GetStr( basic_block.terminator));
+    row.addCell( "True").setPort( "True");
+    row.addCell( "False").setPort( "False");
+
+    if ( basic_block.terminator.type != CmpType::INVALID )
+    {
+        graph.addEdge( basic_block_id( basic_block.id) + ":True",
+                       basic_block_id( basic_block.terminator.true_dest) + ":Prev");
+
+        if ( basic_block.terminator.type != CmpType::ALWAYS_TRUE )
+        {
+            graph.addEdge( basic_block_id( basic_block.id) + ":False",
+                           basic_block_id( basic_block.terminator.false_dest) + ":Prev");
+        }
+    }
 
     return static_cast<std::string>( result);
 }
@@ -229,22 +227,25 @@ dump_function( const ir::Function& function,
     start_row.addCell( "Start")
              .setPort( "Next");
 
-    std::string prev_basic_block_id = "__START_OF_" + function.name;
+    std::string start_id = "__START_OF_" + function.name;
 
-    subgraph.addNode( prev_basic_block_id)
+    subgraph.addNode( start_id)
             .setHtmlLabel( static_cast<std::string>( func_start))
             .setShape( "box");
 
-    graph.addEdge( "__PROGRAM__:Functions", prev_basic_block_id + ":Prev");
+    graph.addEdge( "__PROGRAM__:Functions", start_id + ":Prev");
+
+    if ( !function.basic_blocks.empty() )
+    {
+        std::string first_bb_id = basic_block_id( function.basic_blocks[0]->id);
+        graph.addEdge( start_id + ":Next", first_bb_id + ":Prev");
+    }
 
     for ( const auto& basic_block : function.basic_blocks )
     {
-        std::string basic_block_id = "__BASIC_BLOCK_" + std::to_string( basic_block->id);
-        subgraph.addNode( basic_block_id)
-                .setHtmlLabel( dump_basic_block( *basic_block))
+        subgraph.addNode( basic_block_id( basic_block->id))
+                .setHtmlLabel( dump_basic_block( *basic_block, graph))
                 .setShape( "box");
-        graph.addEdge( prev_basic_block_id + ":Next", basic_block_id + ":Prev");
-        prev_basic_block_id = std::move( basic_block_id);
     }
 }
 

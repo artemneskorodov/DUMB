@@ -381,7 +381,9 @@ public:
         {
             global->Accept( *this);
         }
-        ir::OperandPtr tmp = std::make_unique<ir::VarOperand>( "tmp_" + std::to_string( tmp_counter_++));
+        std::string tmp_id = "tmp_" + std::to_string( tmp_counter_++);
+        ir::OperandPtr tmp = std::make_unique<ir::VarOperand>( tmp_id);
+        function_.variables.emplace_back( tmp_id);
         ir::InstructionPtr instr = std::make_unique<ir::FunctionCallInstr>( std::move( tmp),
                                                                             "main",
                                                                             std::vector<ir::OperandPtr>{});

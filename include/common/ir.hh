@@ -290,6 +290,7 @@ enum class CmpType
     EQUAL,
     BIGGER,
     ALWAYS_TRUE,
+    INVALID,
 };
 
 struct BasicBlockTerminator
@@ -311,7 +312,7 @@ struct BasicBlockTerminator
 
     OperandPtr   left       { nullptr};
     OperandPtr   right      { nullptr};
-    CmpType      type       { CmpType::ALWAYS_TRUE};
+    CmpType      type       { CmpType::INVALID};
     LocalLabelID true_dest  { 0xffffff}; // Random number for default constructor
     LocalLabelID false_dest { 0};
 

@@ -168,6 +168,14 @@ private:
             instr->Accept( *this);
         }
 
+        if ( basic_block.terminator.type == ir::CmpType::INVALID )
+        {
+            lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, lir::Immediate{ 60});
+            lir_.Add( lir::BinaryOp::XOR, lir::Register::RDI, lir::Register::RDI);
+            lir_.Add( lir::NoOpInstr::SYSCALL);
+            return ;
+        }
+
         if ( basic_block.terminator.type == ir::CmpType::ALWAYS_TRUE )
         {
             lir_.AddJmp( lir::JmpType::JMP, ".LOC_" + std::to_string( basic_block.terminator.true_dest));
@@ -179,7 +187,7 @@ private:
         lir_.Add( lir::BinaryOp::MOV, lir::Register::RBX, op_emitter_.GetOperand( *basic_block.terminator.right));
         lir_.Add( lir::BinaryOp::CMP, lir::Register::RAX, lir::Register::RBX);
 
-        std::string true_label = ".LOC_" + std::to_string( basic_block.terminator.true_dest);
+        std::string true_label  = ".LOC_" + std::to_string( basic_block.terminator.true_dest);
         std::string false_label = ".LOC_" + std::to_string( basic_block.terminator.false_dest);
 
         if ( basic_block.terminator.type == ir::CmpType::LESS )
