@@ -107,7 +107,10 @@ private:
             lir_.Add( lir::BinaryOp::MOV, op_emitter_.GetOperand( *node.dest), lir::Register::RAX);
         } else if ( node.op == ir::UnaryOpType::RET )
         {
-            lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, op_emitter_.GetOperand( *node.operand));
+            if ( node.operand != nullptr )
+            {
+                lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, op_emitter_.GetOperand( *node.operand));
+            }
             lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
             lir_.Add( lir::NoOpInstr::RET);
         }
@@ -127,41 +130,6 @@ private:
         lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ 8 * params_num});
         lir_.Add( lir::UnaryOp::POP, lir::Register::RBP);
         lir_.Add( lir::BinaryOp::MOV, op_emitter_.GetOperand( *node.dest), lir::Register::RAX);
-    }
-
-    void
-    Visit( const ir::CmpAndJmpInstr& node) override
-    {
-        if ( node.type == ir::CmpType::ALWAYS_TRUE )
-        {
-            lir_.AddJmp( lir::JmpType::JMP, ".LOC_" + std::to_string( node.true_dest));
-            return ;
-        }
-
-        node.left->Accept( op_emitter_);
-        lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, op_emitter_.GetOperand( *node.left));
-        lir_.Add( lir::BinaryOp::MOV, lir::Register::RBX, op_emitter_.GetOperand( *node.right));
-        lir_.Add( lir::BinaryOp::CMP, lir::Register::RAX, lir::Register::RBX);
-
-        std::string true_label = ".LOC_" + std::to_string( node.true_dest);
-        std::string false_label = ".LOC_" + std::to_string( node.false_dest);
-
-        if ( node.type == ir::CmpType::LESS )
-        {
-            lir_.AddJmp( lir::JmpType::JL, true_label);
-            lir_.AddJmp( lir::JmpType::JGE, false_label);
-        } else if ( node.type == ir::CmpType::EQUAL )
-        {
-            lir_.AddJmp( lir::JmpType::JE,  true_label);
-            lir_.AddJmp( lir::JmpType::JNE, false_label);
-        } else if ( node.type == ir::CmpType::BIGGER )
-        {
-            lir_.AddJmp( lir::JmpType::JG, true_label);
-            lir_.AddJmp( lir::JmpType::JLE, false_label);
-        } else
-        {
-            throw std::runtime_error{ "Unexpected comparison type"};
-        }
     }
 
     void
@@ -198,6 +166,37 @@ private:
         for ( const auto& instr : basic_block.instructions )
         {
             instr->Accept( *this);
+        }
+
+        if ( basic_block.terminator.type == ir::CmpType::ALWAYS_TRUE )
+        {
+            lir_.AddJmp( lir::JmpType::JMP, ".LOC_" + std::to_string( basic_block.terminator.true_dest));
+            return ;
+        }
+
+        basic_block.terminator.left->Accept( op_emitter_);
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, op_emitter_.GetOperand( *basic_block.terminator.left));
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RBX, op_emitter_.GetOperand( *basic_block.terminator.right));
+        lir_.Add( lir::BinaryOp::CMP, lir::Register::RAX, lir::Register::RBX);
+
+        std::string true_label = ".LOC_" + std::to_string( basic_block.terminator.true_dest);
+        std::string false_label = ".LOC_" + std::to_string( basic_block.terminator.false_dest);
+
+        if ( basic_block.terminator.type == ir::CmpType::LESS )
+        {
+            lir_.AddJmp( lir::JmpType::JL, true_label);
+            lir_.AddJmp( lir::JmpType::JGE, false_label);
+        } else if ( basic_block.terminator.type == ir::CmpType::EQUAL )
+        {
+            lir_.AddJmp( lir::JmpType::JE,  true_label);
+            lir_.AddJmp( lir::JmpType::JNE, false_label);
+        } else if ( basic_block.terminator.type == ir::CmpType::BIGGER )
+        {
+            lir_.AddJmp( lir::JmpType::JG, true_label);
+            lir_.AddJmp( lir::JmpType::JLE, false_label);
+        } else
+        {
+            throw std::runtime_error{ "Unexpected comparison type"};
         }
     }
 
@@ -236,7 +235,6 @@ public:
     {
         // Preamble
         EmitFunction( *program.preamble);
-        lir_.AddCall( "main"); // TODO check that main appears in nametable
         lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, lir::Immediate{ 60});
         lir_.Add( lir::BinaryOp::XOR, lir::Register::RDI, lir::Register::RDI);
         lir_.Add( lir::NoOpInstr::SYSCALL);

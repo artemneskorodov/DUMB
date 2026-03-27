@@ -206,43 +206,7 @@ struct FunctionCallInstr : public Instruction
 
 };
 
-// Compare and jump instruction
-
-using LocalLabelID = std::size_t;
-
-enum class CmpType
-{
-    LESS,
-    EQUAL,
-    BIGGER,
-    ALWAYS_TRUE,
-};
-
-struct CmpAndJmpInstr : public Instruction
-{
-    void Accept( InstructionVisitor& v) override;
-    void Accept( ConstantInstructionVisitor& v) const override;
-
-    CmpAndJmpInstr( OperandPtr   left,
-                    OperandPtr   right,
-                    CmpType      type,
-                    LocalLabelID true_dest,
-                    LocalLabelID false_dest)
-     :  left       { std::move( left)},
-        right      { std::move( right)},
-        type       { type},
-        true_dest  { true_dest},
-        false_dest { false_dest}
-    {
-    }
-
-    OperandPtr   left;
-    OperandPtr   right;
-    CmpType      type;
-    LocalLabelID true_dest;
-    LocalLabelID false_dest;
-
-};
+// User input instruction
 
 struct InputInstr : public Instruction
 {
@@ -260,6 +224,8 @@ struct InputInstr : public Instruction
     std::string string;
 
 };
+
+// User output instruction
 
 struct OutputInstr : public Instruction
 {
@@ -284,7 +250,6 @@ public:
     virtual void Visit( BinaryOpInstr&     node) = 0;
     virtual void Visit( UnaryOpInstr&      node) = 0;
     virtual void Visit( FunctionCallInstr& node) = 0;
-    virtual void Visit( CmpAndJmpInstr&    node) = 0;
     virtual void Visit( InputInstr&        node) = 0;
     virtual void Visit( OutputInstr&       node) = 0;
 
@@ -296,7 +261,6 @@ public:
     virtual void Visit( const BinaryOpInstr&     node) = 0;
     virtual void Visit( const UnaryOpInstr&      node) = 0;
     virtual void Visit( const FunctionCallInstr& node) = 0;
-    virtual void Visit( const CmpAndJmpInstr&    node) = 0;
     virtual void Visit( const InputInstr&        node) = 0;
     virtual void Visit( const OutputInstr&       node) = 0;
 
@@ -305,20 +269,53 @@ public:
 inline void BinaryOpInstr::Accept     ( InstructionVisitor& v) { v.Visit( *this); }
 inline void UnaryOpInstr::Accept      ( InstructionVisitor& v) { v.Visit( *this); }
 inline void FunctionCallInstr::Accept ( InstructionVisitor& v) { v.Visit( *this); }
-inline void CmpAndJmpInstr::Accept    ( InstructionVisitor& v) { v.Visit( *this); }
 inline void InputInstr::Accept        ( InstructionVisitor& v) { v.Visit( *this); }
 inline void OutputInstr::Accept       ( InstructionVisitor& v) { v.Visit( *this); }
 
 inline void BinaryOpInstr::Accept     ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
 inline void UnaryOpInstr::Accept      ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
 inline void FunctionCallInstr::Accept ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
-inline void CmpAndJmpInstr::Accept    ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
 inline void InputInstr::Accept        ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
 inline void OutputInstr::Accept       ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
 
 //
 // Basic block
 //
+
+using LocalLabelID = std::size_t;
+
+enum class CmpType
+{
+    LESS,
+    EQUAL,
+    BIGGER,
+    ALWAYS_TRUE,
+};
+
+struct BasicBlockTerminator
+{
+    BasicBlockTerminator() = default;
+
+    BasicBlockTerminator( OperandPtr   left,
+                          OperandPtr   right,
+                          CmpType      type,
+                          LocalLabelID true_dest,
+                          LocalLabelID false_dest)
+     :  left       { std::move( left)},
+        right      { std::move( right)},
+        type       { type},
+        true_dest  { true_dest},
+        false_dest { false_dest}
+    {
+    }
+
+    OperandPtr   left       { nullptr};
+    OperandPtr   right      { nullptr};
+    CmpType      type       { CmpType::ALWAYS_TRUE};
+    LocalLabelID true_dest  { 0xffffff}; // Random number for default constructor
+    LocalLabelID false_dest { 0};
+
+};
 
 struct BasicBlock final
 {
@@ -328,6 +325,8 @@ struct BasicBlock final
     }
 
     std::vector<InstructionPtr> instructions{};
+    BasicBlockTerminator        terminator{};
+    std::vector<LocalLabelID>   predecessors{};
     LocalLabelID                id;
 
 };

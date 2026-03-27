@@ -13,7 +13,7 @@ namespace lexer
 {
 
 ///
-/// @brief
+/// @brief          Tokens supported by DUMB language
 ///
 enum class TokenType
 {
@@ -44,6 +44,11 @@ enum class TokenType
     USER_QUOTED_STRING,
 };
 
+///
+/// @brief          Converts TokenType enum to its string representation
+/// @param type     Token type to convert to string
+/// @return         String representing enum value
+///
 inline std::string
 TypeToStr( TokenType type)
 {
@@ -78,15 +83,8 @@ TypeToStr( TokenType type)
     }
 }
 
-template<typename TOutStream>
-TOutStream&
-operator<<( TOutStream& os, TokenType token_type)
-{
-    return (os << TypeToStr( token_type));
-}
-
 ///
-/// @brief
+/// @brief          Information about token in source file
 ///
 struct Token
 {
@@ -109,7 +107,8 @@ struct Token
 };
 
 ///
-/// @brief
+/// @brief          Lexer class
+/// @todo           Move it to frontend/lexer.cc
 ///
 class Lexer final
 {

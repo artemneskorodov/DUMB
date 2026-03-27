@@ -104,7 +104,10 @@ private:
             op_interpreter_.PutValue( *node.dest, value);
         } else if ( node.op == UnaryOpType::RET )
         {
-            func_return_value_ = op_interpreter_.GetValue( *node.operand);
+            if ( node.operand != nullptr )
+            {
+                func_return_value_ = op_interpreter_.GetValue( *node.operand);
+            }
             need_return_ = true;
         } else
         {
@@ -122,37 +125,6 @@ private:
         const Function& func = find_function( node.name);
         VisitFunction( func);
         op_interpreter_.PutValue( *node.dest, func_return_value_);
-    }
-
-    void
-    Visit( const CmpAndJmpInstr& node) override
-    {
-        if ( node.type == CmpType::ALWAYS_TRUE )
-        {
-            const BasicBlock& basic_block = find_basic_block( node.true_dest);
-            VisitBasicBlock( basic_block);
-            return ;
-        }
-        int left  = op_interpreter_.GetValue( *node.left);
-        int right = op_interpreter_.GetValue( *node.right);
-        bool result;
-        switch ( node.type )
-        {
-            case CmpType::LESS:        result = (left <  right); break;
-            case CmpType::EQUAL:       result = (left == right); break;
-            case CmpType::BIGGER:      result = (left >  right); break;
-            default: throw std::runtime_error{ "Unexpected compare operation"};
-        }
-
-        if ( result )
-        {
-            const BasicBlock& basic_block = find_basic_block( node.true_dest);
-            VisitBasicBlock( basic_block);
-        } else
-        {
-            const BasicBlock& basic_block = find_basic_block( node.false_dest);
-            VisitBasicBlock( basic_block);
-        }
     }
 
     void
@@ -180,6 +152,36 @@ private:
             {
                 return ;
             }
+            if ( exit_ )
+            {
+                return ;
+            }
+        }
+        if ( node.terminator.type == CmpType::ALWAYS_TRUE )
+        {
+            const BasicBlock& basic_block = find_basic_block( node.terminator.true_dest);
+            VisitBasicBlock( basic_block);
+            return ;
+        }
+        int left  = op_interpreter_.GetValue( *node.terminator.left);
+        int right = op_interpreter_.GetValue( *node.terminator.right);
+        bool result;
+        switch ( node.terminator.type )
+        {
+            case CmpType::LESS:        result = (left <  right); break;
+            case CmpType::EQUAL:       result = (left == right); break;
+            case CmpType::BIGGER:      result = (left >  right); break;
+            default: throw std::runtime_error{ "Unexpected compare operation"};
+        }
+
+        if ( result )
+        {
+            const BasicBlock& basic_block = find_basic_block( node.terminator.true_dest);
+            VisitBasicBlock( basic_block);
+        } else
+        {
+            const BasicBlock& basic_block = find_basic_block( node.terminator.false_dest);
+            VisitBasicBlock( basic_block);
         }
     }
 
@@ -214,8 +216,6 @@ public:
         }
         VisitFunction( *program.preamble.get());
 
-        const Function& main = find_function( "main");
-        VisitFunction( main);
         functions_ = nullptr;
     }
 
@@ -255,6 +255,7 @@ private:
     OperandsInterpreter               op_interpreter_{ memory_};
     bool                              need_return_{ false};
     int                               func_return_value_;
+    bool                              exit_{ false};
 
 };
 

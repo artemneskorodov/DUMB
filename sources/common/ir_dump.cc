@@ -154,6 +154,29 @@ public:
         return result_;
     }
 
+    std::string
+    GetStr( const ir::BasicBlockTerminator& terminator)
+    {
+        if ( terminator.type == ir::CmpType::ALWAYS_TRUE )
+        {
+            return "Terminator: goto BasicBlock_" + std::to_string( terminator.true_dest);
+        }
+        std::string left_str = op_dumper_.GetStr( terminator.left.get());
+        std::string right_str = op_dumper_.GetStr( terminator.right.get());
+        std::string cmp_str;
+        switch ( terminator.type )
+        {
+            case ir::CmpType::LESS:   cmp_str = " < ";  break;
+            case ir::CmpType::EQUAL:  cmp_str = " == "; break;
+            case ir::CmpType::BIGGER: cmp_str = " > ";  break;
+            case ir::CmpType::ALWAYS_TRUE: break;
+        }
+
+        return "Terminator: if ( " + left_str + cmp_str + right_str + " ) "
+               "goto BasicBlock_" + std::to_string( terminator.true_dest) +
+               " else goto BasicBlock_" + std::to_string( terminator.false_dest);
+    }
+
 private:
     std::string   result_;
     OperandDumper op_dumper_;

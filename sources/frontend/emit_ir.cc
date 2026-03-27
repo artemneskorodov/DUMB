@@ -133,13 +133,11 @@ private:
         ir::LocalLabelID false_label = basic_blocks_counter_ + 2;
         basic_blocks_counter_ += 2;
 
-        ir::InstructionPtr instr = std::make_unique<ir::CmpAndJmpInstr>( std::move( left),
-                                                                         std::move( right),
-                                                                         type,
-                                                                         true_label,
-                                                                         false_label);
-
-        basic_block_.instructions.emplace_back( std::move( instr));
+        basic_block_.terminator = ir::BasicBlockTerminator( std::move( left),
+                                                            std::move( right),
+                                                            type,
+                                                            true_label,
+                                                            false_label);
         finish_basic_block( true_label);
 
         for ( auto& it : node.body )
@@ -147,12 +145,11 @@ private:
             it.get()->Accept( *this);
         }
 
-        instr = std::make_unique<ir::CmpAndJmpInstr>( nullptr /* unused */,
-                                                      nullptr /* unused */,
-                                                      ir::CmpType::ALWAYS_TRUE,
-                                                      false_label,
-                                                      0 /* unused */);
-        basic_block_.instructions.emplace_back( std::move( instr));
+        basic_block_.terminator = ir::BasicBlockTerminator( nullptr /* unused */,
+                                                            nullptr /* unused */,
+                                                            ir::CmpType::ALWAYS_TRUE,
+                                                            false_label,
+                                                            0 /* unused */);
 
         // Finishing basic block with new basic block label equals to false label which we saved previously
         finish_basic_block( false_label);
@@ -163,12 +160,11 @@ private:
     {
         assert( eval_stack_.empty());
         // Adding condition basic block
-        ir::InstructionPtr instr = std::make_unique<ir::CmpAndJmpInstr>( nullptr /* unused */,
-                                                                         nullptr /* unused */,
-                                                                         ir::CmpType::ALWAYS_TRUE,
-                                                                         basic_blocks_counter_ + 1,
-                                                                         0 /* unused */);
-        basic_block_.instructions.emplace_back( std::move( instr));
+        basic_block_.terminator = ir::BasicBlockTerminator( nullptr /* unused */,
+                                                            nullptr /* unused */,
+                                                            ir::CmpType::ALWAYS_TRUE,
+                                                            basic_blocks_counter_ + 1,
+                                                            0 /* unused */);
         finish_basic_block();
         ir::LocalLabelID condition_block = basic_blocks_counter_;
 
@@ -195,12 +191,11 @@ private:
         ir::LocalLabelID false_label = basic_blocks_counter_ + 2;
         basic_blocks_counter_ += 2; // Saving two basic blocks which will not be used in body
 
-        instr = std::make_unique<ir::CmpAndJmpInstr>( std::move( left),
-                                                      std::move( right),
-                                                      type,
-                                                      true_label,
-                                                      false_label);
-        basic_block_.instructions.emplace_back( std::move( instr));
+        basic_block_.terminator = ir::BasicBlockTerminator( std::move( left),
+                                                            std::move( right),
+                                                            type,
+                                                            true_label,
+                                                            false_label);
 
         finish_basic_block( true_label);
 
@@ -209,13 +204,11 @@ private:
             it.get()->Accept( *this);
         }
 
-        instr = std::make_unique<ir::CmpAndJmpInstr>( nullptr,
-                                                      nullptr,
-                                                      ir::CmpType::ALWAYS_TRUE,
-                                                      condition_block,
-                                                      0);
-
-        basic_block_.instructions.emplace_back( std::move( instr));
+        basic_block_.terminator = ir::BasicBlockTerminator( nullptr /* unused */,
+                                                            nullptr /* unused */,
+                                                            ir::CmpType::ALWAYS_TRUE,
+                                                            condition_block,
+                                                            0 /* unused */);
         finish_basic_block( false_label);
     }
 
@@ -388,6 +381,15 @@ public:
         {
             global->Accept( *this);
         }
+        ir::OperandPtr tmp = std::make_unique<ir::VarOperand>( "tmp_" + std::to_string( tmp_counter_++));
+        ir::InstructionPtr instr = std::make_unique<ir::FunctionCallInstr>( std::move( tmp),
+                                                                            "main",
+                                                                            std::vector<ir::OperandPtr>{});
+        basic_block_.instructions.emplace_back( std::move( instr));
+
+        instr = std::make_unique<ir::UnaryOpInstr>( nullptr, ir::UnaryOpType::RET, nullptr);
+        basic_block_.instructions.emplace_back( std::move( instr));
+
         finish_basic_block();
         program_.preamble = std::make_unique<ir::Function>( std::move( function_));
 
@@ -397,6 +399,23 @@ public:
             EmitFunction( func);
         }
         nametable_ = nullptr;
+
+        // Setting predecessors for basic blocks
+        for ( auto& func : program_.functions )
+        {
+            for ( auto& block : func->basic_blocks )
+            {
+                for ( auto& predecessor : func->basic_blocks )
+                {
+                    if ( predecessor->terminator.true_dest == block->id ||
+                         predecessor->terminator.false_dest == block->id )
+                    {
+                        block->predecessors.emplace_back( predecessor->id);
+                    }
+                }
+            }
+        }
+
         return std::move( program_);
     }
 
