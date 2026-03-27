@@ -5,12 +5,15 @@
 
 namespace dumb
 {
-namespace ir_dump
+namespace ir
+{
+namespace dump
 {
 
-void DumpIR( const ir::Program& program);
+void DumpIR( const Program& program, const std::string& output);
 
-} // ! namespace ir_dump
+} // ! namespace dump
+} // ! namespace ir
 } // ! namespace dumb
 
 #endif // ! DUMB_IR_DUMP_HH__
