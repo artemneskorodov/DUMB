@@ -228,7 +228,8 @@ dump_function( const ir::Function& function,
 } // ! anonymous namespace
 
 void
-DumpIR( const ir::Program& program)
+DumpIR( const ir::Program& program,
+        const std::string& output)
 {
     dot_graph::Graph graph{ "Program"};
 
@@ -265,7 +266,7 @@ DumpIR( const ir::Program& program)
         dump_function( *it, func, graph);
     }
 
-    graph.translateWithDot( "output1.svg", "svg");
+    graph.translateWithDot( output, "svg");
 }
 
 } // ! namespace dump

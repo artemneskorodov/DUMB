@@ -16,9 +16,11 @@ main( int         argc,
     std::string source = argv[1];
 
     dumb::ir::Program program = dumb::RunFrontend( source);
+
     #if 0
-    dumb::ir::dump::DumpIR( program);
+    dumb::ir::dump::DumpIR( program, "ir_dump.svg");
     #endif
+
     dumb::ir::interpreter::Run( program);
     return 0;
 }

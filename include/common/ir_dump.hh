@@ -10,7 +10,7 @@ namespace ir
 namespace dump
 {
 
-void DumpIR( const Program& program);
+void DumpIR( const Program& program, const std::string& output);
 
 } // ! namespace dump
 } // ! namespace ir
