@@ -173,10 +173,18 @@ dump_basic_block( const ir::BasicBlock& basic_block,
     InstructionDumper dumper{};
 
     html::HTMLTable result{};
-    result.addRow()
-          .addCell( "BasicBlock_" + std::to_string( basic_block.id))
-          .setColSpan( 4)
-          .setPort( "Prev");
+    result.addRow().addCell( "BasicBlock_" + std::to_string( basic_block.id))
+                   .setColSpan( 4)
+                   .setPort( "Prev");
+
+    result.addRow().addCell( "Predecessors").setColSpan( 4);
+
+    for ( LocalLabelID pred : basic_block.predecessors )
+    {
+        result.addRow().addCell( "BasicBlock_" + std::to_string( pred)).setColSpan( 4);
+    }
+
+    result.addRow().addCell( "Instructions").setColSpan( 4);
 
     for ( size_t i = 0; i != basic_block.instructions.size(); ++i )
     {
