@@ -25,159 +25,11 @@ basic_block_id( int id,
     return "__BASIC_BLOCK_" + std::to_string( id) + "_IN_FUNC_" + std::to_string( func_id);
 }
 
-#if 0
-
-class OperandDumper : public ConstantOperandVisitor
-{
-public:
-    void
-    Visit( const VarOperand& node) override
-    {
-        result_ = node.name;
-    }
-
-    void
-    Visit( const GVarOperand& node) override
-    {
-        result_ = node.name;
-    }
-
-    void
-    Visit( const ImmOperand& node) override
-    {
-        result_ = "imm(" + std::to_string( node.value) + ")";
-    }
-
-    std::string
-    GetStr( const ir::Operand& operand)
-    {
-        operand.Accept( *this);
-        return result_;
-    }
-
-private:
-    std::string result_;
-
-};
-
-class InstructionDumper : public ir::ConstantInstructionVisitor
-{
-public:
-    void
-    Visit( const ir::BinaryOpInstr& node) override
-    {
-        std::string left   { op_dumper_.GetStr( *node.first)};
-        std::string right  { op_dumper_.GetStr( *node.second)};
-        std::string dest   { op_dumper_.GetStr( *node.dest)};
-        std::string op_str {};
-        switch ( node.op )
-        {
-            case ir::BinaryOpType::ADD:         op_str = " + "; break;
-            case ir::BinaryOpType::SUB:         op_str = " - "; break;
-            case ir::BinaryOpType::MUL:         op_str = " * "; break;
-            case ir::BinaryOpType::DIV:         op_str = " / "; break;
-        }
-        result_ = "BinaryOp: " + dest + " = " + left + op_str + right;
-    }
-
-    void
-    Visit( const ir::UnaryOpInstr& node) override
-    {
-        if ( node.op == ir::UnaryOpType::MOV )
-        {
-            std::string operand = op_dumper_.GetStr( *node.operand);
-            std::string dest    = op_dumper_.GetStr( *node.dest);
-            result_ = "UnaryOp: " + dest + " = " + operand;
-        } else if ( node.op == UnaryOpType::RET )
-        {
-            std::string operand = "";
-            if ( node.operand != nullptr )
-            {
-                operand = op_dumper_.GetStr( *node.operand);
-            }
-            result_ = "UnaryOp: RET " + operand;
-        } else
-        {
-            throw std::runtime_error{ "Unexpected unary operand"};
-        }
-    }
-
-    void
-    Visit( const ir::FunctionCallInstr& node) override
-    {
-        std::string dest = op_dumper_.GetStr( *node.dest);
-        result_ = "FunctionCall: " + dest + " = call " + node.name + " (";
-        for ( auto& it : node.params )
-        {
-            std::string param = op_dumper_.GetStr( *it);
-            result_ += param;
-            if ( &it != &node.params.back() )
-            {
-                result_ += ", ";
-            }
-        }
-        result_ += ")";
-    }
-
-    void
-    Visit( const ir::InputInstr& node) override
-    {
-        result_ = "input (" + op_dumper_.GetStr( *node.dest) + ", \"" + node.string + "\")";
-    }
-
-    void
-    Visit( const ir::OutputInstr& node) override
-    {
-        result_ = "output (" + op_dumper_.GetStr( *node.expression) + ", \"" + node.string + "\")";
-    }
-
-    std::string
-    GetStr( const ir::Instruction& instr)
-    {
-        instr.Accept( *this);
-        return result_;
-    }
-
-    std::string
-    GetStr( const ir::BasicBlockTerminator& terminator)
-    {
-        if ( terminator.type == ir::CmpType::INVALID )
-        {
-            return "Invalid";
-        }
-        if ( terminator.type == ir::CmpType::ALWAYS_TRUE )
-        {
-            return "True";
-        }
-        std::string left_str  = op_dumper_.GetStr( *terminator.left);
-        std::string right_str = op_dumper_.GetStr( *terminator.right);
-        std::string cmp_str;
-        switch ( terminator.type )
-        {
-            case ir::CmpType::LESS:   cmp_str = " &lt; ";  break;
-            case ir::CmpType::EQUAL:  cmp_str =  " == "; break;
-            case ir::CmpType::BIGGER: cmp_str = " &gt; ";  break;
-            default: throw std::runtime_error{ "Unexpected compare type"};
-        }
-
-        return left_str + cmp_str + right_str;
-    }
-
-private:
-    std::string   result_;
-    OperandDumper op_dumper_;
-
-};
-
-#endif
-
 class InstructionDumper
 {
 public:
-    InstructionDumper( const ir::Program& program,
-                       const ir::Function& function)
-     :  program_{ program},
-        function_{ function}
+    InstructionDumper( const ir::Program& program)
+     :  program_{ program}
     {
     }
 
@@ -248,12 +100,12 @@ private:
             }
             case ir::Operand::VARIABLE:
             {
-                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
-                return "var(" + sym->GetName() + ")";
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);
+                return "var(" + sym->GetName() + "." + std::to_string( operand.value) + ", id = " + std::to_string( operand.id) + ")";
             }
             case ir::Operand::GLOBAL:
             {
-                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);
                 return "glob(" + sym->GetName() + ")";
             }
             case ir::Operand::IMMEDIATE:
@@ -262,13 +114,12 @@ private:
             }
             case ir::Operand::LABEL:
             {
-                return "label(" + basic_block_id( operand.value, function_.Id()) + ")";
-                return "label(" + std::to_string( operand.value) + ")";
+                return "label(BasicBlock_" + std::to_string( operand.value) + ")";
             }
             case ir::Operand::FUNC_LABEL:
             {
-                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
-                return "func(" + sym->GetName() + ")";
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);
+                return "func(" + sym->GetName() + ", id = " + std::to_string( operand.id) + ")";
             }
             case ir::Operand::STRING_LABEL:
             {
@@ -279,7 +130,6 @@ private:
 
 private:
     const ir::Program& program_;
-    const ir::Function& function_;
 
 };
 
@@ -289,7 +139,7 @@ dump_basic_block( const ir::Program& program,
                   const ir::BasicBlock& basic_block,
                   dot_graph::Graph& graph)
 {
-    InstructionDumper dumper{ program, function};
+    InstructionDumper dumper{ program};
 
     html::HTMLTable result{};
     result.addRow().addCell( "BasicBlock_" + std::to_string( basic_block.id))
@@ -305,11 +155,12 @@ dump_basic_block( const ir::Program& program,
 
     result.addRow().addCell( "Instructions").setColSpan( 4);
 
-    for ( size_t i = 0; i != basic_block.instructions.size(); ++i )
+    std::size_t counter = 0;
+    for ( const ir::Instruction& instr : basic_block.instructions )
     {
-        std::pair<std::string, std::string> instr_str = dumper.GetStr( basic_block.instructions[i]);
+        std::pair<std::string, std::string> instr_str = dumper.GetStr( instr);
         html::HTMLRow& row = result.addRow();
-        row.addCell( std::to_string( i));
+        row.addCell( std::to_string( counter++));
         row.addCell( instr_str.first).setColSpan( 1);
         row.addCell( instr_str.second).setColSpan( 2);
     }

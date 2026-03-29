@@ -190,24 +190,23 @@ public:
     void
     Visit( const ast::FunctionCall& node) override
     {
-        std::vector<ir::Operand> operands;
+        std::vector<ir::Operand> operands{};
         operands.emplace_back( get_operand( node.id));
         if ( operands.back().type != ir::Operand::FUNC_LABEL )
         {
             throw std::runtime_error{ "Unexpected symbol type"};
         }
 
-        for ( auto& it : node.parameters )
+        for ( const ast::ExprNodePtr& param : node.parameters )
         {
-            it->Accept( *this);
-            it.get()->Accept( *this);
+            param->Accept( *this);
             operands.emplace_back( eval_result_);
         }
 
         eval_result_ = get_tmp();
         basic_block_->instructions.emplace_back( ir::Opcode::CALL,
                                                  eval_result_,
-                                                 std::vector<ir::Operand>{ operands});
+                                                 std::move( operands));
     }
 
     void
@@ -332,13 +331,13 @@ private:
 
         if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            return ir::Operand{ ir::Operand::VARIABLE, id};
+            return ir::Operand{ ir::Operand::VARIABLE, 0, id};
         } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            return ir::Operand{ ir::Operand::GLOBAL, id};
+            return ir::Operand{ ir::Operand::GLOBAL, 0, id};
         } else if ( sym->GetType() == nt::SymbolType::FUNCTION )
         {
-            return ir::Operand{ ir::Operand::FUNC_LABEL, id};
+            return ir::Operand{ ir::Operand::FUNC_LABEL, 0, id};
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
@@ -353,7 +352,7 @@ private:
                                                               nt::SymbolType::LOCAL_VARIABLE);
         function_.AddVariable( tmp_id);
 
-        return ir::Operand{ ir::Operand::VARIABLE, tmp_id};
+        return ir::Operand{ ir::Operand::VARIABLE, 0, tmp_id};
     }
 };
 
@@ -380,7 +379,7 @@ EmitIR( const ast::Program& program)
     basic_block.instructions.emplace_back( ir::Opcode::CALL,
                                            ir::kNoDefine,
                                            std::vector<ir::Operand>{
-                                               { ir::Operand::FUNC_LABEL, main_sym->GetID()}
+                                               { ir::Operand::FUNC_LABEL, 0, main_sym->GetID()}
                                            });
 
     for ( const ast::Function& func : program.functions )

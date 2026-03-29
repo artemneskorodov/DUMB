@@ -42,13 +42,13 @@ private:
     run_function( const Function& func)
     {
         current_function_ = &func;
-
         for ( int param : func.Params() )
         {
             int value = params_stack_.back();
             params_stack_.pop_back();
             locals_[param] = value;
         }
+
         if ( !params_stack_.empty() )
         {
             throw std::runtime_error{ "Unexpected number of parameters in parameters stack"};
@@ -171,7 +171,8 @@ private:
         {
             params_stack_[params_number - i - 1] = value( instr.operands[i + 1]);
         }
-        const Function& func = find_function( instr.operands[0].value);
+        const Function& func = find_function( instr.operands[0].id);
+
         run_function( func);
         if ( instr.defines.type != Operand::EMPTY )
         {
@@ -229,8 +230,8 @@ private:
     {
         switch ( operand.type )
         {
-            case Operand::VARIABLE:  return locals_[operand.value];
-            case Operand::GLOBAL:    return globals_[operand.value];
+            case Operand::VARIABLE:  return locals_[operand.id];
+            case Operand::GLOBAL:    return globals_[operand.id];
             case Operand::IMMEDIATE: return operand.value;
             default: throw std::runtime_error{ "Unexpected operand type = " +
                                                std::to_string( static_cast<int>( operand.type))};
@@ -242,8 +243,8 @@ private:
     {
         switch ( operand.type )
         {
-            case Operand::VARIABLE: return locals_[operand.value];
-            case Operand::GLOBAL:   return globals_[operand.value];
+            case Operand::VARIABLE: return locals_[operand.id];
+            case Operand::GLOBAL:   return globals_[operand.id];
             default: throw std::runtime_error{ "Unexpected operand type = " +
                                                std::to_string( static_cast<int>( operand.type))};
         }

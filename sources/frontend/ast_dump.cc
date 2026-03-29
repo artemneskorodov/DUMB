@@ -473,8 +473,6 @@ DumpAST( const ast::Program& program,
     ASTDumper dumper{ output};
     dumper.DumpProgram( program);
 
-    std::cout << dumper.GetGraph();
-
     dumper.GetGraph().translateWithDot( output, "svg");
 }
 

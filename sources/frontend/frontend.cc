@@ -22,7 +22,9 @@ RunFrontend( const std::string& filename)
 
     ast::Program tree = syntax::ParseSyntax( tokens, filename);
 
-    // ast::dump::DumpAST( &tree, "output.svg");
+    #if 1
+    ast::dump::DumpAST( tree, "dump_ast.svg");
+    #endif
 
     ir::Program program = emit_ir::EmitIR( tree);
     return program;
