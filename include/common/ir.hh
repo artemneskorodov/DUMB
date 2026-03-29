@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <list>
 
 #include "nametable.hh"
 
@@ -33,21 +34,25 @@ struct Operand
 
     constexpr
     Operand( Type type,
-             ImmType value)
+             ImmType value,
+             nt::SymbolID id = 0)
      :  type{ type},
-        value{ value}
+        value{ value},
+        id{ id}
     {
     }
 
     constexpr
     Operand()
      :  type{ EMPTY},
-        value{}
+        value{},
+        id{}
     {
     }
 
     Type type;
-    ImmType value;
+    ImmType value; // version for variable
+    nt::SymbolID id;
 
 };
 
@@ -76,15 +81,27 @@ struct Instruction
                  const Operand& defines,
                  std::vector<Operand> operands)
      :  opcode   { opcode},
-        operands { std::move( operands)},
-        defines  { defines}
+        defines  { defines},
+        operands { std::move( operands)}
     {
     }
 
     Opcode opcode;
-    std::vector<Operand> operands;
     Operand defines;
+    std::vector<Operand> operands;
 
+};
+
+struct PhiNode
+{
+    PhiNode( int var)
+    :  var_id{ var}
+    {
+    }
+
+    nt::SymbolID                     var_id;
+    int                              version;
+    std::unordered_map<int, Operand> mapping;
 };
 
 //
@@ -132,10 +149,11 @@ struct BasicBlock final
     {
     }
 
+    std::vector<PhiNode> phi_nodes{};
     std::vector<Instruction> instructions{};
-    BasicBlockTerminator     terminator{};
-    std::vector<int>         predecessors{};
-    int                      id;
+    BasicBlockTerminator   terminator{};
+    std::vector<int>       predecessors{};
+    int                    id;
 
 };
 
@@ -179,6 +197,12 @@ public:
 
     const std::vector<BasicBlock>&
     BasicBlocks() const &
+    {
+        return basic_blocks_;
+    }
+
+    std::vector<BasicBlock>&
+    BasicBlocks() &
     {
         return basic_blocks_;
     }
@@ -256,6 +280,12 @@ public:
 
     const std::vector<Function>&
     Functions() const &
+    {
+        return functions_;
+    }
+
+    std::vector<Function>&
+    Functions() &
     {
         return functions_;
     }

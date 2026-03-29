@@ -228,10 +228,10 @@ public:
 
         if ( dest.type == ir::Operand::VARIABLE )
         {
-            function_.AddVariable( dest.value);
+            function_.AddVariable( dest.id);
         } else if ( dest.type == ir::Operand::GLOBAL )
         {
-            program_.AddGlobal( dest.value);
+            program_.AddGlobal( dest.id);
         } else
         {
             throw std::runtime_error{ "Unexpected dest type"};

@@ -53,6 +53,15 @@ file(GLOB BACKEND_INC "${BACKEND_INC_DIR}/*.hh")
 file(GLOB BACKEND_SRC "${BACKEND_SRC_DIR}/*.cc")
 
 #
+# Middleend build files
+#
+set(MIDDLEEND_INC_DIR "${INC_DIR}/middleend")
+set(MIDDLEEND_SRC_DIR "${SRC_DIR}/middleend")
+
+file(GLOB MIDDLEEND_INC "${MIDDLEEND_INC_DIR}/*.hh")
+file(GLOB MIDDLEEND_SRC "${MIDDLEEND_SRC_DIR}/*.cc")
+
+#
 # Common build rules
 #
 add_library(common ${COMMON_SRC})
@@ -60,7 +69,7 @@ target_compile_options(common PRIVATE ${CXX_COMPILE_OPTIONS})
 
 target_include_directories(common PUBLIC ${COMMON_INC_DIR})
 
-target_link_libraries(common PRIVATE DotGraphLib)
+target_link_libraries(common PUBLIC DotGraphLib)
 
 #
 # Frontend build rules
@@ -71,8 +80,6 @@ target_compile_options(frontend PRIVATE ${CXX_COMPILE_OPTIONS})
 target_include_directories(frontend PUBLIC ${FRONTEND_INC_DIR})
 
 target_link_libraries(frontend PUBLIC common)
-
-target_link_libraries(frontend PRIVATE DotGraphLib)
 
 #
 # Backend build rules
@@ -85,6 +92,16 @@ target_include_directories(backend PUBLIC ${BACKEND_INC_DIR})
 target_link_libraries(backend PUBLIC common)
 
 #
+# Middleend build rules
+#
+add_library(middleend ${MIDDLEEND_SRC})
+target_compile_options(middleend PRIVATE ${CXX_COMPILE_OPTIONS})
+
+target_include_directories(middleend PUBLIC ${MIDDLEEND_INC_DIR})
+
+target_link_libraries(middleend PUBLIC common)
+
+#
 # DUMB translator build rules
 #
 add_executable(dumb ${SRC_DIR}/dumb.cc)
@@ -93,6 +110,8 @@ target_compile_options(dumb PRIVATE ${CXX_COMPILE_OPTIONS})
 target_link_libraries(dumb PRIVATE frontend)
 
 target_link_libraries(dumb PRIVATE backend)
+
+target_link_libraries(dumb PUBLIC middleend)
 
 #
 # AST interpreter build rules
@@ -140,3 +159,5 @@ add_test(
     COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test/test_ir.py --compiler ${CMAKE_SOURCE_DIR}/build/dumb_ir_interpreter --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
 )
 
+add_executable(graph generate_graph.cc)
+target_link_libraries(graph PRIVATE DotGraphLib)

@@ -53,14 +53,14 @@ public:
         std::string result = opcode + " { ";
         for ( std::size_t i = 0; i != instr.operands.size(); ++i )
         {
-            result += get_operand( instr.operands[i]);
+            result += GetOperandStr( instr.operands[i]);
             if ( i + 1 != instr.operands.size() )
             {
                 result += ", ";
             }
         }
         result += "}";
-        return {get_operand( instr.defines), result};
+        return { GetOperandStr( instr.defines), result};
     }
 
     std::string
@@ -74,8 +74,8 @@ public:
         {
             return "True";
         }
-        std::string left_str  = get_operand( terminator.left);
-        std::string right_str = get_operand( terminator.right);
+        std::string left_str  = GetOperandStr( terminator.left);
+        std::string right_str = GetOperandStr( terminator.right);
         std::string cmp_str;
         switch ( terminator.type )
         {
@@ -88,9 +88,8 @@ public:
         return left_str + cmp_str + right_str;
     }
 
-private:
     std::string
-    get_operand( const ir::Operand& operand)
+    GetOperandStr( const ir::Operand& operand)
     {
         switch ( operand.type )
         {
@@ -151,6 +150,20 @@ dump_basic_block( const ir::Program& program,
     for ( int pred : basic_block.predecessors )
     {
         result.addRow().addCell( "BasicBlock_" + std::to_string( pred)).setColSpan( 4);
+    }
+
+    result.addRow().addCell( "Phi nodes").setColSpan( 4);
+
+    for ( const ir::PhiNode& phi : basic_block.phi_nodes )
+    {
+        const nt::Symbol *sym = program.Nametable().FindSymbol( phi.var_id);
+        std::string placeholder = sym->GetName() + " = PHI{ ";
+        for ( const auto& variants : phi.mapping )
+        {
+            placeholder += dumper.GetOperandStr( variants.second) + ":BB_" + std::to_string( variants.first) + " ";
+        }
+        placeholder += "}";
+        result.addRow().addCell( placeholder).setColSpan( 4); // TODO
     }
 
     result.addRow().addCell( "Instructions").setColSpan( 4);
