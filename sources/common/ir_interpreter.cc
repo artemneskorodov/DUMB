@@ -17,156 +17,88 @@ namespace
 
 struct ProgramMemory
 {
-    std::unordered_map<std::string, int> locals;
-    std::unordered_map<std::string, int> globals;
+    std::unordered_map<int, int> locals;
+    std::unordered_map<int, int> globals;
 
 };
 
-class OperandsInterpreter : public ConstantOperandVisitor
+
+class Interpreter
 {
-private:
-    void
-    Visit( const VarOperand& node) override
-    {
-        result_position_ = &memory_.locals[node.name];
-        result_value_ = *result_position_;
-    }
-
-    void
-    Visit( const ImmOperand& node) override
-    {
-        result_position_ = nullptr;
-        result_value_ = node.value;
-    }
-
-    void
-    Visit( const GVarOperand& node) override
-    {
-        result_position_ = &memory_.locals[node.name];
-        result_value_ = *result_position_;
-    }
-
 public:
-    OperandsInterpreter( ProgramMemory& memory)
-     :  memory_{ memory}
+    Interpreter( const Program& ir)
+     :  program_{ ir}
     {
-    }
-
-    int
-    GetValue( const Operand& op)
-    {
-        op.Accept( *this);
-        return result_value_;
     }
 
     void
-    PutValue( const Operand& op, int value)
+    Run()
     {
-        op.Accept( *this);
-        *result_position_ = value;
+        run_function( program_.Preamble());
     }
 
 private:
-    int result_value_;
-    int *result_position_;
-    ProgramMemory& memory_;
-
-};
-
-class Interpreter : public ConstantInstructionVisitor
-{
-private:
     void
-    Visit( const BinaryOpInstr& node) override
+    run_function( const Function& func)
     {
-        int first  = op_interpreter_.GetValue( *node.first);
-        int second = op_interpreter_.GetValue( *node.second);
+        current_function_ = &func;
 
-        int result;
-
-        switch ( node.op )
+        for ( int param : func.Params() )
         {
-            case BinaryOpType::ADD: result = first + second; break;
-            case BinaryOpType::SUB: result = first - second; break;
-            case BinaryOpType::MUL: result = first * second; break;
-            case BinaryOpType::DIV: result = first / second; break;
+            int value = params_stack_.back();
+            params_stack_.pop_back();
+            locals_[param] = value;
+        }
+        if ( !params_stack_.empty() )
+        {
+            throw std::runtime_error{ "Unexpected number of parameters in parameters stack"};
         }
 
-        op_interpreter_.PutValue( *node.dest, result);
+        run_basic_block( func.BasicBlocks()[0]);
+        need_return_ = false;
     }
 
     void
-    Visit( const UnaryOpInstr& node) override
+    run_basic_block( const BasicBlock& basic_block)
     {
-        if ( node.op == UnaryOpType::MOV )
+        for ( const Instruction& instr : basic_block.instructions )
         {
-            int value = op_interpreter_.GetValue( *node.operand);
-            op_interpreter_.PutValue( *node.dest, value);
-        } else if ( node.op == UnaryOpType::RET )
-        {
-            if ( node.operand != nullptr )
+            switch ( instr.opcode )
             {
-                func_return_value_ = op_interpreter_.GetValue( *node.operand);
+                case Opcode::ADD:    run_instr_add    ( instr); break;
+                case Opcode::SUB:    run_instr_sub    ( instr); break;
+                case Opcode::MUL:    run_instr_mul    ( instr); break;
+                case Opcode::DIV:    run_instr_div    ( instr); break;
+                case Opcode::MOV:    run_instr_mov    ( instr); break;
+                case Opcode::RET:    run_instr_ret    ( instr); break;
+                case Opcode::CALL:   run_instr_call   ( instr); break;
+                case Opcode::INPUT:  run_instr_input  ( instr); break;
+                case Opcode::OUTPUT: run_instr_output ( instr); break;
+                default: throw std::runtime_error{ "Unexpected instruction opcode"};
             }
-            need_return_ = true;
-        } else
-        {
-            throw std::runtime_error{ "Unexpected unary operation"};
-        }
-    }
 
-    void
-    Visit( const FunctionCallInstr& node) override
-    {
-        for ( const OperandPtr& param : node.params )
-        {
-            params_stack_.emplace_back( op_interpreter_.GetValue( *param));
-        }
-        const Function& func = find_function( node.name);
-        VisitFunction( func);
-        op_interpreter_.PutValue( *node.dest, func_return_value_);
-    }
-
-    void
-    Visit( const InputInstr& node) override
-    {
-        int value;
-        std::cout << node.string;
-        std::cin >> value;
-        op_interpreter_.PutValue( *node.dest, value);
-    }
-
-    void
-    Visit( const OutputInstr& node) override
-    {
-        std::cout << node.string << op_interpreter_.GetValue( *node.expression) << std::endl;
-    }
-
-    void
-    VisitBasicBlock( const BasicBlock& node)
-    {
-        for ( const InstructionPtr& instr : node.instructions )
-        {
-            instr->Accept( *this);
             if ( need_return_ )
             {
                 return ;
             }
-            if ( exit_ )
-            {
-                return ;
-            }
         }
-        if ( node.terminator.type == CmpType::ALWAYS_TRUE )
+
+        if ( basic_block.terminator.type == CmpType::INVALID )
         {
-            const BasicBlock& basic_block = find_basic_block( node.terminator.true_dest);
-            VisitBasicBlock( basic_block);
             return ;
         }
-        int left  = op_interpreter_.GetValue( *node.terminator.left);
-        int right = op_interpreter_.GetValue( *node.terminator.right);
+
+        if ( basic_block.terminator.type == CmpType::ALWAYS_TRUE )
+        {
+            const BasicBlock& dest = find_basic_block( basic_block.terminator.true_dest);
+            run_basic_block( dest);
+            return ;
+        }
+
+        int left  = value( basic_block.terminator.left);
+        int right = value( basic_block.terminator.right);
         bool result;
-        switch ( node.terminator.type )
+        switch ( basic_block.terminator.type )
         {
             case CmpType::LESS:        result = (left <  right); break;
             case CmpType::EQUAL:       result = (left == right); break;
@@ -176,86 +108,155 @@ private:
 
         if ( result )
         {
-            const BasicBlock& basic_block = find_basic_block( node.terminator.true_dest);
-            VisitBasicBlock( basic_block);
+            const BasicBlock& dest = find_basic_block( basic_block.terminator.true_dest);
+            run_basic_block( dest);
         } else
         {
-            const BasicBlock& basic_block = find_basic_block( node.terminator.false_dest);
-            VisitBasicBlock( basic_block);
+            const BasicBlock& dest = find_basic_block( basic_block.terminator.false_dest);
+            run_basic_block( dest);
         }
     }
 
     void
-    VisitFunction( const Function& node)
+    run_instr_add( const Instruction& instr)
     {
-        basic_blocks_ = &node.basic_blocks;
-        for ( std::size_t i = 0; i != node.params.size(); ++i )
-        {
-            int value = params_stack_.back();
-            params_stack_.pop_back();
-            memory_.locals[node.params[i]] = value;
-        }
-        if ( !params_stack_.empty() )
-        {
-            throw std::runtime_error{ "Unexpected number of parameters in parameters stack"};
-        }
-
-        VisitBasicBlock( *basic_blocks_->at( 0));
-        basic_blocks_ = nullptr;
-        need_return_ = false;
+        int result = value( instr.operands[0]) + value( instr.operands[1]);
+        storage( instr.defines) = result;
     }
 
-public:
     void
-    RunProgram( const Program& program)
+    run_instr_sub( const Instruction& instr)
     {
-        functions_ = &program.functions;
-        for ( auto& global : program.globals )
-        {
-            memory_.globals[global] = 0;
-        }
-        VisitFunction( *program.preamble.get());
+        int result = value( instr.operands[0]) - value( instr.operands[1]);
+        storage( instr.defines) = result;
+    }
 
-        functions_ = nullptr;
+    void
+    run_instr_mul( const Instruction& instr)
+    {
+        int result = value( instr.operands[0]) * value( instr.operands[1]);
+        storage( instr.defines) = result;
+    }
+
+    void
+    run_instr_div( const Instruction& instr)
+    {
+        int result = value( instr.operands[0]) / value( instr.operands[1]);
+        storage( instr.defines) = result;
+    }
+
+    void
+    run_instr_mov( const Instruction& instr)
+    {
+        storage( instr.defines) = value( instr.operands[0]);
+    }
+
+    void
+    run_instr_ret( const Instruction& instr)
+    {
+        if ( instr.operands.size() == 1 )
+        {
+            function_retval_ = value( instr.operands[0]);
+        }
+        need_return_ = true;
+    }
+
+    void
+    run_instr_call( const Instruction& instr)
+    {
+        size_t params_number = instr.operands.size() - 1;
+        params_stack_.resize( params_number);
+
+        for ( size_t i = 0; i != params_number; ++i )
+        {
+            params_stack_[params_number - i - 1] = value( instr.operands[i + 1]);
+        }
+        const Function& func = find_function( instr.operands[0].value);
+        run_function( func);
+        if ( instr.defines.type != Operand::EMPTY )
+        {
+            storage( instr.defines) = function_retval_;
+        }
+    }
+
+    void
+    run_instr_input( const Instruction& instr)
+    {
+        const std::string& str = program_.Strings()[instr.operands[0].value];
+        std::cout << str;
+
+        int value;
+        std::cin >> value;
+        storage( instr.defines) = value;
+    }
+
+    void
+    run_instr_output( const Instruction& instr)
+    {
+        const std::string& str = program_.Strings()[instr.operands[0].value];
+        std::cout << str + std::to_string( value( instr.operands[1])) << std::endl;
     }
 
 private:
     const Function&
-    find_function( std::string name)
+    find_function( int id)
     {
-        for ( std::size_t i = 0; i != functions_->size(); ++i )
+        for ( const Function& func : program_.Functions() )
         {
-            if ( functions_->at(i)->name == name )
+            if ( func.Id() == id )
             {
-                return *functions_->at( i);
+                return func;
             }
         }
-        throw std::runtime_error{ "No function \"" + name + "\""};
+        throw std::runtime_error{ "No function with id\"" + std::to_string( id) + "\""};
     }
 
     const BasicBlock&
-    find_basic_block( ir::LocalLabelID id)
+    find_basic_block( int id)
     {
-        for ( std::size_t i = 0; i != basic_blocks_->size(); ++i )
+        for ( const BasicBlock& bb : current_function_->BasicBlocks() )
         {
-            if ( basic_blocks_->at( i)->id == id )
+            if ( bb.id == id )
             {
-                return *basic_blocks_->at( i);
+                return bb;
             }
         }
         throw std::runtime_error{ "No basic block with id = " + std::to_string( id)};
     }
 
+    int
+    value( const Operand& operand)
+    {
+        switch ( operand.type )
+        {
+            case Operand::VARIABLE:  return locals_[operand.value];
+            case Operand::GLOBAL:    return globals_[operand.value];
+            case Operand::IMMEDIATE: return operand.value;
+            default: throw std::runtime_error{ "Unexpected operand type = " +
+                                               std::to_string( static_cast<int>( operand.type))};
+        }
+    }
+
+    int&
+    storage( const Operand& operand)
+    {
+        switch ( operand.type )
+        {
+            case Operand::VARIABLE: return locals_[operand.value];
+            case Operand::GLOBAL:   return globals_[operand.value];
+            default: throw std::runtime_error{ "Unexpected operand type = " +
+                                               std::to_string( static_cast<int>( operand.type))};
+        }
+    }
+
 private:
-    const std::vector<FunctionPtr>   *functions_;
-    const std::vector<BasicBlockPtr> *basic_blocks_;
-    ProgramMemory                     memory_{};
-    std::vector<int>                  eval_stack_{};
-    std::vector<int>                  params_stack_{};
-    OperandsInterpreter               op_interpreter_{ memory_};
-    bool                              need_return_{ false};
-    int                               func_return_value_;
-    bool                              exit_{ false};
+    const Program& program_;
+    std::vector<int> params_stack_{};
+    std::unordered_map<int, int> locals_;
+    std::unordered_map<int, int> globals_;
+    const Function *current_function_;
+    int function_retval_;
+    bool need_return_{ false};
 
 };
 
@@ -264,8 +265,8 @@ private:
 void
 Run( const Program& ir)
 {
-    Interpreter interpreter{};
-    interpreter.RunProgram( ir);
+    Interpreter interpreter{ ir};
+    interpreter.Run();
 }
 
 } // ! namespace interpreter

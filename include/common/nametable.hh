@@ -15,7 +15,7 @@ namespace nt
 ///
 /// @brief          Symbol unique id type
 ///
-using SymbolID = std::size_t;
+using SymbolID = int;
 
 ///
 /// @brief          Symbol type
@@ -45,6 +45,8 @@ public:
     std::string GetName     () const { return name_; }
     SymbolType  GetType     () const { return type_; }
     SymbolID    GetID       () const { return id_;   }
+
+    // TODO remove this function
     std::string GetSafeName () const { return name_ + "__nt_id_" + std::to_string( id_); }
 
 private:
@@ -124,7 +126,7 @@ public:
     ///             nametables, or use std::string after syntax parsing
     ///
     const Symbol *
-    GetSymbol( const std::string& name) const &
+    GetSymbolInScope( const std::string& name) const &
     {
         for ( auto it = visible_names_.rbegin(); it != visible_names_.rend(); ++it )
         {
@@ -146,11 +148,35 @@ public:
     /// @todo       Make this function faster with better unique id's
     ///
     const Symbol *
-    GetSymbol( SymbolID id) const &
+    FindSymbol( SymbolID id) const &
     {
         for ( auto& sym : nametable_ )
         {
             if ( sym.GetID() == id )
+            {
+                return &sym;
+            }
+        }
+        return nullptr;
+    }
+
+    ///
+    /// @brief      Find symbol by its name
+    ///
+    /// @param name Symbol name
+    ///
+    /// @return     Pointer to symbol information if symbol is found, nullptr overwise
+    ///
+    /// @todo       Make this function faster with better unique id's
+    ///
+    /// @todo       Make different vectors for functions and variables, look for functions first
+    ///
+    const Symbol *
+    FindSymbol( std::string name) const &
+    {
+        for ( auto& sym : nametable_ )
+        {
+            if ( sym.GetName() == name )
             {
                 return &sym;
             }
