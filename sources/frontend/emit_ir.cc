@@ -74,12 +74,7 @@ public:
             default: throw std::runtime_error{ "Unexpected binary operation type"};
         }
 
-        std::string tmp_name = get_tmp_name();
-        nt::SymbolID tmp_id = program_.Nametable().AddSymbol( tmp_name, nt::SymbolType::LOCAL_VARIABLE);
-        function_.AddVariable( tmp_id);
-
-        eval_result_ = ir::Operand{ ir::Operand::VARIABLE, tmp_id};
-
+        eval_result_ = get_tmp();
         basic_block_->instructions.emplace_back( opcode,
                                                  eval_result_,
                                                  std::vector<ir::Operand>{
@@ -209,17 +204,10 @@ public:
             operands.emplace_back( eval_result_);
         }
 
-        std::string tmp_name = get_tmp_name();
-        nt::SymbolID tmp_id = program_.Nametable().AddSymbol( tmp_name, nt::SymbolType::LOCAL_VARIABLE);
-        function_.AddVariable( tmp_id);
-
-        ir::Operand dest = ir::Operand{ ir::Operand::VARIABLE, tmp_id};
-
+        eval_result_ = get_tmp();
         basic_block_->instructions.emplace_back( ir::Opcode::CALL,
-                                                 dest,
+                                                 eval_result_,
                                                  std::vector<ir::Operand>{ operands});
-
-        eval_result_ = dest;
     }
 
     void
@@ -232,8 +220,6 @@ public:
         basic_block_->instructions.emplace_back( ir::Opcode::RET,
                                                  ir::kNoDefine,
                                                  std::vector<ir::Operand>{ expression});
-
-        start_new_basic_block();
     }
 
     void
@@ -313,12 +299,6 @@ private:
     ir::BasicBlock           *basic_block_;
 
 private:
-    std::string
-    get_tmp_name()
-    {
-        return "__tmp_" + std::to_string( ++tmp_counter_);
-    }
-
     void
     start_new_basic_block( int id)
     {
@@ -363,6 +343,17 @@ private:
         {
             throw std::runtime_error{ "Unexpected operand type"};
         }
+    }
+
+    ir::Operand
+    get_tmp()
+    {
+        std::string tmp_name = "__tmp_" + std::to_string( ++tmp_counter_);
+        nt::SymbolID tmp_id = program_.Nametable().AddSymbol( tmp_name,
+                                                              nt::SymbolType::LOCAL_VARIABLE);
+        function_.AddVariable( tmp_id);
+
+        return ir::Operand{ ir::Operand::VARIABLE, tmp_id};
     }
 };
 

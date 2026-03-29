@@ -19,10 +19,13 @@ namespace
 constexpr std::string_view kFunctionClusterColor = "#75b560";
 
 inline std::string
-basic_block_id( LocalLabelID id)
+basic_block_id( int id,
+                int func_id)
 {
-    return "__BASIC_BLOCK_" + std::to_string( id);
+    return "__BASIC_BLOCK_" + std::to_string( id) + "_IN_FUNC_" + std::to_string( func_id);
 }
+
+#if 0
 
 class OperandDumper : public ConstantOperandVisitor
 {
@@ -166,11 +169,127 @@ private:
 
 };
 
+#endif
+
+class InstructionDumper
+{
+public:
+    InstructionDumper( const ir::Program& program,
+                       const ir::Function& function)
+     :  program_{ program},
+        function_{ function}
+    {
+    }
+
+    std::pair<std::string, std::string>
+    GetStr( const ir::Instruction& instr)
+    {
+        std::string opcode{};
+        switch ( instr.opcode )
+        {
+            case ir::Opcode::ADD:    opcode = "add";    break;
+            case ir::Opcode::SUB:    opcode = "sub";    break;
+            case ir::Opcode::MUL:    opcode = "mul";    break;
+            case ir::Opcode::DIV:    opcode = "div";    break;
+            case ir::Opcode::MOV:    opcode = "mov";    break;
+            case ir::Opcode::RET:    opcode = "ret";    break;
+            case ir::Opcode::CALL:   opcode = "call";   break;
+            case ir::Opcode::INPUT:  opcode = "input";  break;
+            case ir::Opcode::OUTPUT: opcode = "output"; break;
+            default: throw std::runtime_error{ "Unexpected instruction"};
+        }
+        std::string result = opcode + " { ";
+        for ( std::size_t i = 0; i != instr.operands.size(); ++i )
+        {
+            result += get_operand( instr.operands[i]);
+            if ( i + 1 != instr.operands.size() )
+            {
+                result += ", ";
+            }
+        }
+        result += "}";
+        return {get_operand( instr.defines), result};
+    }
+
+    std::string
+    GetTerminatorStr( const ir::BasicBlockTerminator& terminator)
+    {
+        if ( terminator.type == ir::CmpType::INVALID )
+        {
+            return "Invalid";
+        }
+        if ( terminator.type == ir::CmpType::ALWAYS_TRUE )
+        {
+            return "True";
+        }
+        std::string left_str  = get_operand( terminator.left);
+        std::string right_str = get_operand( terminator.right);
+        std::string cmp_str;
+        switch ( terminator.type )
+        {
+            case ir::CmpType::LESS:   cmp_str = " &lt; ";  break;
+            case ir::CmpType::EQUAL:  cmp_str =  " == "; break;
+            case ir::CmpType::BIGGER: cmp_str = " &gt; ";  break;
+            default: throw std::runtime_error{ "Unexpected compare type"};
+        }
+
+        return left_str + cmp_str + right_str;
+    }
+
+private:
+    std::string
+    get_operand( const ir::Operand& operand)
+    {
+        switch ( operand.type )
+        {
+            case ir::Operand::EMPTY:
+            {
+                return "none()";
+            }
+            case ir::Operand::VARIABLE:
+            {
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
+                return "var(" + sym->GetName() + ")";
+            }
+            case ir::Operand::GLOBAL:
+            {
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
+                return "glob(" + sym->GetName() + ")";
+            }
+            case ir::Operand::IMMEDIATE:
+            {
+                return "imm(" + std::to_string( operand.value) + ")";
+            }
+            case ir::Operand::LABEL:
+            {
+                return "label(" + basic_block_id( operand.value, function_.Id()) + ")";
+                return "label(" + std::to_string( operand.value) + ")";
+            }
+            case ir::Operand::FUNC_LABEL:
+            {
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
+                return "func(" + sym->GetName() + ")";
+            }
+            case ir::Operand::STRING_LABEL:
+            {
+                return "str(" + program_.Strings()[operand.value] + ")";
+            }
+        }
+    }
+
+private:
+    const ir::Program& program_;
+    const ir::Function& function_;
+
+};
+
 std::string
-dump_basic_block( const ir::BasicBlock& basic_block,
+dump_basic_block( const ir::Program& program,
+                  const ir::Function& function,
+                  const ir::BasicBlock& basic_block,
                   dot_graph::Graph& graph)
 {
-    InstructionDumper dumper{};
+    InstructionDumper dumper{ program, function};
 
     html::HTMLTable result{};
     result.addRow().addCell( "BasicBlock_" + std::to_string( basic_block.id))
@@ -179,7 +298,7 @@ dump_basic_block( const ir::BasicBlock& basic_block,
 
     result.addRow().addCell( "Predecessors").setColSpan( 4);
 
-    for ( LocalLabelID pred : basic_block.predecessors )
+    for ( int pred : basic_block.predecessors )
     {
         result.addRow().addCell( "BasicBlock_" + std::to_string( pred)).setColSpan( 4);
     }
@@ -188,28 +307,29 @@ dump_basic_block( const ir::BasicBlock& basic_block,
 
     for ( size_t i = 0; i != basic_block.instructions.size(); ++i )
     {
-        std::string instr_string = dumper.GetStr( *basic_block.instructions[i]);
+        std::pair<std::string, std::string> instr_str = dumper.GetStr( basic_block.instructions[i]);
         html::HTMLRow& row = result.addRow();
         row.addCell( std::to_string( i));
-        row.addCell( instr_string).setColSpan( 3);
+        row.addCell( instr_str.first).setColSpan( 1);
+        row.addCell( instr_str.second).setColSpan( 2);
     }
 
     html::HTMLRow& row = result.addRow();
     row.addCell( "Terminator")
        .setPort( "Next");
-    row.addCell( dumper.GetStr( basic_block.terminator));
+    row.addCell( dumper.GetTerminatorStr( basic_block.terminator));
     row.addCell( "True").setPort( "True");
     row.addCell( "False").setPort( "False");
 
     if ( basic_block.terminator.type != CmpType::INVALID )
     {
-        graph.addEdge( basic_block_id( basic_block.id) + ":True",
-                       basic_block_id( basic_block.terminator.true_dest) + ":Prev");
+        graph.addEdge( basic_block_id( basic_block.id, function.Id()) + ":True",
+                       basic_block_id( basic_block.terminator.true_dest, function.Id()) + ":Prev");
 
         if ( basic_block.terminator.type != CmpType::ALWAYS_TRUE )
         {
-            graph.addEdge( basic_block_id( basic_block.id) + ":False",
-                           basic_block_id( basic_block.terminator.false_dest) + ":Prev");
+            graph.addEdge( basic_block_id( basic_block.id, function.Id()) + ":False",
+                           basic_block_id( basic_block.terminator.false_dest, function.Id()) + ":Prev");
         }
     }
 
@@ -217,25 +337,29 @@ dump_basic_block( const ir::BasicBlock& basic_block,
 }
 
 void
-dump_function( const ir::Function& function,
-               dot_graph::Subgraph& subgraph,
-               dot_graph::Graph& graph)
+dump_function( const ir::Program&   program,
+               const ir::Function&  function,
+               dot_graph::Graph&    graph,
+               dot_graph::Subgraph& subgraph)
 {
     html::HTMLTable func_start{};
 
+    const nt::Symbol *sym = program.Nametable().FindSymbol( function.Id());
+
     html::HTMLRow& func_row = func_start.addRow();
-    func_row.addCell( "Function " + function.name)
+    func_row.addCell( "Function " + sym->GetName())
             .setPort( "Prev");
-    for ( const auto& param : function.params )
+    for ( int param_id : function.Params() )
     {
+        const nt::Symbol *param_sym = program.Nametable().FindSymbol( param_id);
         html::HTMLRow& row = func_start.addRow();
-        row.addCell( param);
+        row.addCell( param_sym->GetName());
     }
     html::HTMLRow& start_row = func_start.addRow();
     start_row.addCell( "Start")
              .setPort( "Next");
 
-    std::string start_id = "__START_OF_" + function.name;
+    std::string start_id = "__START_OF_" + sym->GetName();
 
     subgraph.addNode( start_id)
             .setHtmlLabel( static_cast<std::string>( func_start))
@@ -243,16 +367,16 @@ dump_function( const ir::Function& function,
 
     graph.addEdge( "__PROGRAM__:Functions", start_id + ":Prev");
 
-    if ( !function.basic_blocks.empty() )
+    if ( !function.BasicBlocks().empty() )
     {
-        std::string first_bb_id = basic_block_id( function.basic_blocks[0]->id);
+        std::string first_bb_id = basic_block_id( function.BasicBlocks()[0].id, function.Id());
         graph.addEdge( start_id + ":Next", first_bb_id + ":Prev");
     }
 
-    for ( const auto& basic_block : function.basic_blocks )
+    for ( const BasicBlock& basic_block : function.BasicBlocks() )
     {
-        subgraph.addNode( basic_block_id( basic_block->id))
-                .setHtmlLabel( dump_basic_block( *basic_block, graph))
+        subgraph.addNode( basic_block_id( basic_block.id, function.Id()))
+                .setHtmlLabel( dump_basic_block( program, function, basic_block, graph))
                 .setShape( "box");
     }
 }
@@ -273,13 +397,14 @@ DumpIR( const ir::Program& program,
     html::HTMLRow& globals_header = header.addRow();
     globals_header.addCell( "Globals");
     globals_header.addCell( "Functions")
-                  .setRowSpan( program.globals.size() + 1)
+                  .setRowSpan( program.Globals().size() + 1)
                   .setPort( "Functions");
 
-    for ( const std::string& var : program.globals )
+    for ( int global_id : program.Globals() )
     {
+        const nt::Symbol *sym = program.Nametable().FindSymbol( global_id);
         html::HTMLRow& var_row = header.addRow();
-        var_row.addCell( var);
+        var_row.addCell( sym->GetName() + "(id = " + std::to_string( global_id) + ")");
     }
 
     graph.addNode( "__PROGRAM__")
@@ -289,13 +414,13 @@ DumpIR( const ir::Program& program,
     dot_graph::Subgraph& preamble = graph.addSubgraph( "cluster__PREAMBLE__")
                                          .setColor( kFunctionClusterColor);
 
-    dump_function( *program.preamble, preamble, graph);
+    dump_function( program, program.Preamble(), graph, preamble);
 
-    for ( const auto& it : program.functions )
+    for ( const Function& func : program.Functions() )
     {
-        dot_graph::Subgraph& func = graph.addSubgraph( "cluster_function_" + it->name)
-                                         .setColor( kFunctionClusterColor);
-        dump_function( *it, func, graph);
+        dot_graph::Subgraph& func_graph = graph.addSubgraph( "cluster_function_" + std::to_string( func.Id()))
+                                               .setColor( kFunctionClusterColor);
+        dump_function( program, func, graph, func_graph);
     }
 
     graph.translateWithDot( output, "svg");

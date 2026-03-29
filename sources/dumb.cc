@@ -2,6 +2,7 @@
 
 #include "backend.hh"
 #include "frontend.hh"
+// #include "middleend.hh"
 
 #include "ir_dump.hh"
 #include "utils.hh"
@@ -21,9 +22,11 @@ main( int         argc,
 
     dumb::ir::Program program_ir = dumb::RunFrontend( source);
 
-    #if 1
+    #if 0
     dumb::ir::dump::DumpIR( program_ir, "ir_dump.svg");
     #endif
+
+    // dumb::RunMiddleend( program_ir);
 
     std::string result = dumb::RunBackend( program_ir);
 
