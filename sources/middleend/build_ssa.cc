@@ -1,5 +1,8 @@
-#include <vector>
+#include <algorithm>
 #include <compare>
+#include <cstdint>
+#include <cstddef>
+#include <vector>
 
 #include "build_ssa.hh"
 #include "ir.hh"
@@ -79,7 +82,7 @@ public:
                 }
                 if ( !found )
                 {
-                    doms_.head_ = SIZE_T_MAX;
+                    doms_.head_ = SIZE_MAX;
                 }
             }
         }
