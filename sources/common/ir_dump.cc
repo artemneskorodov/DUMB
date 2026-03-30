@@ -124,6 +124,10 @@ public:
             {
                 return "str(" + program_.Strings()[operand.value] + ")";
             }
+            default:
+            {
+                throw std::runtime_error{ "Unexpected operand type"};
+            }
         }
     }
 
