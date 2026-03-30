@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <cstring>
 
 #include "build_ssa.hh"
 #include "ir.hh"
@@ -137,7 +138,7 @@ public:
             val = 0xff;
         } else
         {
-            head_ = SIZE_T_MAX;
+            head_ = SIZE_MAX;
             bits_set_ = 0;
             val = 0;
         }
@@ -189,7 +190,7 @@ private:
     std::size_t           bits_size_;
     std::vector<uint64_t> flags_;
     std::size_t           bits_set_ { 0};
-    std::size_t           head_     { SIZE_T_MAX};
+    std::size_t           head_     { SIZE_MAX};
 
 };
 
