@@ -158,6 +158,3 @@ add_test(
     NAME tests_ir
     COMMAND pytest -q ${CMAKE_SOURCE_DIR}/test/test_ir.py --compiler ${CMAKE_SOURCE_DIR}/build/dumb_ir_interpreter --workdir ${CMAKE_SOURCE_DIR} --tests ${TESTS_LIST}
 )
-
-add_executable(graph generate_graph.cc)
-target_link_libraries(graph PRIVATE DotGraphLib)
