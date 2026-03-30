@@ -228,7 +228,7 @@ public:
 
         if ( dest.type == ir::Operand::VARIABLE )
         {
-            function_.AddVariable( dest.id);
+            function_.AddVariable( dest.id, 0);
         } else if ( dest.type == ir::Operand::GLOBAL )
         {
             program_.AddGlobal( dest.id);
@@ -350,7 +350,7 @@ private:
         std::string tmp_name = "__tmp_" + std::to_string( ++tmp_counter_);
         nt::SymbolID tmp_id = program_.Nametable().AddSymbol( tmp_name,
                                                               nt::SymbolType::LOCAL_VARIABLE);
-        function_.AddVariable( tmp_id);
+        function_.AddVariable( tmp_id, 0);
 
         return ir::Operand{ ir::Operand::VARIABLE, 0, tmp_id};
     }
@@ -389,7 +389,7 @@ EmitIR( const ast::Program& program)
         Emitter emitter{ ir, function_ir};
         for ( nt::SymbolID param : func.parameters )
         {
-            function_ir.AddParam( param);
+            function_ir.AddParam( param, 0);
         }
 
         for ( const auto& stmt : func.body )

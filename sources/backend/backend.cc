@@ -70,13 +70,13 @@ private:
 
         for ( const ir::BasicBlock& block : func.BasicBlocks() )
         {
-            emit_basic_block( block);
+            emit_basic_block( func, block);
         }
         rbp_offsets_.clear();
     }
 
     void
-    emit_basic_block( const ir::BasicBlock& basic_block)
+    emit_basic_block( const ir::Function& func, const ir::BasicBlock& basic_block)
     {
         lir_.AddLabel( local_label( basic_block.id));
 
@@ -94,6 +94,15 @@ private:
                 case ir::Opcode::INPUT:  emit_instr_input  ( instr); break;
                 case ir::Opcode::OUTPUT: emit_instr_output ( instr); break;
                 default: throw std::runtime_error{ "Unexpected instruction opcode"};
+            }
+        }
+
+        for ( int successor : basic_block.successors )
+        {
+            for ( const ir::PhiNode& phi : func.BasicBlocks()[successor].phi_nodes )
+            {
+                lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, operand( phi.mapping.at( basic_block.id)));
+                lir_.Add( lir::BinaryOp::MOV, var_operand( phi.var_id, phi.version), lir::Register::RAX);
             }
         }
 
@@ -127,15 +136,15 @@ private:
         if ( terminator.type == ir::CmpType::LESS )
         {
             lir_.AddJmp( lir::JmpType::JL, true_label);
-            lir_.AddJmp( lir::JmpType::JGE, false_label);
+            lir_.AddJmp( lir::JmpType::JMP, false_label);
         } else if ( terminator.type == ir::CmpType::EQUAL )
         {
             lir_.AddJmp( lir::JmpType::JE,  true_label);
-            lir_.AddJmp( lir::JmpType::JNE, false_label);
+            lir_.AddJmp( lir::JmpType::JMP, false_label);
         } else if ( terminator.type == ir::CmpType::BIGGER )
         {
             lir_.AddJmp( lir::JmpType::JG, true_label);
-            lir_.AddJmp( lir::JmpType::JLE, false_label);
+            lir_.AddJmp( lir::JmpType::JMP, false_label);
         } else
         {
             throw std::runtime_error{ "Unexpected comparison type"};
@@ -229,7 +238,10 @@ private:
         lir_.AddCall( sym->GetName());
         lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ 8 * params_num});
         lir_.Add( lir::UnaryOp::POP, lir::Register::RBP);
-        lir_.Add( lir::BinaryOp::MOV, operand( instr.defines), lir::Register::RAX);
+        if ( instr.defines.type != ir::Operand::EMPTY )
+        {
+            lir_.Add( lir::BinaryOp::MOV, operand( instr.defines), lir::Register::RAX);
+        }
     }
 
     void
@@ -284,7 +296,7 @@ private:
         {
             case ir::Operand::VARIABLE:
             {
-                return lir::RegMem{ lir::Register::RBP, rbp_offsets_[operand.value]};
+                return var_operand( operand.id, operand.value);
             }
             case ir::Operand::GLOBAL:
             {
@@ -297,9 +309,16 @@ private:
             }
             default:
             {
-                throw std::runtime_error{ "Unexpected operand type"};
+                throw std::runtime_error{ "Unexpected operand type = " + std::to_string( operand.type)};
             }
         }
+    }
+
+    lir::Operand
+    var_operand( nt::SymbolID id,
+                 int version)
+    {
+        return lir::RegMem{ lir::Register::RBP, rbp_offsets_[ir::SSAKey{ id, version}]};
     }
 
     std::string
@@ -318,7 +337,7 @@ private:
     lir::Program lir_{};
     const ir::Program& program_;
     int variables_size_{};
-    std::unordered_map<int, int> rbp_offsets_{};
+    std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> rbp_offsets_{};
 
 };
 

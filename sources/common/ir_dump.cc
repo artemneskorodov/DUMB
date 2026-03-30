@@ -157,7 +157,7 @@ dump_basic_block( const ir::Program& program,
     for ( const ir::PhiNode& phi : basic_block.phi_nodes )
     {
         const nt::Symbol *sym = program.Nametable().FindSymbol( phi.var_id);
-        std::string placeholder = sym->GetName() + " = PHI{ ";
+        std::string placeholder = sym->GetName() + "." + std::to_string( phi.version) + " = PHI{ ";
         for ( const auto& variants : phi.mapping )
         {
             placeholder += dumper.GetOperandStr( variants.second) + ":BB_" + std::to_string( variants.first) + " ";
@@ -213,11 +213,11 @@ dump_function( const ir::Program&   program,
     html::HTMLRow& func_row = func_start.addRow();
     func_row.addCell( "Function " + sym->GetName())
             .setPort( "Prev");
-    for ( int param_id : function.Params() )
+    for ( const SSAKey& param_id : function.Params() )
     {
-        const nt::Symbol *param_sym = program.Nametable().FindSymbol( param_id);
+        const nt::Symbol *param_sym = program.Nametable().FindSymbol( param_id.id);
         html::HTMLRow& row = func_start.addRow();
-        row.addCell( param_sym->GetName());
+        row.addCell( param_sym->GetName() + "." + std::to_string( param_id.version));
     }
     html::HTMLRow& start_row = func_start.addRow();
     start_row.addCell( "Start")

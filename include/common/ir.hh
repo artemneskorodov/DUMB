@@ -59,6 +59,39 @@ struct Operand
 constexpr Operand kNoDefine = Operand{};
 
 //
+// Keys and hashed used for mapping
+//
+
+struct SSAKey
+{
+    SSAKey( nt::SymbolID id,
+            ImmType version)
+     :  id{ id},
+        version{ version}
+    {
+    }
+
+    bool
+    operator==( const SSAKey& other) const
+    {
+        return (id == other.id) && (version == other.version);
+    }
+
+    nt::SymbolID id;
+    ImmType version;
+
+};
+
+struct SSAKeyHash
+{
+    std::size_t
+    operator()( const SSAKey& key) const
+    {
+        return std::hash<int>()( key.version ^ (key.id << 1));
+    }
+};
+
+//
 // Instructions
 //
 
@@ -102,6 +135,7 @@ struct PhiNode
     nt::SymbolID                     var_id;
     int                              version;
     std::unordered_map<int, Operand> mapping;
+
 };
 
 //
@@ -149,11 +183,12 @@ struct BasicBlock final
     {
     }
 
-    std::vector<PhiNode> phi_nodes{};
+    std::vector<PhiNode>     phi_nodes{};
     std::vector<Instruction> instructions{};
-    BasicBlockTerminator   terminator{};
-    std::vector<int>       predecessors{};
-    int                    id;
+    BasicBlockTerminator     terminator{};
+    std::vector<int>         predecessors{};
+    std::vector<int>         successors{};
+    int                      id;
 
 };
 
@@ -178,18 +213,18 @@ public:
     }
 
     void
-    AddVariable( int id)
+    AddVariable( nt::SymbolID id, int version)
     {
-        variables_.emplace_back( id);
+        variables_.emplace_back( id, version);
     }
 
     void
-    AddParam( int id)
+    AddParam( nt::SymbolID id, int version)
     {
-        params_.emplace_back( id);
+        params_.emplace_back( id, version);
     }
 
-    const std::vector<int>&
+    const std::vector<SSAKey>&
     Params() const &
     {
         return params_;
@@ -207,7 +242,7 @@ public:
         return basic_blocks_;
     }
 
-    const std::vector<int>&
+    const std::vector<SSAKey>&
     Variables() const &
     {
         return variables_;
@@ -220,10 +255,10 @@ public:
     }
 
 private:
-    std::vector<int>         params_       {};
-    std::vector<BasicBlock>  basic_blocks_ {};
-    std::vector<int>         variables_    {};
-    int                      id_;
+    std::vector<SSAKey>     params_       {};
+    std::vector<BasicBlock> basic_blocks_ {};
+    std::vector<SSAKey>     variables_    {};
+    int                     id_;
 
 };
 

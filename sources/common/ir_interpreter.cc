@@ -42,7 +42,7 @@ private:
     run_function( const Function& func)
     {
         current_function_ = &func;
-        for ( int param : func.Params() )
+        for ( const SSAKey& param : func.Params() )
         {
             int value = params_stack_.back();
             params_stack_.pop_back();
@@ -230,7 +230,7 @@ private:
     {
         switch ( operand.type )
         {
-            case Operand::VARIABLE:  return locals_[operand.id];
+            case Operand::VARIABLE:  return locals_[SSAKey{ operand.id, operand.value}];
             case Operand::GLOBAL:    return globals_[operand.id];
             case Operand::IMMEDIATE: return operand.value;
             default: throw std::runtime_error{ "Unexpected operand type = " +
@@ -243,7 +243,7 @@ private:
     {
         switch ( operand.type )
         {
-            case Operand::VARIABLE: return locals_[operand.id];
+            case Operand::VARIABLE: return locals_[SSAKey{ operand.id, operand.value}];
             case Operand::GLOBAL:   return globals_[operand.id];
             default: throw std::runtime_error{ "Unexpected operand type = " +
                                                std::to_string( static_cast<int>( operand.type))};
@@ -251,13 +251,13 @@ private:
     }
 
 private:
-    const Program& program_;
-    std::vector<int> params_stack_{};
-    std::unordered_map<int, int> locals_;
-    std::unordered_map<int, int> globals_;
-    const Function *current_function_;
-    int function_retval_;
-    bool need_return_{ false};
+    const Program&                               program_;
+    std::vector<int>                             params_stack_{};
+    std::unordered_map<SSAKey, int, SSAKeyHash>  locals_;
+    std::unordered_map<nt::SymbolID, int>        globals_;
+    const Function                              *current_function_;
+    int                                          function_retval_;
+    bool                                         need_return_{ false};
 
 };
 
