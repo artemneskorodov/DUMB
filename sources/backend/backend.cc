@@ -231,9 +231,9 @@ private:
             lir_.Add( lir::UnaryOp::PUSH, operand( instr.operands[param_id]));
         }
 
-        int params_num = static_cast<int>( instr.operands.size());
+        int params_num = static_cast<int>( instr.operands.size()) - 1;
 
-        const nt::Symbol *sym = program_.Nametable().FindSymbol( instr.operands[0].value);
+        const nt::Symbol *sym = program_.Nametable().FindSymbol( instr.operands[0].id);
 
         lir_.AddCall( sym->GetName());
         lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ 8 * params_num});
@@ -300,7 +300,7 @@ private:
             }
             case ir::Operand::GLOBAL:
             {
-                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);
                 return lir::Memory{ sym->GetName()};
             }
             case ir::Operand::IMMEDIATE:
