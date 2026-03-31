@@ -21,17 +21,18 @@ GetUses( const ir::SSAKey&   var,
     {
         for ( const ir::Instruction& instr : block.instructions )
         {
+            if ( instr.defines.type != ir::Operand::VARIABLE )
+            {
+                continue;
+            }
             for ( const ir::Operand& op : instr.operands )
             {
                 if ( (op.type  == ir::Operand::VARIABLE) &&
                      (op.id    == var.id) &&
                      (op.value == var.version) )
                 {
-                    if ( instr.defines.type == ir::Operand::VARIABLE )
-                    {
-                        result.emplace_back( instr.defines.id,
-                                             instr.defines.value);
-                    }
+                    result.emplace_back( instr.defines.id,
+                                         instr.defines.value);
                 }
             }
         }
@@ -46,6 +47,45 @@ GetUses( const ir::SSAKey&   var,
                      (op.value == var.version) )
                 {
                     result.emplace_back( phi.var_id, phi.version);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+std::size_t
+GetUsesCount( const ir::Function& function,
+              const ir::SSAKey& var)
+{
+    std::size_t result = 0;
+
+    for ( const ir::BasicBlock& block : function.BasicBlocks() )
+    {
+        for ( const ir::Instruction& instr : block.instructions )
+        {
+            for ( const ir::Operand& op : instr.operands )
+            {
+                if ( (op.type  == ir::Operand::VARIABLE) &&
+                     (op.id    == var.id) &&
+                     (op.value == var.version) )
+                {
+                    ++result;
+                }
+            }
+        }
+
+        // phi
+        for ( const ir::PhiNode& phi : block.phi_nodes )
+        {
+            for ( auto& [pred, op] : phi.mapping )
+            {
+                if ( (op.type  == ir::Operand::VARIABLE) &&
+                     (op.id    == var.id) &&
+                     (op.value == var.version) )
+                {
+                    ++result;
                 }
             }
         }
@@ -102,6 +142,7 @@ RemoveDef( const ir::SSAKey& var,
             }
         );
     }
+    function.RemoveVariable( var.id, var.version);
 }
 
 } // anonymous namespace
@@ -113,14 +154,11 @@ DeadCodeElimination( ir::Program& ir)
     {
         std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> counters{};
 
-        std::vector<ir::SSAKey> all_ssa_values = GetAllValues( func);
-
-        for ( ir::SSAKey& value : all_ssa_values )
+        for ( ir::SSAKey& value : GetAllValues( func) )
         {
             counters[value] = 0;
 
-            std::vector<ir::SSAKey> uses = GetUses( value, func);
-            counters[value] += uses.size();
+            counters[value] += GetUsesCount( func, value);
         }
 
         bool changed = true;
