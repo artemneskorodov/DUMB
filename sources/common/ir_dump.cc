@@ -99,12 +99,12 @@ public:
             }
             case ir::Operand::VARIABLE:
             {
-                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);
-                return "var(" + sym->GetName() + "." + std::to_string( operand.value) + ", id = " + std::to_string( operand.id) + ")";
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
+                return "var(" + sym->GetName() + ", id = " + std::to_string( operand.value) + ")";
             }
             case ir::Operand::GLOBAL:
             {
-                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
                 return "glob(" + sym->GetName() + ")";
             }
             case ir::Operand::IMMEDIATE:
@@ -117,8 +117,8 @@ public:
             }
             case ir::Operand::FUNC_LABEL:
             {
-                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);
-                return "func(" + sym->GetName() + ", id = " + std::to_string( operand.id) + ")";
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
+                return "func(" + sym->GetName() + ", id = " + std::to_string( operand.value) + ")";
             }
             case ir::Operand::STRING_LABEL:
             {
@@ -160,14 +160,16 @@ dump_basic_block( const ir::Program& program,
 
     for ( const ir::PhiNode& phi : basic_block.phi_nodes )
     {
-        const nt::Symbol *sym = program.Nametable().FindSymbol( phi.var_id);
-        std::string placeholder = sym->GetName() + "." + std::to_string( phi.version) + " = PHI{ ";
+        std::string name = dumper.GetOperandStr( ir::Operand{ ir::Operand::VARIABLE, phi.var_id});
+        std::string placeholder = " PHI{ ";
         for ( const auto& variants : phi.mapping )
         {
             placeholder += dumper.GetOperandStr( variants.second) + ":BB_" + std::to_string( variants.first) + " ";
         }
         placeholder += "}";
-        result.addRow().addCell( placeholder).setColSpan( 4); // TODO
+        html::HTMLRow& row = result.addRow();
+        row.addCell( name).setColSpan( 1);
+        row.addCell( placeholder).setColSpan( 3);
     }
 
     result.addRow().addCell( "Instructions").setColSpan( 4);
@@ -217,11 +219,11 @@ dump_function( const ir::Program&   program,
     html::HTMLRow& func_row = func_start.addRow();
     func_row.addCell( "Function " + sym->GetName())
             .setPort( "Prev");
-    for ( const SSAKey& param_id : function.Params() )
+    for ( nt::SymbolID param_id : function.Params() )
     {
-        const nt::Symbol *param_sym = program.Nametable().FindSymbol( param_id.id);
+        const nt::Symbol *param_sym = program.Nametable().FindSymbol( param_id);
         html::HTMLRow& row = func_start.addRow();
-        row.addCell( param_sym->GetName() + "." + std::to_string( param_id.version));
+        row.addCell( param_sym->GetName());
     }
     html::HTMLRow& start_row = func_start.addRow();
     start_row.addCell( "Start")

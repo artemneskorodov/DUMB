@@ -460,8 +460,8 @@ GetVarDefinitionBlocks( const ir::Function& func,
     {
         for ( const ir::Instruction& instr : func.BasicBlocks()[bb].instructions )
         {
-            if ( instr.defines.type == ir::Operand::VARIABLE &&
-                 instr.defines.id   == var_id )
+            if ( instr.defines.type  == ir::Operand::VARIABLE &&
+                 instr.defines.value == var_id )
             {
                 def_blocks.emplace_back( bb);
                 break;
@@ -484,10 +484,10 @@ AddPhi( ir::Program& ir)
         DrawGraph( "graph_dt.svg", dominators_tree);
         DrawGraph( "graph_df.svg", dominance_frontier);
 
-        for ( const ir::SSAKey& var_id : func.Variables() )
+        for ( nt::SymbolID var_id : func.Variables() )
         {
             // Use only symbol id as all versions are 0 in this pass
-            std::vector<std::size_t> def_blocks = GetVarDefinitionBlocks( func, var_id.id);
+            std::vector<std::size_t> def_blocks = GetVarDefinitionBlocks( func, var_id);
 
             std::vector<bool> has_phi( control_flow.Size(), false);
             while ( !def_blocks.empty() )
@@ -500,7 +500,7 @@ AddPhi( ir::Program& ir)
                     ir::BasicBlock& basic_block = func.BasicBlocks()[dom];
                     if ( !has_phi[dom] )
                     {
-                        basic_block.phi_nodes.emplace_back( var_id.id);
+                        basic_block.phi_nodes.emplace_back( var_id);
                         has_phi[dom] = true;
                     }
                     if ( std::find( def_blocks.begin(), def_blocks.end(), dom) != def_blocks.end() )
@@ -515,7 +515,8 @@ AddPhi( ir::Program& ir)
 
 // TODO FIXME make this non recursive
 void
-RenameVariables( ir::Function& function,
+RenameVariables( ir::Program& program,
+                 ir::Function& function,
                  ir::BasicBlock& basic_block,
                  Graph& control_flow,
                  Graph& dominators_tree,
@@ -534,11 +535,14 @@ RenameVariables( ir::Function& function,
         }
         int version = counters[id]++;
 
-        stacks[id].push_back( version);
-        phi.version = version;
+        const nt::Symbol *sym = program.Nametable().FindSymbol( id);
+        nt::SymbolID new_version_id = program.Nametable().AddSymbol( sym->GetName() + "." + std::to_string( version), nt::SymbolType::LOCAL_VARIABLE);
+
+        stacks[id].push_back( new_version_id);
+        phi.var_id = new_version_id;
         if ( !first_time )
         {
-            function.AddVariable( id, version);
+            function.AddVariable( new_version_id);
         }
     }
 
@@ -546,14 +550,14 @@ RenameVariables( ir::Function& function,
     {
         for ( ir::Operand& operand : instr.operands )
         {
-            if ( !stacks[operand.id].empty() )
+            if ( !stacks[operand.value].empty() )
             {
-                operand.value = stacks[operand.id].back();
+                operand.value = stacks[operand.value].back();
             }
         }
         if ( instr.defines.type == ir::Operand::VARIABLE )
         {
-            nt::SymbolID id = instr.defines.id;
+            nt::SymbolID id = instr.defines.value;
             bool first_time = false;
             if ( counters.find( id) == counters.end() )
             {
@@ -562,25 +566,28 @@ RenameVariables( ir::Function& function,
             }
             int version = counters[id]++;
 
-            stacks[id].push_back( version);
+            const nt::Symbol *sym = program.Nametable().FindSymbol( id);
+            nt::SymbolID new_version_id = program.Nametable().AddSymbol( sym->GetName() + "." + std::to_string( version), nt::SymbolType::LOCAL_VARIABLE);
 
-            instr.defines.value = version;
+
+            stacks[id].push_back( new_version_id);
+            instr.defines.value = new_version_id;
             if ( !first_time )
             {
-                function.AddVariable( id, version);
+                function.AddVariable( new_version_id);
             }
         }
     }
 
     if ( basic_block.terminator.left.type == ir::Operand::VARIABLE &&
-         !stacks[basic_block.terminator.left.id].empty() )
+         !stacks[basic_block.terminator.left.value].empty() )
     {
-        basic_block.terminator.left.value = stacks[basic_block.terminator.left.id].back();
+        basic_block.terminator.left.value = stacks[basic_block.terminator.left.value].back();
     }
     if ( basic_block.terminator.right.type == ir::Operand::VARIABLE &&
-         !stacks[basic_block.terminator.right.id].empty() )
+         !stacks[basic_block.terminator.right.value].empty() )
     {
-        basic_block.terminator.right.value = stacks[basic_block.terminator.right.id].back();
+        basic_block.terminator.right.value = stacks[basic_block.terminator.right.value].back();
     }
 
     if ( basic_block.terminator.type == ir::CmpType::INVALID )
@@ -593,7 +600,7 @@ RenameVariables( ir::Function& function,
         {
             if ( !stacks[phi.var_id].empty() )
             {
-                phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE, stacks[phi.var_id].back(), phi.var_id};
+                phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE, stacks[phi.var_id].back()};
             } else
             {
                 phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
@@ -607,7 +614,7 @@ RenameVariables( ir::Function& function,
             {
                 if ( !stacks[phi.var_id].empty() )
                 {
-                    phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE, stacks[phi.var_id].back(), phi.var_id};
+                    phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE, stacks[phi.var_id].back()};
                 } else
                 {
                     phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
@@ -619,7 +626,7 @@ RenameVariables( ir::Function& function,
 
     for ( std::size_t dom : dominators_tree.Nodes()[basic_block.id].nexts )
     {
-        RenameVariables( function, function.BasicBlocks()[dom], control_flow, dominators_tree, dominance_frontier, stacks, counters);
+        RenameVariables( program, function, function.BasicBlocks()[dom], control_flow, dominators_tree, dominance_frontier, stacks, counters);
     }
 
     for ( ir::PhiNode& phi : basic_block.phi_nodes )
@@ -631,7 +638,7 @@ RenameVariables( ir::Function& function,
     {
         if ( instr.defines.type == ir::Operand::VARIABLE )
         {
-            stacks[instr.defines.id].pop_back();
+            stacks[instr.defines.value].pop_back();
         }
     }
 }
@@ -650,7 +657,7 @@ BuildSSA( ir::Program& ir)
         Graph dominance_frontier = BuildDominanceFrontier( control_flow, dominators_tree);
         std::unordered_map<nt::SymbolID, std::vector<int>> stacks{};
         std::unordered_map<nt::SymbolID, int> counters{};
-        RenameVariables( func, func.BasicBlocks()[0], control_flow, dominators_tree, dominance_frontier, stacks, counters);
+        RenameVariables( ir, func, func.BasicBlocks()[0], control_flow, dominators_tree, dominance_frontier, stacks, counters);
     }
 
     return ;

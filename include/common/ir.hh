@@ -34,62 +34,25 @@ struct Operand
 
     constexpr
     Operand( Type type,
-             ImmType value,
-             nt::SymbolID id = 0)
+             ImmType value)
      :  type{ type},
-        value{ value},
-        id{ id}
+        value{ value}
     {
     }
 
     constexpr
     Operand()
      :  type{ EMPTY},
-        value{},
-        id{}
+        value{}
     {
     }
 
     Type type;
     ImmType value; // version for variable
-    nt::SymbolID id;
 
 };
 
 constexpr Operand kNoDefine = Operand{};
-
-//
-// Keys and hashed used for mapping
-//
-
-struct SSAKey
-{
-    SSAKey( nt::SymbolID id,
-            ImmType version)
-     :  id{ id},
-        version{ version}
-    {
-    }
-
-    bool
-    operator==( const SSAKey& other) const
-    {
-        return (id == other.id) && (version == other.version);
-    }
-
-    nt::SymbolID id;
-    ImmType version;
-
-};
-
-struct SSAKeyHash
-{
-    std::size_t
-    operator()( const SSAKey& key) const
-    {
-        return std::hash<int>()( key.version ^ (key.id << 1));
-    }
-};
 
 //
 // Instructions
@@ -133,7 +96,6 @@ struct PhiNode
     }
 
     nt::SymbolID                     var_id;
-    int                              version;
     std::unordered_map<int, Operand> mapping;
 
 };
@@ -187,7 +149,7 @@ struct BasicBlock final
     std::vector<Instruction> instructions{};
     BasicBlockTerminator     terminator{};
     std::vector<int>         predecessors{};
-    std::vector<int>         successors{};
+    std::vector<int>         successors{}; // TODO rename this as this is not real predecessors
     int                      id;
 
 };
@@ -213,18 +175,18 @@ public:
     }
 
     void
-    AddVariable( nt::SymbolID id, int version)
+    AddVariable( nt::SymbolID id)
     {
-        variables_.emplace_back( id, version);
+        variables_.emplace_back( id);
     }
 
     void
-    AddParam( nt::SymbolID id, int version)
+    AddParam( nt::SymbolID id)
     {
-        params_.emplace_back( id, version);
+        params_.emplace_back( id);
     }
 
-    const std::vector<SSAKey>&
+    const std::vector<nt::SymbolID>&
     Params() const &
     {
         return params_;
@@ -242,7 +204,7 @@ public:
         return basic_blocks_;
     }
 
-    const std::vector<SSAKey>&
+    const std::vector<nt::SymbolID>&
     Variables() const &
     {
         return variables_;
@@ -255,10 +217,10 @@ public:
     }
 
 private:
-    std::vector<SSAKey>     params_       {};
-    std::vector<BasicBlock> basic_blocks_ {};
-    std::vector<SSAKey>     variables_    {};
-    int                     id_;
+    std::vector<nt::SymbolID> params_       {};
+    std::vector<BasicBlock>   basic_blocks_ {};
+    std::vector<nt::SymbolID> variables_    {};
+    int                       id_;
 
 };
 

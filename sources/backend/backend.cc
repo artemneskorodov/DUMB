@@ -102,7 +102,7 @@ private:
             for ( const ir::PhiNode& phi : func.BasicBlocks()[successor].phi_nodes )
             {
                 lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, operand( phi.mapping.at( basic_block.id)));
-                lir_.Add( lir::BinaryOp::MOV, var_operand( phi.var_id, phi.version), lir::Register::RAX);
+                lir_.Add( lir::BinaryOp::MOV, var_operand( phi.var_id), lir::Register::RAX);
             }
         }
 
@@ -233,7 +233,7 @@ private:
 
         int params_num = static_cast<int>( instr.operands.size()) - 1;
 
-        const nt::Symbol *sym = program_.Nametable().FindSymbol( instr.operands[0].id);
+        const nt::Symbol *sym = program_.Nametable().FindSymbol( instr.operands[0].value);
 
         lir_.AddCall( sym->GetName());
         lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ 8 * params_num});
@@ -296,11 +296,11 @@ private:
         {
             case ir::Operand::VARIABLE:
             {
-                return var_operand( operand.id, operand.value);
+                return var_operand( operand.value);
             }
             case ir::Operand::GLOBAL:
             {
-                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);
+                const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.value);
                 return lir::Memory{ sym->GetName()};
             }
             case ir::Operand::IMMEDIATE:
@@ -315,10 +315,9 @@ private:
     }
 
     lir::Operand
-    var_operand( nt::SymbolID id,
-                 int version)
+    var_operand( nt::SymbolID id)
     {
-        return lir::RegMem{ lir::Register::RBP, rbp_offsets_[ir::SSAKey{ id, version}]};
+        return lir::RegMem{ lir::Register::RBP, rbp_offsets_[id]};
     }
 
     std::string
@@ -337,7 +336,7 @@ private:
     lir::Program lir_{};
     const ir::Program& program_;
     int variables_size_{};
-    std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> rbp_offsets_{};
+    std::unordered_map<nt::SymbolID, int> rbp_offsets_{};
 
 };
 

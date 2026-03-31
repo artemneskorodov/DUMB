@@ -42,11 +42,11 @@ private:
     run_function( const Function& func)
     {
         current_function_ = &func;
-        for ( const SSAKey& param : func.Params() )
+        for ( nt::SymbolID param_id : func.Params() )
         {
             int value = params_stack_.back();
             params_stack_.pop_back();
-            locals_[param] = value;
+            locals_[param_id] = value;
         }
 
         if ( !params_stack_.empty() )
@@ -171,7 +171,7 @@ private:
         {
             params_stack_[params_number - i - 1] = value( instr.operands[i + 1]);
         }
-        const Function& func = find_function( instr.operands[0].id);
+        const Function& func = find_function( instr.operands[0].value);
 
         run_function( func);
         if ( instr.defines.type != Operand::EMPTY )
@@ -230,8 +230,8 @@ private:
     {
         switch ( operand.type )
         {
-            case Operand::VARIABLE:  return locals_[SSAKey{ operand.id, operand.value}];
-            case Operand::GLOBAL:    return globals_[operand.id];
+            case Operand::VARIABLE:  return locals_[operand.value];
+            case Operand::GLOBAL:    return globals_[operand.value];
             case Operand::IMMEDIATE: return operand.value;
             default: throw std::runtime_error{ "Unexpected operand type = " +
                                                std::to_string( static_cast<int>( operand.type))};
@@ -243,21 +243,21 @@ private:
     {
         switch ( operand.type )
         {
-            case Operand::VARIABLE: return locals_[SSAKey{ operand.id, operand.value}];
-            case Operand::GLOBAL:   return globals_[operand.id];
+            case Operand::VARIABLE: return locals_[operand.value];
+            case Operand::GLOBAL:   return globals_[operand.value];
             default: throw std::runtime_error{ "Unexpected operand type = " +
                                                std::to_string( static_cast<int>( operand.type))};
         }
     }
 
 private:
-    const Program&                               program_;
-    std::vector<int>                             params_stack_{};
-    std::unordered_map<SSAKey, int, SSAKeyHash>  locals_;
-    std::unordered_map<nt::SymbolID, int>        globals_;
-    const Function                              *current_function_;
-    int                                          function_retval_;
-    bool                                         need_return_{ false};
+    const Program&                         program_;
+    std::vector<int>                       params_stack_{};
+    std::unordered_map<nt::SymbolID, int>  locals_;
+    std::unordered_map<nt::SymbolID, int>  globals_;
+    const Function                        *current_function_;
+    int                                    function_retval_;
+    bool                                   need_return_{ false};
 
 };
 

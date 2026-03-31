@@ -228,10 +228,10 @@ public:
 
         if ( dest.type == ir::Operand::VARIABLE )
         {
-            function_.AddVariable( dest.id, 0);
+            function_.AddVariable( dest.value);
         } else if ( dest.type == ir::Operand::GLOBAL )
         {
-            program_.AddGlobal( dest.id);
+            program_.AddGlobal( dest.value);
         } else
         {
             throw std::runtime_error{ "Unexpected dest type"};
@@ -331,13 +331,13 @@ private:
 
         if ( sym->GetType() == nt::SymbolType::LOCAL_VARIABLE )
         {
-            return ir::Operand{ ir::Operand::VARIABLE, 0, id};
+            return ir::Operand{ ir::Operand::VARIABLE, id};
         } else if ( sym->GetType() == nt::SymbolType::GLOBAL_VARIABLE )
         {
-            return ir::Operand{ ir::Operand::GLOBAL, 0, id};
+            return ir::Operand{ ir::Operand::GLOBAL, id};
         } else if ( sym->GetType() == nt::SymbolType::FUNCTION )
         {
-            return ir::Operand{ ir::Operand::FUNC_LABEL, 0, id};
+            return ir::Operand{ ir::Operand::FUNC_LABEL, id};
         } else
         {
             throw std::runtime_error{ "Unexpected operand type"};
@@ -350,9 +350,9 @@ private:
         std::string tmp_name = "__tmp_" + std::to_string( ++tmp_counter_);
         nt::SymbolID tmp_id = program_.Nametable().AddSymbol( tmp_name,
                                                               nt::SymbolType::LOCAL_VARIABLE);
-        function_.AddVariable( tmp_id, 0);
+        function_.AddVariable( tmp_id);
 
-        return ir::Operand{ ir::Operand::VARIABLE, 0, tmp_id};
+        return ir::Operand{ ir::Operand::VARIABLE, tmp_id};
     }
 };
 
@@ -379,7 +379,7 @@ EmitIR( const ast::Program& program)
     basic_block.instructions.emplace_back( ir::Opcode::CALL,
                                            ir::kNoDefine,
                                            std::vector<ir::Operand>{
-                                               { ir::Operand::FUNC_LABEL, 0, main_sym->GetID()}
+                                               { ir::Operand::FUNC_LABEL, main_sym->GetID()}
                                            });
 
     for ( const ast::Function& func : program.functions )
@@ -389,7 +389,7 @@ EmitIR( const ast::Program& program)
         Emitter emitter{ ir, function_ir};
         for ( nt::SymbolID param : func.parameters )
         {
-            function_ir.AddParam( param, 0);
+            function_ir.AddParam( param);
         }
 
         for ( const auto& stmt : func.body )
