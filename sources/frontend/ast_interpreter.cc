@@ -238,7 +238,7 @@ private:
     {
         for ( const Function& func : program_->functions )
         {
-            const nt::Symbol *sym = program_->nametable.GetSymbol( func.id);
+            const nt::Symbol *sym = program_->nametable.FindSymbol( func.id);
             if ( sym->GetName() == name )
             {
                 return func;

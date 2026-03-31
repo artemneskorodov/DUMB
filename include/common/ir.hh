@@ -2,8 +2,11 @@
 #define DUMB_IR_HH__
 
 #include <vector>
-#include <memory>
 #include <string>
+#include <unordered_map>
+#include <list>
+
+#include "nametable.hh"
 
 namespace dumb
 {
@@ -14,201 +17,130 @@ namespace ir
 // Operands
 //
 
-class OperandVisitor;
-class ConstantOperandVisitor;
+using ImmType = int;
 
 struct Operand
 {
-    virtual ~Operand() = default;
-    virtual void Accept( OperandVisitor& v) = 0;
-    virtual void Accept( ConstantOperandVisitor& v) const = 0;
+    enum Type
+    {
+        EMPTY,
+        VARIABLE,
+        GLOBAL,
+        IMMEDIATE,
+        LABEL,
+        FUNC_LABEL,
+        STRING_LABEL,
+    };
 
-};
-
-using OperandPtr = std::unique_ptr<Operand>;
-
-// Variable
-
-struct VarOperand : public Operand
-{
-    void Accept( OperandVisitor& v) override;
-    void Accept( ConstantOperandVisitor& v) const override;
-
-    explicit
-    VarOperand( std::string name)
-     :  name{ std::move( name)}
+    constexpr
+    Operand( Type type,
+             ImmType value,
+             nt::SymbolID id = 0)
+     :  type{ type},
+        value{ value},
+        id{ id}
     {
     }
 
-    std::string name;
-
-};
-
-// Global variable
-
-struct GVarOperand : public Operand
-{
-    void Accept( OperandVisitor& v) override;
-    void Accept( ConstantOperandVisitor& v) const override;
-
-    explicit
-    GVarOperand( std::string name)
-     :  name{ std::move( name)}
+    constexpr
+    Operand()
+     :  type{ EMPTY},
+        value{},
+        id{}
     {
     }
 
-    std::string name;
+    Type type;
+    ImmType value; // version for variable
+    nt::SymbolID id;
 
 };
 
-// Immediate
+constexpr Operand kNoDefine = Operand{};
 
-using ImmType = int;
+//
+// Keys and hashed used for mapping
+//
 
-struct ImmOperand : public Operand
+struct SSAKey
 {
-    void Accept( OperandVisitor& v) override;
-    void Accept( ConstantOperandVisitor& v) const override;
-
-    explicit
-    ImmOperand( ImmType value)
-     :  value{ value}
+    SSAKey( nt::SymbolID id,
+            ImmType version)
+     :  id{ id},
+        version{ version}
     {
     }
 
-    ImmType value;
+    bool
+    operator==( const SSAKey& other) const
+    {
+        return (id == other.id) && (version == other.version);
+    }
+
+    nt::SymbolID id;
+    ImmType version;
 
 };
 
-class OperandVisitor
+struct SSAKeyHash
 {
-public:
-    virtual void Visit( VarOperand&  node) = 0;
-    virtual void Visit( ImmOperand&  node) = 0;
-    virtual void Visit( GVarOperand& node) = 0;
-
+    std::size_t
+    operator()( const SSAKey& key) const
+    {
+        return std::hash<int>()( key.version ^ (key.id << 1));
+    }
 };
-
-class ConstantOperandVisitor
-{
-public:
-    virtual void Visit( const VarOperand&  node) = 0;
-    virtual void Visit( const ImmOperand&  node) = 0;
-    virtual void Visit( const GVarOperand& node) = 0;
-
-};
-
-inline void VarOperand::Accept  ( OperandVisitor& v) { v.Visit( *this); }
-inline void ImmOperand::Accept  ( OperandVisitor& v) { v.Visit( *this); }
-inline void GVarOperand::Accept ( OperandVisitor& v) { v.Visit( *this); }
-
-inline void VarOperand::Accept  ( ConstantOperandVisitor& v) const { v.Visit( *this); }
-inline void ImmOperand::Accept  ( ConstantOperandVisitor& v) const { v.Visit( *this); }
-inline void GVarOperand::Accept ( ConstantOperandVisitor& v) const { v.Visit( *this); }
 
 //
 // Instructions
 //
 
-class InstructionVisitor;
-class ConstantInstructionVisitor;
-
-struct Instruction
-{
-    virtual ~Instruction() = default;
-    virtual void Accept( InstructionVisitor& v) = 0;
-    virtual void Accept( ConstantInstructionVisitor &v) const = 0;
-
-};
-
-using InstructionPtr = std::unique_ptr<Instruction>;
-
-// Binary operation
-
-enum class BinaryOpType
+enum class Opcode
 {
     ADD,
     SUB,
     MUL,
     DIV,
-};
-
-struct BinaryOpInstr : public Instruction
-{
-    void Accept( InstructionVisitor& v) override;
-    void Accept( ConstantInstructionVisitor& v) const override;
-
-    BinaryOpInstr( OperandPtr dest,
-                   BinaryOpType op,
-                   OperandPtr first,
-                   OperandPtr second)
-     :  dest   { std::move( dest)},
-        op     { op},
-        first  { std::move( first)},
-        second { std::move( second)}
-    {
-    }
-
-    OperandPtr   dest;
-    BinaryOpType op;
-    OperandPtr   first;
-    OperandPtr   second;
-
-};
-
-// Unary operation
-
-enum class UnaryOpType
-{
     MOV,
-    RET, // dest is unused for return
+    RET,
+    CALL,
+    INPUT,
+    OUTPUT,
 };
 
-struct UnaryOpInstr : public Instruction
+struct Instruction
 {
-    void Accept( InstructionVisitor& v) override;
-    void Accept( ConstantInstructionVisitor& v) const override;
-
-    UnaryOpInstr( OperandPtr dest,
-                  UnaryOpType op,
-                  OperandPtr operand)
-     :  dest    { std::move( dest)},
-        op      { op},
-        operand { std::move( operand)}
+    Instruction( Opcode opcode,
+                 const Operand& defines,
+                 std::vector<Operand> operands)
+     :  opcode   { opcode},
+        defines  { defines},
+        operands { std::move( operands)}
     {
     }
 
-    OperandPtr  dest;
-    UnaryOpType op;
-    OperandPtr  operand;
+    Opcode opcode;
+    Operand defines;
+    std::vector<Operand> operands;
 
 };
 
-// Function call
-
-struct FunctionCallInstr : public Instruction
+struct PhiNode
 {
-    void Accept( InstructionVisitor& v) override;
-    void Accept( ConstantInstructionVisitor& v) const override;
-
-    FunctionCallInstr( OperandPtr              dest,
-                       std::string             name,
-                       std::vector<OperandPtr> params)
-     :  dest   { std::move( dest)},
-        name   { std::move( name)},
-        params { std::move( params)}
+    PhiNode( int var)
+    :  var_id{ var}
     {
     }
 
-    OperandPtr              dest;
-    std::string             name;
-    std::vector<OperandPtr> params;
+    nt::SymbolID                     var_id;
+    int                              version;
+    std::unordered_map<int, Operand> mapping;
 
 };
 
-// Compare and jump instruction
-
-using LocalLabelID = std::size_t;
+//
+// Basic block
+//
 
 enum class CmpType
 {
@@ -216,18 +148,18 @@ enum class CmpType
     EQUAL,
     BIGGER,
     ALWAYS_TRUE,
+    INVALID,
 };
 
-struct CmpAndJmpInstr : public Instruction
+struct BasicBlockTerminator
 {
-    void Accept( InstructionVisitor& v) override;
-    void Accept( ConstantInstructionVisitor& v) const override;
+    BasicBlockTerminator() = default;
 
-    CmpAndJmpInstr( OperandPtr   left,
-                    OperandPtr   right,
-                    CmpType      type,
-                    LocalLabelID true_dest,
-                    LocalLabelID false_dest)
+    BasicBlockTerminator( Operand      left,
+                          Operand      right,
+                          CmpType      type,
+                          int          true_dest,
+                          int          false_dest)
      :  left       { std::move( left)},
         right      { std::move( right)},
         type       { type},
@@ -236,135 +168,187 @@ struct CmpAndJmpInstr : public Instruction
     {
     }
 
-    OperandPtr   left;
-    OperandPtr   right;
-    CmpType      type;
-    LocalLabelID true_dest;
-    LocalLabelID false_dest;
+    Operand   left       {};
+    Operand   right      {};
+    CmpType   type       { CmpType::INVALID};
+    int       true_dest  { 0xffffff}; // Random number for default constructor
+    int       false_dest { 0};
 
 };
-
-struct InputInstr : public Instruction
-{
-    void Accept( InstructionVisitor& v) override;
-    void Accept( ConstantInstructionVisitor& v) const override;
-
-    InputInstr( OperandPtr  dest,
-                std::string string)
-     :  dest   { std::move( dest)},
-        string { std::move( string)}
-    {
-    }
-
-    OperandPtr  dest;
-    std::string string;
-
-};
-
-struct OutputInstr : public Instruction
-{
-    void Accept( InstructionVisitor& v) override;
-    void Accept( ConstantInstructionVisitor& v) const override;
-
-    OutputInstr( OperandPtr  expression,
-                 std::string string)
-     :  expression { std::move( expression)},
-        string     { std::move( string)}
-    {
-    }
-
-    OperandPtr  expression;
-    std::string string;
-
-};
-
-class InstructionVisitor
-{
-public:
-    virtual void Visit( BinaryOpInstr&     node) = 0;
-    virtual void Visit( UnaryOpInstr&      node) = 0;
-    virtual void Visit( FunctionCallInstr& node) = 0;
-    virtual void Visit( CmpAndJmpInstr&    node) = 0;
-    virtual void Visit( InputInstr&        node) = 0;
-    virtual void Visit( OutputInstr&       node) = 0;
-
-};
-
-class ConstantInstructionVisitor
-{
-public:
-    virtual void Visit( const BinaryOpInstr&     node) = 0;
-    virtual void Visit( const UnaryOpInstr&      node) = 0;
-    virtual void Visit( const FunctionCallInstr& node) = 0;
-    virtual void Visit( const CmpAndJmpInstr&    node) = 0;
-    virtual void Visit( const InputInstr&        node) = 0;
-    virtual void Visit( const OutputInstr&       node) = 0;
-
-};
-
-inline void BinaryOpInstr::Accept     ( InstructionVisitor& v) { v.Visit( *this); }
-inline void UnaryOpInstr::Accept      ( InstructionVisitor& v) { v.Visit( *this); }
-inline void FunctionCallInstr::Accept ( InstructionVisitor& v) { v.Visit( *this); }
-inline void CmpAndJmpInstr::Accept    ( InstructionVisitor& v) { v.Visit( *this); }
-inline void InputInstr::Accept        ( InstructionVisitor& v) { v.Visit( *this); }
-inline void OutputInstr::Accept       ( InstructionVisitor& v) { v.Visit( *this); }
-
-inline void BinaryOpInstr::Accept     ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
-inline void UnaryOpInstr::Accept      ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
-inline void FunctionCallInstr::Accept ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
-inline void CmpAndJmpInstr::Accept    ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
-inline void InputInstr::Accept        ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
-inline void OutputInstr::Accept       ( ConstantInstructionVisitor& v) const { v.Visit( *this); }
-
-//
-// Basic block
-//
 
 struct BasicBlock final
 {
-    BasicBlock( LocalLabelID id)
+    BasicBlock( int id)
      :  id{ id}
     {
     }
 
-    std::vector<InstructionPtr> instructions{};
-    LocalLabelID                id;
+    std::vector<PhiNode>     phi_nodes{};
+    std::vector<Instruction> instructions{};
+    BasicBlockTerminator     terminator{};
+    std::vector<int>         predecessors{};
+    std::vector<int>         successors{};
+    int                      id;
 
 };
-
-using BasicBlockPtr = std::unique_ptr<BasicBlock>;
 
 //
 // Function
 //
 
-struct Function final
+class Function final
 {
+public:
     explicit
-    Function( std::string name)
-     :  name{ std::move( name)}
+    Function( int id)
+     :  id_{ id}
     {
     }
 
-    std::vector<std::string>   params       {};
-    std::vector<BasicBlockPtr> basic_blocks {};
-    std::vector<std::string>   variables    {};
-    std::string                name;
+    BasicBlock&
+    AddBasicBlock( int id)
+    {
+        basic_blocks_.emplace_back( id);
+        return basic_blocks_.back();
+    }
+
+    void
+    AddVariable( nt::SymbolID id, int version)
+    {
+        variables_.emplace_back( id, version);
+    }
+
+    void
+    AddParam( nt::SymbolID id, int version)
+    {
+        params_.emplace_back( id, version);
+    }
+
+    const std::vector<SSAKey>&
+    Params() const &
+    {
+        return params_;
+    }
+
+    const std::vector<BasicBlock>&
+    BasicBlocks() const &
+    {
+        return basic_blocks_;
+    }
+
+    std::vector<BasicBlock>&
+    BasicBlocks() &
+    {
+        return basic_blocks_;
+    }
+
+    const std::vector<SSAKey>&
+    Variables() const &
+    {
+        return variables_;
+    }
+
+    int
+    Id() const
+    {
+        return id_;
+    }
+
+private:
+    std::vector<SSAKey>     params_       {};
+    std::vector<BasicBlock> basic_blocks_ {};
+    std::vector<SSAKey>     variables_    {};
+    int                     id_;
 
 };
-
-using FunctionPtr = std::unique_ptr<Function>;
 
 //
 // Program
 //
 
-struct Program final
+class Program final
 {
-    std::vector<FunctionPtr> functions {};
-    FunctionPtr              preamble  { nullptr};
-    std::vector<std::string> globals   {};
-    std::vector<std::string> strings   {};
+public:
+    Program( nt::NameTable nametable)
+     :  nametable_{ std::move( nametable)}
+    {
+    }
+
+    Function&
+    AddFunction( int id) &
+    {
+        functions_.emplace_back( id);
+        return functions_.back();
+    }
+
+    Function&
+    Preamble( int id) &
+    {
+        preamble_ = Function{ id};
+        return preamble_;
+    }
+
+    const Function&
+    Preamble() const &
+    {
+        return preamble_;
+    }
+
+    nt::NameTable&
+    Nametable() &
+    {
+        return nametable_;
+    }
+
+    const nt::NameTable&
+    Nametable() const &
+    {
+        return nametable_;
+    }
+
+    int
+    AddString( std::string str)
+    {
+        strings_.emplace_back( std::move( str));
+        return strings_.size() - 1;
+    }
+
+    const std::vector<Function>&
+    Functions() const &
+    {
+        return functions_;
+    }
+
+    std::vector<Function>&
+    Functions() &
+    {
+        return functions_;
+    }
+
+    void
+    AddGlobal( int id)
+    {
+        globals_.emplace_back( id);
+    }
+
+    const std::vector<int>&
+    Globals() const &
+    {
+        return globals_;
+    }
+
+    const std::vector<std::string>&
+    Strings() const &
+    {
+        return strings_;
+    }
+
+private:
+    nt::NameTable            nametable_;
+    std::vector<Function>    functions_ {};
+    Function                 preamble_  { 0};
+    std::vector<std::string> strings_   {};
+    std::vector<int>         globals_{};
 
 };
 

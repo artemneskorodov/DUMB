@@ -328,7 +328,7 @@ SyntaxParser::get_assignment()
     assert( is_type( lexer::TokenType::ASSIGNMENT, 1));
 
     std::string name = value();
-    const nt::Symbol *sym = nametable_.GetSymbol( name);
+    const nt::Symbol *sym = nametable_.GetSymbolInScope( name);
     if ( sym == nullptr )
     {
         syntax_error( "Unknown symbol");
@@ -373,7 +373,7 @@ SyntaxParser::get_input()
 
     check( lexer::TokenType::USER_STRING);
     std::string name = value();
-    const nt::Symbol *sym = nametable_.GetSymbol( name);
+    const nt::Symbol *sym = nametable_.GetSymbolInScope( name);
     if ( sym == nullptr )
     {
         syntax_error( "Unknown symbol");
@@ -536,7 +536,7 @@ ast::ExprNodePtr
 SyntaxParser::get_symbol()
 {
     std::string name = value();
-    const nt::Symbol *sym = nametable_.GetSymbol( name);
+    const nt::Symbol *sym = nametable_.GetSymbolInScope( name);
     if ( sym == nullptr )
     {
         syntax_error( "Undeclared symbol: " + name);

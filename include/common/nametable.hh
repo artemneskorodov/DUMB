@@ -12,8 +12,14 @@ namespace dumb
 namespace nt
 {
 
-using SymbolID = std::size_t;
+///
+/// @brief          Symbol unique id type
+///
+using SymbolID = int;
 
+///
+/// @brief          Symbol type
+///
 enum class SymbolType
 {
     FUNCTION,
@@ -21,6 +27,9 @@ enum class SymbolType
     LOCAL_VARIABLE,
 };
 
+///
+/// @brief          Symbol information
+///
 class Symbol final
 {
 public:
@@ -36,7 +45,10 @@ public:
     std::string GetName     () const { return name_; }
     SymbolType  GetType     () const { return type_; }
     SymbolID    GetID       () const { return id_;   }
+
+    // TODO remove this function
     std::string GetSafeName () const { return name_ + "__nt_id_" + std::to_string( id_); }
+
 private:
     std::string name_;
     SymbolType  type_;
@@ -44,6 +56,10 @@ private:
 
 };
 
+///
+/// @brief          Nametable which holds information about visible entities in the proccess of
+///                 syntax analysis
+///
 class NameTable final
 {
 public:
@@ -63,18 +79,29 @@ public:
         return id;
     }
 
+    ///
+    /// @brief      Enter scope in process of syntax analysis
+    ///
     void
     EnterScope()
     {
         scope_symbols_.emplace_back( 0);
     }
 
+    ///
+    /// @brief      Check if nametable is in scope now
+    ///
+    /// @return     True if not in global scope
+    ///
     bool
     HasScope() const
     {
         return (scope_symbols_.size() != 0);
     }
 
+    ///
+    /// @brief Leave current scope in proccess of syntax analysis
+    ///
     void
     LeaveScope()
     {
@@ -86,14 +113,20 @@ public:
     }
 
     ///
-    /// @brief Find symbol in nametable by name in current scope.
+    /// @brief      Find symbol in nametable by name in current scope.
+    ///
     /// @param name Name of symbol
-    /// @return Pointer to Symbol
-    /// @warning This function can only be used before syntax analysis, as it is only looks for names in visible_names_
-    /// @todo Fix this making different classes for syntax parser nametable and other nametables, or use std::string after syntax parsing
+    ///
+    /// @return     Pointer to Symbol
+    ///
+    /// @warning    This function can only be used before syntax analysis, as it is only looks for
+    ///             names in visible_names_
+    ///
+    /// @todo       Fix this making different classes for syntax parser nametable and other
+    ///             nametables, or use std::string after syntax parsing
     ///
     const Symbol *
-    GetSymbol( const std::string& name) const &
+    GetSymbolInScope( const std::string& name) const &
     {
         for ( auto it = visible_names_.rbegin(); it != visible_names_.rend(); ++it )
         {
@@ -105,8 +138,17 @@ public:
         return nullptr;
     }
 
+    ///
+    /// @brief      Find symbol by its unique id
+    ///
+    /// @param id   Unique id of symbol
+    ///
+    /// @return     Pointer to symbol information if symbol is found, nullptr overwise
+    ///
+    /// @todo       Make this function faster with better unique id's
+    ///
     const Symbol *
-    GetSymbol( SymbolID id) const &
+    FindSymbol( SymbolID id) const &
     {
         for ( auto& sym : nametable_ )
         {
@@ -118,6 +160,33 @@ public:
         return nullptr;
     }
 
+    ///
+    /// @brief      Find symbol by its name
+    ///
+    /// @param name Symbol name
+    ///
+    /// @return     Pointer to symbol information if symbol is found, nullptr overwise
+    ///
+    /// @todo       Make this function faster with better unique id's
+    ///
+    /// @todo       Make different vectors for functions and variables, look for functions first
+    ///
+    const Symbol *
+    FindSymbol( std::string name) const &
+    {
+        for ( auto& sym : nametable_ )
+        {
+            if ( sym.GetName() == name )
+            {
+                return &sym;
+            }
+        }
+        return nullptr;
+    }
+
+    ///
+    /// @brief      Get nametable vector of symbols
+    ///
     const std::vector<Symbol> &
     GetNametable() const &
     {

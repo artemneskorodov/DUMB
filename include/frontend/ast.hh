@@ -17,7 +17,9 @@ class Visitor;
 class ConstantVisitor;
 
 ///
-/// @brief
+/// @brief          Base structure of AST node
+///
+/// @todo           Make different visitors for expressions and statements and delete this struct
 ///
 struct ASTNode
 {
@@ -27,10 +29,15 @@ struct ASTNode
 
 };
 
+///
+/// @brief          Alias for node pointer
+///
 using ASTNodePtr = std::unique_ptr<ASTNode>;
 
 ///
-/// @brief
+/// @brief          Expression node base structure
+///
+/// @todo           Remove ASTNode
 ///
 struct ExprNode : public ASTNode
 {
@@ -38,10 +45,15 @@ struct ExprNode : public ASTNode
 
 };
 
+///
+/// @brief          Alias for expression node pointer
+///
 using ExprNodePtr = std::unique_ptr<ExprNode>;
 
 ///
-/// @brief
+/// @brief          Statement node base structure
+///
+/// @todo           Remove ASTNode
 ///
 struct StmtNode : public ASTNode
 {
@@ -49,10 +61,13 @@ struct StmtNode : public ASTNode
 
 };
 
+///
+/// @brief          Alias for statement node pointer
+///
 using StmtNodePtr = std::unique_ptr<StmtNode>;
 
 ///
-/// @brief
+/// @brief          Immediate node
 ///
 struct Immediate final : public ExprNode
 {
