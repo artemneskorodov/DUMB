@@ -183,12 +183,12 @@ struct BasicBlock final
     {
     }
 
-    std::vector<PhiNode>     phi_nodes{};
-    std::vector<Instruction> instructions{};
-    BasicBlockTerminator     terminator{};
-    std::vector<int>         predecessors{};
-    std::vector<int>         successors{};
-    int                      id;
+    std::list<PhiNode>     phi_nodes{};
+    std::list<Instruction> instructions{};
+    BasicBlockTerminator   terminator{};
+    std::vector<int>       predecessors{};
+    std::vector<int>       successors{};
+    int                    id;
 
 };
 

@@ -9,6 +9,9 @@
 #include "build_ssa.hh"
 #include "ir.hh"
 
+#include "dce.hh"
+#include "ir_dump.hh"
+
 #include "dot_graph/graph.h"
 
 namespace dumb
@@ -652,6 +655,9 @@ BuildSSA( ir::Program& ir)
         std::unordered_map<nt::SymbolID, int> counters{};
         RenameVariables( func, func.BasicBlocks()[0], control_flow, dominators_tree, dominance_frontier, stacks, counters);
     }
+
+    ir::dump::DumpIR( ir, "before_dce.svg");
+    dce::DeadCodeElimination( ir);
 
     return ;
     Graph graph{ 8};
