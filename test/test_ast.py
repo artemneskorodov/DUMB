@@ -1,12 +1,12 @@
 import pytest
 import subprocess
-from test_utils import CompilerTestBase, run_test_cases
+from test_utils import CompilerTestBase, run_test_cases, get_source_path
 
 class ASTCompilerTest(CompilerTestBase):
     BENCHMARKS_BUILD_DIR = "benchmarks_build"
 
     def run_test(self, test_name: str) -> None:
-        source = self.get_source_path(test_name)
+        source = get_source_path(test_name, self.workdir)
         test_cases = self.parse_tests(test_name)
         exec_path = self.compiler_path
         run_test_cases([exec_path, source], test_cases)

@@ -70,7 +70,7 @@ class CompilerTestBase:
         self.workdir = workdir
 
     def parse_tests(self, test_name: str) -> List[TestCase]:
-        path = self.get_test_path(test_name)
+        path = get_test_path(test_name, self.workdir)
 
         cases = []
         current_case = None
