@@ -13,35 +13,19 @@ int
 main( int         argc,
       const char *argv[])
 {
-    if ( argc < 2 )
-    {
-        throw std::runtime_error{ "Expected to have source file as a first argument"};
-    }
-
-    std::string source = argv[1];
-
     dumb::option::OptionsParser parser{};
-    parser.AddOption<std::string>( "--test" , "-t" , "a" );
-    parser.AddOption<int>        ( "--test1", "-t1", 1   );
-    parser.AddOption<bool>       ( "--test2", "-t2", true);
 
-    std::vector<std::string> args( argv + 2, argv + argc);
+    parser.AddOption<std::string>( "--input"      , "-i"    , ""   , true );
+    parser.AddOption<std::string>( "--output"     , "-o"    , ""   , true );
+    parser.AddOption<bool>       ( "--enable-sccp", "-sccp" , false, false);
+    parser.AddOption<bool>       ( "--enable-dce" , "-dce"  , false, false);
+
+    std::vector<std::string> args( argv + 1, argv + argc);
 
     parser.ParseArgs( std::move( args));
 
-    std::string a = parser.GetOption<std::string>( "--test" );
-    int b         = parser.GetOption<int>        ( "--test1");
-    bool c        = parser.GetOption<bool>       ( "--test2");
-
-    std::cout << a << " " << b << " " << c << std::endl;
-
-    if ( argc != 3 )
-    {
-        std::cerr << "Unexpected parameters number" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    std::string output = argv[2];
+    std::string source = parser.GetOption<std::string>( "--input");
+    std::string output = parser.GetOption<std::string>( "--output");
 
     dumb::ir::Program program_ir = dumb::RunFrontend( source);
 
@@ -49,7 +33,7 @@ main( int         argc,
     dumb::ir::dump::DumpIR( program_ir, "ir_dump_before.svg");
     #endif
 
-    dumb::RunMiddleend( program_ir);
+    dumb::RunMiddleend( program_ir, parser);
 
     #if 1
     dumb::ir::dump::DumpIR( program_ir, "ir_dump_after.svg");
@@ -59,5 +43,5 @@ main( int         argc,
 
     dumb::utils::WriteTextFile( output, result);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

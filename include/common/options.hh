@@ -17,9 +17,11 @@ namespace option
 struct OptionBase
 {
     OptionBase( std::string long_name,
-                std::string short_name)
+                std::string short_name,
+                bool        required)
      :  long_name  { std::move( long_name)},
-        short_name { std::move( short_name)}
+        short_name { std::move( short_name)},
+        required   { required}
     {
     }
 
@@ -30,6 +32,8 @@ struct OptionBase
 
     std::string long_name;
     std::string short_name;
+    bool        required;
+    bool        is_present = false;
 
 };
 
@@ -38,8 +42,9 @@ struct Option : OptionBase
 {
     Option( std::string long_name,
             std::string short_name,
-            ValueT default_value)
-     :  OptionBase{ std::move( long_name), std::move( short_name)},
+            ValueT      default_value,
+            bool        required)
+     :  OptionBase{ std::move( long_name), std::move( short_name), required},
         value{ std::move( default_value)}
     {
     }
@@ -61,7 +66,6 @@ struct Option : OptionBase
     }
 
     ValueT value;
-    bool is_present = false;
 
 };
 
@@ -70,8 +74,9 @@ struct Option<bool> : OptionBase
 {
     Option( std::string long_name,
             std::string short_name,
-            bool default_value)
-     :  OptionBase{ long_name, short_name},
+            bool        default_value,
+            bool        required)
+     :  OptionBase{ std::move( long_name), std::move( short_name), required},
         value{ default_value}
     {
     }
@@ -92,21 +97,20 @@ struct Option<bool> : OptionBase
 
     std::size_t count = 0;
     bool value;
-    bool is_present = false;
 
 };
-
-template<typename Type>
-using OptionPtr = std::unique_ptr<Option<Type>>;
 
 class OptionsParser
 {
 public:
     template<typename ValueT>
     void
-    AddOption( std::string long_name, std::string short_name, ValueT default_value)
+    AddOption( std::string long_name, std::string short_name, ValueT default_value, bool required)
     {
-        options_.emplace_back( std::make_unique<Option<ValueT>>( long_name, short_name, default_value));
+        options_.emplace_back( std::make_unique<Option<ValueT>>( long_name,
+                                                                 short_name,
+                                                                 default_value,
+                                                                 required));
     }
 
     void
@@ -131,13 +135,20 @@ public:
                 throw std::runtime_error{ "Unknown option: \"" + args[pos] + "\""};
             }
         }
+        for ( std::unique_ptr<OptionBase>& opt : options_ )
+        {
+            if ( opt->required && !opt->is_present )
+            {
+                throw std::runtime_error{ "Option \"" + opt->long_name + "\" is required"};
+            }
+        }
     }
 
     template<typename ValueT>
     ValueT
-    GetOption( const std::string& name)
+    GetOption( const std::string& name) const
     {
-        for ( std::unique_ptr<OptionBase>& opt : options_ )
+        for ( const std::unique_ptr<OptionBase>& opt : options_ )
         {
             if ( opt->long_name == name || opt->short_name == name )
             {
