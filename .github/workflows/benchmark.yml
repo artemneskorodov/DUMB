@@ -1,0 +1,42 @@
+name: Benchmarks
+
+on: [push, pull_request]
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          cmake -B build
+          cmake --build build -j
+
+      - name: Run benchmarks
+        run: |
+          echo "Running tests..."
+          mkdir benchmarks_build
+          start=$(date +%s%N)
+
+          ./build/dumb benchmarks/Addition.dumb benchmarks_build/Addition.s
+          end=$(date +%s%N)
+          t1=$(( (end - start)/1000000 ))
+
+          start=$(date +%s%N)
+          ./build/tests/test2
+          end=$(date +%s%N)
+          t2=$(( (end - start)/1000000 ))
+
+          echo "TEST1=$t1" >> $GITHUB_ENV
+          echo "TEST2=$t2" >> $GITHUB_ENV
+
+      - name: Report
+        run: |
+          echo "## ⏱ Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Time (ms) |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| test1 | $TEST1 |" >> $GITHUB_STEP_SUMMARY
+          echo "| test2 | $TEST2 |" >> $GITHUB_STEP_SUMMARY
