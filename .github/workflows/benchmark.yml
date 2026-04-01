@@ -84,4 +84,4 @@ jobs:
           echo "### 📊 Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          jq -r '["|name|", "metric1|", "metric2|"], [":--", "----:", "--:"], (.[] | ["|" + .name + "|", .metric1 + "|", .metric2 + "|"]) | @tsv' result.json >> $GITHUB_STEP_SUMMARY
+          jq -r '["|name|", "metric1|", "metric2|"], ["|:----|", "----:|", "----:|"], (.[] | ["|" + .name + "|", .metric1 + "|", .metric2 + "|"]) | @tsv' result.json >> $GITHUB_STEP_SUMMARY
