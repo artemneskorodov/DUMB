@@ -1,58 +1,100 @@
+# name: Benchmarks
+#
+# on:
+#   push:
+#     branches: [ "master" ]
+#   pull_request:
+#     branches: [ "master" ]
+#
+# jobs:
+#   perf:
+#     runs-on: ubuntu-latest
+#
+#     steps:
+#       - uses: actions/checkout@v6
+#         with:
+#           submodules: recursive
+#
+#       - name: Install test dependencies
+#         run: |
+#           sudo apt-get update
+#           sudo apt-get install -y python3 python3-pip graphviz
+#           pip3 install -r ${{ github.workspace }}/requirements.txt
+#
+#       - name: Build
+#         run: |
+#           cmake -B build
+#           cmake --build build -j
+#
+#       - name: Run benchmarks
+#         run: |
+#           echo "Running tests..."
+#           mkdir benchmarks_build
+#           start=$(date +%s%N)
+#
+#           ./build/dumb benchmarks/Addition.dumb benchmarks_build/Addition.s
+#           end=$(date +%s%N)
+#           t1=$(( (end - start)/1000000 ))
+#
+#           start=$(date +%s%N)
+#           ./build/dumb benchmarks/IfCmpZero.dumb benchmarks_build/IfCmpZero.s
+#           end=$(date +%s%N)
+#           t2=$(( (end - start)/1000000 ))
+#
+#           echo "TEST1=$t1" >> $GITHUB_ENV
+#           echo "TEST2=$t2" >> $GITHUB_ENV
+#
+#       - name: Report
+#         run: |
+#           echo "## ⏱ Benchmark Results" >> $GITHUB_STEP_SUMMARY
+#           echo "" >> $GITHUB_STEP_SUMMARY
+#           echo "| Test | Time (ms) |" >> $GITHUB_STEP_SUMMARY
+#           echo "|------|----------|" >> $GITHUB_STEP_SUMMARY
+#           echo "| test1 | $TEST1 |" >> $GITHUB_STEP_SUMMARY
+#           echo "| test2 | $TEST2 |" >> $GITHUB_STEP_SUMMARY
+
 name: Benchmarks
 
 on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
-  perf:
+  run-script:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          submodules: recursive
+          python-version: '3.11'
 
-      - name: Install test dependencies
+      - name: Run Python script and save JSON
+        id: run_script
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3 python3-pip graphviz
-          pip3 install -r ${{ github.workspace }}/requirements.txt
+          python test/benchmark.py > result.json
 
-      - name: Build
+      - name: Convert JSON to Markdown (dynamic columns)
         run: |
-          cmake -B build
-          cmake --build build -j
+          echo "### 📊 Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-      - name: Run benchmarks
-        run: |
-          echo "Running tests..."
-          mkdir benchmarks_build
-          start=$(date +%s%N)
+          headers=$(jq -r 'keys | @tsv' result.json)
 
-          ./build/dumb benchmarks/Addition.dumb benchmarks_build/Addition.s
-          end=$(date +%s%N)
-          t1=$(( (end - start)/1000000 ))
+          echo "| $(echo $headers | tr '\t' ' | ') |" >> $GITHUB_STEP_SUMMARY
 
-          start=$(date +%s%N)
-          ./build/dumb benchmarks/IfCmpZero.dumb benchmarks_build/IfCmpZero.s
-          end=$(date +%s%N)
-          t2=$(( (end - start)/1000000 ))
+          echo "| $(echo $headers | sed 's/[^\t]*/---/g' | tr '\t' ' | ') |" >> $GITHUB_STEP_SUMMARY
 
-          echo "TEST1=$t1" >> $GITHUB_ENV
-          echo "TEST2=$t2" >> $GITHUB_ENV
+          rows=$(jq '.[keys[0]] | length' result.json)
 
-      - name: Post benchmark to PR
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ## ⏱ Benchmark Results
+          for ((i=0; i<$rows; i++)); do
+            row=$(jq -r --argjson i $i '
+              to_entries
+              | map(.value[$i])
+              | @tsv
+            ' result.json)
 
-            | Test | Before | After | Ratio |
-            |------|--------|-------|-------|
-            | test1 | 120 ms | 90 ms | 0.75 |
-            | test2 | 200 ms | 150 ms | 0.75 |
-          edit-mode: replace
+            echo "| $(echo $row | tr '\t' ' | ') |" >> $GITHUB_STEP_SUMMARY
+          done
