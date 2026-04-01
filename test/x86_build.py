@@ -3,7 +3,7 @@ from test_utils import get_source_path
 
 BENCHMARKS_BUILD_DIR = "benchmarks_build"
 
-def build_exec(compiler_path: str, workdir: str, test_name: str) -> str:
+def build_exec(compiler_path: str, workdir: str, test_name: str, enable_sccp=True, enable_dce=True) -> str:
     source  = get_source_path(test_name, workdir)
     asm     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.s"
     obj     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.o"
@@ -11,11 +11,17 @@ def build_exec(compiler_path: str, workdir: str, test_name: str) -> str:
     std_asm = f"{workdir}/std.s"
     std_obj = f"{workdir}/{BENCHMARKS_BUILD_DIR}/std.o"
 
-    subprocess.run(["mkdir", "-p", f"{workdir}/{BENCHMARKS_BUILD_DIR}"],                                 check=True)
-    subprocess.run([compiler_path, "--input", source, "--output", asm, "--enable-sccp", "--enable-dce"], check=True)
-    subprocess.run(["nasm", "-f", "elf64", asm, "-o", obj],                                              check=True)
-    subprocess.run(["nasm", "-f", "elf64", std_asm, "-o", std_obj],                                      check=True)
-    subprocess.run(["ld", std_obj, obj, "-o", elf],                                                      check=True)
+    compile_command = [compiler_path, "--input", source, "--output", asm]
+    if enable_sccp:
+        compile_command.append("--enable-sccp")
+    if enable_dce:
+        compile_command.append("--enable-dce")
+
+    subprocess.run(["mkdir", "-p", f"{workdir}/{BENCHMARKS_BUILD_DIR}"], check=True)
+    subprocess.run(compile_command,                                      check=True)
+    subprocess.run(["nasm", "-f", "elf64", asm, "-o", obj],              check=True)
+    subprocess.run(["nasm", "-f", "elf64", std_asm, "-o", std_obj],      check=True)
+    subprocess.run(["ld", std_obj, obj, "-o", elf],                      check=True)
 
     return elf
 

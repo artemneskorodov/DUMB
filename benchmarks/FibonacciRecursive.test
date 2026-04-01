@@ -1,0 +1,29 @@
+case:
+
+out: "Num = "
+in:  "0"
+out: "Fib(num) = 0"
+
+case:
+
+out: "Num = "
+in:  "1"
+out: "Fib(num) = 1"
+
+case:
+
+out: "Num = "
+in:  "2"
+out: "Fib(num) = 1"
+
+case:
+
+out: "Num = "
+in:  "3"
+out: "Fib(num) = 2"
+
+case:
+
+out: "Num = "
+in:  "4"
+out: "Fib(num) = 3"

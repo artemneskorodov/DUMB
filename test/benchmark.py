@@ -17,4 +17,8 @@ data = [
     }
 ]
 
+BenchmarkingTests = [
+        "Fibbonacci"
+    ]
+
 json.dump(data, sys.stdout)

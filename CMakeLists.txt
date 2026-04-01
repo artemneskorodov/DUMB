@@ -141,7 +141,7 @@ enable_testing()
 
 set(
     TESTS_LIST
-    Addition,IfCmpZero,WhileSimple,FunctionsSingleParam,FunctionsMultipleParam,SameVarName
+    Addition,IfCmpZero,WhileSimple,FunctionsSingleParam,FunctionsMultipleParam,SameVarName,FibonacciRecursive
 )
 
 add_test(
