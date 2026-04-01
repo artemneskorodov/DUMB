@@ -64,6 +64,7 @@ on:
 jobs:
   run-script:
     runs-on: ubuntu-latest
+    needs: build
 
     steps:
       - name: Checkout repo
@@ -74,10 +75,24 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Get build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: build
+
+      - name: Make compiler executable
+        run: chmod +x ${{ github.workspace }}/build/dumb
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip graphviz nasm hyperfine
+          pip3 install -r ${{ github.workspace }}/requirements.txt
+
       - name: Run Python script and save JSON
         id: run_script
         run: |
-          python test/benchmark.py > result.json
+          python test/benchmark.py ${{ github.workspace }}/build/dumb ${{ github.workspace }} > result.json
 
       - name: Parse JSON and output Markdown table
         run: |

@@ -4,55 +4,40 @@ from x86_build import build_exec, BENCHMARKS_BUILD_DIR
 import time
 import subprocess
 
-data = [
-    {
-        "name": "test1",
-        "--enable-dce": "val11",
-        "metric2": "val12"
-    }, {
-        "name": "test1",
-        "metric1": "val11",
-        "metric2": "val12"
-    }, {
-        "name": "test1",
-        "metric1": "val11",
-        "metric2": "val12"
-    }
-]
-
-data = []
+json_result = []
 
 benchmarking_tests = [
-        "FibbonacciRecursiveMulltiple"
+        "FibonacciRecursiveMultiple"
     ]
 
-if len(sys.argv) != 2:
+if len(sys.argv) != 3:
     raise RuntimeError("Unexpected number of parameters")
 
 compiler_path = sys.argv[1]
 workdir       = sys.argv[2]
 
-def run_single_test(test: str, sccp: bool, dce: bool):
-    exec = build_exec(compiler_path, workdir, test, enable_sccp=sccp, enable_dce=dce)
-    json_output = BENCHMARKS_BUILD_DIR + "/" + test + f".sccp_{sccp}.dce_{dce}result.json"
-    subprocess.run(["hyperfine", "--export-json", json_output])
+def run_single_test(test: str, sccp: bool, dce: bool) -> int:
+    exec_name = build_exec(compiler_path, workdir, test, enable_sccp=sccp, enable_dce=dce)
+    json_output = BENCHMARKS_BUILD_DIR + "/" + test + f".sccp_{sccp}.dce_{dce}.result.json"
+    subprocess.run(["hyperfine", "--export-json", json_output, f"'{exec_name}'"])
     with open(json_output, "r") as f:
         data = f.read()
         json_data = json.loads(data)
 
-    print(json_data)
-    data.append(
-        {
-            "name": test,
-            "--(none)": 0,
-            "--enable-sccp": 0,
-            "--enable-sccp --enable-dce": 0
-        }
-    )
+    return json_data['result']['mean']
 
 for test in benchmarking_tests:
-    run_single_test(test, sccp=False, dce=False)
-    run_single_test(test, sccp=True,  dce=False)
-    run_single_test(test, sccp=True,  dce=True)
+    result_false_false = run_single_test(test, sccp=False, dce=False)
+    result_true_false  = run_single_test(test, sccp=True,  dce=False)
+    result_true_true   = run_single_test(test, sccp=True,  dce=True)
+
+    json_result.append(
+        {
+            "name":                       test,
+            "--(none)":                   result_false_false,
+            "--enable-sccp":              result_true_false,
+            "--enable-sccp --enable-dce": result_true_true
+        }
+    )
 
 json.dump(data, sys.stdout)
