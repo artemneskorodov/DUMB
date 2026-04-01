@@ -1,4 +1,5 @@
 import json
+import sys
 
 data = {
     "columns": ["name", "metric1", "metric2"],
@@ -7,4 +8,4 @@ data = {
     "metric2": ["val21", "val22", "val23"]
 }
 
-print(json.dumps(data))
+json.dump(data, sys.stdout)
