@@ -4,7 +4,7 @@ from test_utils import get_source_path
 BENCHMARKS_BUILD_DIR = "benchmarks_build"
 
 def build_exec(compiler_path: str, workdir: str, test_name: str) -> str:
-    source  = get_source_path(workdir, test_name)
+    source  = get_source_path(test_name, workdir)
     asm     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.s"
     obj     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.o"
     elf     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}"
