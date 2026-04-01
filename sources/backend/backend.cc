@@ -52,13 +52,17 @@ private:
     void
     emit_function( const ir::Function& func)
     {
-        for ( size_t i = 0; i != func.Params().size(); ++i )
+        int offset = 0;
+        for ( const ir::SSAKey& param : func.Params() )
         {
-            rbp_offsets_[func.Params()[i]] = 8 * (static_cast<int>( i) + 1);
+            rbp_offsets_[param] = 8 + offset;
+            offset += 8;
         }
-        for ( size_t i = 0; i != func.Variables().size(); ++i )
+        offset = 0;
+        for ( const ir::SSAKey& var : func.Variables() )
         {
-            rbp_offsets_[func.Variables()[i]] = - 8 * (static_cast<int>( i) + 1);
+            rbp_offsets_[var] = -8 - offset;
+            offset += 8;
         }
 
         const nt::Symbol *sym = program_.Nametable().FindSymbol( func.Id());

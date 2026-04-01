@@ -183,12 +183,12 @@ struct BasicBlock final
     {
     }
 
-    std::vector<PhiNode>     phi_nodes{};
-    std::vector<Instruction> instructions{};
-    BasicBlockTerminator     terminator{};
-    std::vector<int>         predecessors{};
-    std::vector<int>         successors{};
-    int                      id;
+    std::list<PhiNode>     phi_nodes{};
+    std::list<Instruction> instructions{};
+    BasicBlockTerminator   terminator{};
+    std::vector<int>       predecessors{};
+    std::vector<int>       successors{};
+    int                    id;
 
 };
 
@@ -219,6 +219,12 @@ public:
     }
 
     void
+    RemoveVariable( nt::SymbolID id, int version)
+    {
+        variables_.remove( SSAKey{ id, version});
+    }
+
+    void
     AddParam( nt::SymbolID id, int version)
     {
         params_.emplace_back( id, version);
@@ -242,7 +248,7 @@ public:
         return basic_blocks_;
     }
 
-    const std::vector<SSAKey>&
+    const std::list<SSAKey>&
     Variables() const &
     {
         return variables_;
@@ -257,7 +263,7 @@ public:
 private:
     std::vector<SSAKey>     params_       {};
     std::vector<BasicBlock> basic_blocks_ {};
-    std::vector<SSAKey>     variables_    {};
+    std::list<SSAKey>       variables_    {};
     int                     id_;
 
 };

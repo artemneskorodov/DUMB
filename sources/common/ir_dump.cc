@@ -160,14 +160,16 @@ dump_basic_block( const ir::Program& program,
 
     for ( const ir::PhiNode& phi : basic_block.phi_nodes )
     {
-        const nt::Symbol *sym = program.Nametable().FindSymbol( phi.var_id);
-        std::string placeholder = sym->GetName() + "." + std::to_string( phi.version) + " = PHI{ ";
+        std::string name = dumper.GetOperandStr( ir::Operand{ ir::Operand::VARIABLE, phi.version, phi.var_id});
+        std::string placeholder = "PHI{ ";
         for ( const auto& variants : phi.mapping )
         {
             placeholder += dumper.GetOperandStr( variants.second) + ":BB_" + std::to_string( variants.first) + " ";
         }
         placeholder += "}";
-        result.addRow().addCell( placeholder).setColSpan( 4); // TODO
+        html::HTMLRow& row = result.addRow();
+        row.addCell( name);
+        row.addCell( placeholder).setColSpan( 3);
     }
 
     result.addRow().addCell( "Instructions").setColSpan( 4);
