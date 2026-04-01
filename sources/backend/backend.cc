@@ -105,7 +105,7 @@ private:
         {
             for ( const ir::PhiNode& phi : func.BasicBlocks()[phi_acceptor].phi_nodes )
             {
-                if ( phi.mapping.find( phi_acceptor) != phi.mapping.end() )
+                if ( phi.mapping.find( basic_block.id) != phi.mapping.end() )
                 {
                     lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, operand( phi.mapping.at( basic_block.id)));
                     lir_.Add( lir::BinaryOp::MOV, var_operand( phi.var_id, phi.version), lir::Register::RAX);
