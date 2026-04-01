@@ -79,29 +79,30 @@ jobs:
         run: |
           python test/benchmark.py > result.json
 
-      - name: Convert JSON to Markdown (dynamic columns)
+      - name: Convert JSON to Markdown (fixed separators)
         run: |
           echo "### 📊 Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          headers=$(jq -r '.columns | @tsv' result.json)
+          # Заголовки
+          headers=$(jq -r '(["name"] + (keys - ["name"])) | @tsv' result.json)
 
-          echo "| $(echo $headers | tr '\t' ' | ') |" >> $GITHUB_STEP_SUMMARY
+          # Header row
+          printf "| %s |\n" "$(echo "$headers" | sed 's/\t/ | /g')" >> $GITHUB_STEP_SUMMARY
 
-          echo "| $(echo $headers | sed 's/[^\t]*/---/g' | tr '\t' ' | ') |" >> $GITHUB_STEP_SUMMARY
+          # Separator row
+          printf "| %s |\n" "$(echo "$headers" | sed 's/[^\t]*/---/g; s/\t/ | /g')" >> $GITHUB_STEP_SUMMARY
 
-          row=$(jq -r --argjson i $i '
-            .columns as $cols
-            | $cols
-            | map(.[ $i ] as $v | getpath([.])[$i])
-          ' result.json)
+          # Кол-во строк
+          rows=$(jq '.[keys[0]] | length' result.json)
 
+          # Строки таблицы
           for ((i=0; i<$rows; i++)); do
             row=$(jq -r --argjson i $i '
-              to_entries
-              | map(.value[$i])
-              | @tsv
+              (["name"] + (keys - ["name"])) as $cols
+              | $cols
+              | map(.[ $i ] as $v | getpath([.])[$i])
             ' result.json)
 
-            echo "| $(echo $row | tr '\t' ' | ') |" >> $GITHUB_STEP_SUMMARY
+            printf "| %s |\n" "$(echo "$row" | jq -r '@tsv' | sed 's/\t/ | /g')" >> $GITHUB_STEP_SUMMARY
           done
