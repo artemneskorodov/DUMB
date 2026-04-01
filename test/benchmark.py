@@ -24,7 +24,7 @@ def run_single_test(test: str, sccp: bool, dce: bool) -> int:
         data = f.read()
         json_data = json.loads(data)
 
-    return json_data['result']['mean']
+    return json_data['results'][0]['mean']
 
 for test in benchmarking_tests:
     result_false_false = run_single_test(test, sccp=False, dce=False)
@@ -34,10 +34,10 @@ for test in benchmarking_tests:
     json_result.append(
         {
             "name":                       test,
-            "--(none)":                   result_false_false,
+            "No optimizations":           result_false_false,
             "--enable-sccp":              result_true_false,
             "--enable-sccp --enable-dce": result_true_true
         }
     )
 
-json.dump(data, sys.stdout)
+json.dump(json_result, sys.stdout)
