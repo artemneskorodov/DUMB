@@ -2,12 +2,10 @@
 #define DUMB_OPTIONS_HH__
 
 #include <string>
-#include <unordered_map>
-#include <functional>
 #include <sstream>
-#include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <memory>
 
 namespace dumb
 {
