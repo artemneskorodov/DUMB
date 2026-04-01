@@ -11,6 +11,7 @@
 
 #include "dce.hh"
 #include "ir_dump.hh"
+#include "sccp.hh"
 
 #include "dot_graph/graph.h"
 
@@ -109,11 +110,9 @@ public:
     class ConstBitProxy
     {
     public:
-        ConstBitProxy( const Dominators& doms,
-                       std::size_t offset,
+        ConstBitProxy( std::size_t offset,
                        const std::uint64_t *pos)
-         :  doms_{ doms},
-            offset_{ offset},
+         :  offset_{ offset},
             pos_{ pos}
         {
         }
@@ -126,7 +125,6 @@ public:
         }
 
     private:
-        const Dominators& doms_;
         std::size_t offset_;
         const std::uint64_t *pos_;
 
@@ -145,7 +143,7 @@ public:
     {
         std::size_t offset = i % 8;
         const std::uint64_t *pos = &flags_[0] + i / 8;
-        return ConstBitProxy{ *this, offset, pos};
+        return ConstBitProxy{ offset, pos};
     }
 
     static Dominators
@@ -646,7 +644,7 @@ RenameVariables( ir::Function& function,
             {
                 phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
             }
-            basic_block.successors.emplace_back( id);
+            basic_block.phi_acceptors.emplace_back( id);
         }
         if ( basic_block.terminator.type != ir::CmpType::ALWAYS_TRUE )
         {
@@ -660,7 +658,7 @@ RenameVariables( ir::Function& function,
                 {
                     phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
                 }
-                basic_block.successors.emplace_back( id);
+                basic_block.phi_acceptors.emplace_back( id);
             }
         }
     }
@@ -715,6 +713,8 @@ BuildSSA( ir::Program& ir)
 
     ir::dump::DumpIR( ir, "before_dce.svg");
     dce::DeadCodeElimination( ir);
+    ir::dump::DumpIR( ir, "before_sccp.svg");
+    sccp::SparseConditionalConstantPropagation( ir);
 
     return ;
 }

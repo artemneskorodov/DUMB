@@ -186,8 +186,7 @@ struct BasicBlock final
     std::list<PhiNode>     phi_nodes{};
     std::list<Instruction> instructions{};
     BasicBlockTerminator   terminator{};
-    std::vector<int>       predecessors{};
-    std::vector<int>       successors{};
+    std::list<int>         phi_acceptors{};
     int                    id;
 
 };

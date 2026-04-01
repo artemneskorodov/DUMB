@@ -101,12 +101,15 @@ private:
             }
         }
 
-        for ( int successor : basic_block.successors )
+        for ( int phi_acceptor : basic_block.phi_acceptors )
         {
-            for ( const ir::PhiNode& phi : func.BasicBlocks()[successor].phi_nodes )
+            for ( const ir::PhiNode& phi : func.BasicBlocks()[phi_acceptor].phi_nodes )
             {
-                lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, operand( phi.mapping.at( basic_block.id)));
-                lir_.Add( lir::BinaryOp::MOV, var_operand( phi.var_id, phi.version), lir::Register::RAX);
+                if ( phi.mapping.find( basic_block.id) != phi.mapping.end() )
+                {
+                    lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, operand( phi.mapping.at( basic_block.id)));
+                    lir_.Add( lir::BinaryOp::MOV, var_operand( phi.var_id, phi.version), lir::Register::RAX);
+                }
             }
         }
 
