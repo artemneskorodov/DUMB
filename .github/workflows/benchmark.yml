@@ -84,13 +84,4 @@ jobs:
           echo "### 📊 Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          jq -r '
-            .columns as $cols
-            # заголовки
-            | "| " + ($cols | join(" | ")) + " |",
-              "| " + ($cols | map("---") | join(" | ")) + " |",
-              # строки
-              (range(0; .[$cols[0]] | length) as $i
-                | "| " + ($cols | map(. as $c | .[$c][$i]) | join(" | ")) + " |"
-              )
-          ' result.json >> $GITHUB_STEP_SUMMARY
+          jq -r '["|name|", "metric1|", "metric2|"], [":--", "----:", "--:"], (.[] | ["|" + .name + "|", .metric1 + "|", .metric2 + "|"]) | @tsv' results.json >> $GITHUB_STEP_SUMMARY
