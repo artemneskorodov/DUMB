@@ -58,16 +58,16 @@ def run_test_cases(run_exec_command: List[str], test_cases: List[TestCase]) -> N
         finally:
             proc.kill()
 
+def get_test_path(test_name: str, workdir: str) -> str:
+    return f"{workdir}/benchmarks/{test_name}.test"
+
+def get_source_path(test_name: str, workdir: str) -> str:
+    return f"{workdir}/benchmarks/{test_name}.dumb"
+
 class CompilerTestBase:
     def __init__(self, compiler_path: str, workdir: str):
         self.compiler_path = compiler_path
         self.workdir = workdir
-
-    def get_test_path(self, test_name: str) -> str:
-        return f"{self.workdir}/benchmarks/{test_name}.test"
-
-    def get_source_path(self, test_name: str) -> str:
-        return f"{self.workdir}/benchmarks/{test_name}.dumb"
 
     def parse_tests(self, test_name: str) -> List[TestCase]:
         path = self.get_test_path(test_name)
