@@ -79,30 +79,18 @@ jobs:
         run: |
           python test/benchmark.py > result.json
 
-      - name: Convert JSON to Markdown (fixed separators)
+      - name: Parse JSON and output Markdown table
         run: |
-          echo "### 📊 Results" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Заголовки
-          headers=$(jq -r '(["name"] + (keys - ["name"])) | @tsv' result.json)
-
-          # Header row
-          printf "| %s |\n" "$(echo "$headers" | sed 's/\t/ | /g')" >> $GITHUB_STEP_SUMMARY
-
-          # Separator row
-          printf "| %s |\n" "$(echo "$headers" | sed 's/[^\t]*/---/g; s/\t/ | /g')" >> $GITHUB_STEP_SUMMARY
-
-          # Кол-во строк
-          rows=$(jq '.[keys[0]] | length' result.json)
-
-          # Строки таблицы
-          for ((i=0; i<$rows; i++)); do
-            row=$(jq -r --argjson i $i '
-              (["name"] + (keys - ["name"])) as $cols
-              | $cols
-              | map(.[ $i ] as $v | getpath([.])[$i])
-            ' result.json)
-
-            printf "| %s |\n" "$(echo "$row" | jq -r '@tsv' | sed 's/\t/ | /g')" >> $GITHUB_STEP_SUMMARY
-          done
+          jq -r '
+            .columns as $cols
+            # заголовки
+            | "| " + ($cols | join(" | ")) + " |",
+              "| " + ($cols | map("---") | join(" | ")) + " |",
+              # строки
+              (range(0; .[$cols[0]] | length) as $i
+                | "| " + ($cols | map(. as $c | .[$c][$i]) | join(" | ")) + " |"
+              )
+          ' result.json >> $GITHUB_STEP_SUMMARY
