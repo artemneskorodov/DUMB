@@ -1,6 +1,10 @@
 name: Benchmarks
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
   perf:
@@ -33,7 +37,7 @@ jobs:
           t1=$(( (end - start)/1000000 ))
 
           start=$(date +%s%N)
-          ./build/tests/test2
+          ./build/dumb benchmarks/IfCmpZero.dumb benchmarks_build/IfCmpZero.s
           end=$(date +%s%N)
           t2=$(( (end - start)/1000000 ))
 
