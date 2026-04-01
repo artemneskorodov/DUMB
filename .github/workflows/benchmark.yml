@@ -84,13 +84,17 @@ jobs:
           echo "### 📊 Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          headers=$(jq -r 'keys | @tsv' result.json)
+          headers=$(jq -r '.columns | @tsv' result.json)
 
           echo "| $(echo $headers | tr '\t' ' | ') |" >> $GITHUB_STEP_SUMMARY
 
           echo "| $(echo $headers | sed 's/[^\t]*/---/g' | tr '\t' ' | ') |" >> $GITHUB_STEP_SUMMARY
 
-          rows=$(jq '.[keys[0]] | length' result.json)
+          row=$(jq -r --argjson i $i '
+            .columns as $cols
+            | $cols
+            | map(.[ $i ] as $v | getpath([.])[$i])
+          ' result.json)
 
           for ((i=0; i<$rows; i++)); do
             row=$(jq -r --argjson i $i '
