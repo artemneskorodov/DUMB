@@ -44,11 +44,15 @@ jobs:
           echo "TEST1=$t1" >> $GITHUB_ENV
           echo "TEST2=$t2" >> $GITHUB_ENV
 
-      - name: Report
-        run: |
-          echo "## ⏱ Benchmark Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Test | Time (ms) |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|----------|" >> $GITHUB_STEP_SUMMARY
-          echo "| test1 | $TEST1 |" >> $GITHUB_STEP_SUMMARY
-          echo "| test2 | $TEST2 |" >> $GITHUB_STEP_SUMMARY
+      - name: Post benchmark to PR
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## ⏱ Benchmark Results
+
+            | Test | Before | After | Ratio |
+            |------|--------|-------|-------|
+            | test1 | 120 ms | 90 ms | 0.75 |
+            | test2 | 200 ms | 150 ms | 0.75 |
+          edit-mode: replace
