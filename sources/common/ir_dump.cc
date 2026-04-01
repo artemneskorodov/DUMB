@@ -149,11 +149,10 @@ dump_basic_block( const ir::Program& program,
                    .setColSpan( 4)
                    .setPort( "Prev");
 
-    result.addRow().addCell( "Predecessors").setColSpan( 4);
-
-    for ( int pred : basic_block.predecessors )
+    result.addRow().addCell( "PHI acceptors").setColSpan( 4);
+    for ( int succ : basic_block.phi_acceptors )
     {
-        result.addRow().addCell( "BasicBlock_" + std::to_string( pred)).setColSpan( 4);
+        result.addRow().addCell( "BasicBlock_" + std::to_string( succ)).setColSpan( 4);
     }
 
     result.addRow().addCell( "Phi nodes").setColSpan( 4);
