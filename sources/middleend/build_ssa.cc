@@ -92,7 +92,7 @@ public:
             }
         }
 
-        operator bool()
+        operator bool() const
         {
             std::uint64_t val = *pos_;
             val &= (1 << offset_);
@@ -106,6 +106,32 @@ public:
 
     };
 
+    class ConstBitProxy
+    {
+    public:
+        ConstBitProxy( const Dominators& doms,
+                       std::size_t offset,
+                       const std::uint64_t *pos)
+         :  doms_{ doms},
+            offset_{ offset},
+            pos_{ pos}
+        {
+        }
+
+        operator bool() const
+        {
+            std::uint64_t val = *pos_;
+            val &= (1 << offset_);
+            return static_cast<bool>( val);
+        }
+
+    private:
+        const Dominators& doms_;
+        std::size_t offset_;
+        const std::uint64_t *pos_;
+
+    };
+
     BitProxy
     operator[]( std::size_t i)
     {
@@ -114,8 +140,16 @@ public:
         return BitProxy{ *this, offset, pos};
     };
 
+    ConstBitProxy
+    operator[]( std::size_t i) const
+    {
+        std::size_t offset = i % 8;
+        const std::uint64_t *pos = &flags_[0] + i / 8;
+        return ConstBitProxy{ *this, offset, pos};
+    }
+
     static Dominators
-    Intersect( /*const*/ Dominators& first, /*const*/ Dominators& second)
+    Intersect( const Dominators& first, const Dominators& second)
     {
         // size_t first_sz = first.flags_.size();
         // size_t second_sz = second.flags_.size();
@@ -150,7 +184,7 @@ public:
     }
 
     bool
-    operator==( /*const*/ Dominators& other)
+    operator==( const Dominators& other) const
     {
         if ( other.bits_size_ != bits_size_ )
         {
@@ -167,7 +201,7 @@ public:
     }
 
     bool
-    operator!=( /*const*/ Dominators& other)
+    operator!=( const Dominators& other) const
     {
         return !operator==( other);
     }
@@ -220,14 +254,14 @@ public:
 
     bool
     Dominates( std::size_t node,
-               std::size_t dominator)
+               std::size_t dominator) const
     {
         return doms_[node][dominator];
     }
 
     bool
     ImmDominates( std::size_t node,
-                  std::size_t dominator)
+                  std::size_t dominator) const
     {
         return (node != dominator) && Dominates( node, dominator);
     }
@@ -239,7 +273,7 @@ public:
     }
 
     std::size_t
-    Closest( std::size_t node)
+    Closest( std::size_t node) const
     {
         for ( std::size_t i = 0; i != doms_.size(); ++i )
         {
@@ -363,6 +397,12 @@ public:
         return nodes_;
     }
 
+    const Node&
+    Nodes( std::size_t id) const &
+    {
+        return nodes_[id];
+    }
+
 private:
     std::vector<Node> nodes_{};
 
@@ -389,14 +429,14 @@ BuildControlFlowGraph( const ir::Function& func)
 }
 
 Graph
-BuildDominatorsTree( const Graph& control_flow)
+BuildDominatorsTree( const Graph& control_flow,
+                     const DominatorsTable& dominators)
 {
     Graph tree{ control_flow.Size()};
-    DominatorsTable dominators_table = control_flow.GetDominators();
 
     for ( std::size_t node_id = 0; node_id != control_flow.Size(); ++node_id )
     {
-        Dominators doms = dominators_table[node_id];
+        Dominators doms = dominators[node_id];
         doms[node_id] = false;
         if ( doms.Empty() )
         {
@@ -406,14 +446,15 @@ BuildDominatorsTree( const Graph& control_flow)
             tree.AddEdge( doms.Head(), node_id);
             continue;
         }
-        tree.AddEdge( dominators_table.Closest( node_id), node_id);
+        tree.AddEdge( dominators.Closest( node_id), node_id);
     }
     return tree;
 }
 
 Graph
 BuildDominanceFrontier( const Graph& control_flow,
-                        const Graph& dominators_tree)
+                        const Graph& dominators_tree,
+                        const DominatorsTable& dominators)
 {
     if ( control_flow.Size() != dominators_tree.Size() )
     {
@@ -422,11 +463,10 @@ BuildDominanceFrontier( const Graph& control_flow,
                                   "number of nodes"};
     }
     Graph dominance_frontier{ control_flow.Size()};
-    DominatorsTable dominators = control_flow.GetDominators();
 
     for ( std::size_t node_id = 0; node_id != control_flow.Size(); ++node_id )
     {
-        for ( std::size_t pred_id = 0; pred_id != control_flow.Nodes()[node_id].preds.size(); ++pred_id)
+        for ( std::size_t pred_id = 0; pred_id != control_flow.Nodes(node_id).preds.size(); ++pred_id )
         {
             std::size_t current = control_flow.Nodes()[node_id].preds[pred_id];
             while ( !dominators.ImmDominates( node_id, current) )
@@ -480,8 +520,13 @@ AddPhi( ir::Program& ir)
     for ( ir::Function& func : ir.Functions() )
     {
         Graph control_flow = BuildControlFlowGraph( func);
-        Graph dominators_tree = BuildDominatorsTree( control_flow);
-        Graph dominance_frontier = BuildDominanceFrontier( control_flow, dominators_tree);
+        DominatorsTable dominators = control_flow.GetDominators();
+
+        Graph dominators_tree = BuildDominatorsTree( control_flow,
+                                                     dominators);
+        Graph dominance_frontier = BuildDominanceFrontier( control_flow,
+                                                           dominators_tree,
+                                                           dominators);
 
         DrawGraph( "graph_cf.svg", control_flow);
         DrawGraph( "graph_dt.svg", dominators_tree);
@@ -649,34 +694,29 @@ BuildSSA( ir::Program& ir)
     for ( ir::Function& func : ir.Functions() )
     {
         Graph control_flow = BuildControlFlowGraph( func);
-        Graph dominators_tree = BuildDominatorsTree( control_flow);
-        Graph dominance_frontier = BuildDominanceFrontier( control_flow, dominators_tree);
+        DominatorsTable dominators = control_flow.GetDominators();
+
+        Graph dominators_tree    = BuildDominatorsTree( control_flow,
+                                                        dominators);
+        Graph dominance_frontier = BuildDominanceFrontier( control_flow,
+                                                           dominators_tree,
+                                                           dominators);
+
         std::unordered_map<nt::SymbolID, std::vector<int>> stacks{};
         std::unordered_map<nt::SymbolID, int> counters{};
-        RenameVariables( func, func.BasicBlocks()[0], control_flow, dominators_tree, dominance_frontier, stacks, counters);
+        RenameVariables( func,
+                         func.BasicBlocks()[0],
+                         control_flow,
+                         dominators_tree,
+                         dominance_frontier,
+                         stacks,
+                         counters);
     }
 
     ir::dump::DumpIR( ir, "before_dce.svg");
     dce::DeadCodeElimination( ir);
 
     return ;
-    Graph graph{ 8};
-    graph.AddEdge( 0, 1);
-    graph.AddEdge( 1, 2);
-    graph.AddEdge( 2, 3);
-    graph.AddEdge( 1, 4);
-    graph.AddEdge( 4, 5);
-    graph.AddEdge( 4, 6);
-    graph.AddEdge( 6, 1);
-    graph.AddEdge( 5, 7);
-    graph.AddEdge( 6, 7);
-    graph.AddEdge( 7, 3);
-
-    DrawGraph( "test_graph.svg", graph);
-    Graph dominators_tree = BuildDominatorsTree( graph);
-    DrawGraph( "domtree.svg", dominators_tree);
-    Graph dominance_frontier = BuildDominanceFrontier( graph, dominators_tree);
-    DrawGraph( "domfront.svg", dominance_frontier);
 }
 
 } // ! namespace build_ssa
