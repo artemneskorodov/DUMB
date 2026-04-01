@@ -12,8 +12,8 @@ namespace
 {
 
 std::vector<ir::SSAKey>
-GetUses( const ir::SSAKey&   var,
-         const ir::Function& function)
+get_uses( const ir::SSAKey&   var,
+          const ir::Function& function)
 {
     std::vector<ir::SSAKey> result{};
 
@@ -37,7 +37,6 @@ GetUses( const ir::SSAKey&   var,
             }
         }
 
-        // phi
         for ( const ir::PhiNode& phi : block.phi_nodes )
         {
             for ( auto& [pred, op] : phi.mapping )
@@ -55,37 +54,50 @@ GetUses( const ir::SSAKey&   var,
     return result;
 }
 
-std::size_t
-GetUsesCount( const ir::Function& function,
-              const ir::SSAKey& var)
+std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash>
+get_uses_counters( const ir::Function& function)
 {
-    std::size_t result = 0;
+    std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> result{};
 
     for ( const ir::BasicBlock& block : function.BasicBlocks() )
     {
         for ( const ir::Instruction& instr : block.instructions )
         {
+            nt::SymbolID id = instr.defines.id;
+            int version = instr.defines.value;
+            if ( (instr.defines.type == ir::Operand::VARIABLE) &&
+                 (result.find( ir::SSAKey{ id, version}) == result.end()) )
+            {
+                result[ir::SSAKey{ instr.defines.id, instr.defines.value}] = 0;
+            }
             for ( const ir::Operand& op : instr.operands )
             {
-                if ( (op.type  == ir::Operand::VARIABLE) &&
-                     (op.id    == var.id) &&
-                     (op.value == var.version) )
+                if ( op.type == ir::Operand::VARIABLE )
                 {
-                    ++result;
+                    if ( result.find( ir::SSAKey{ op.id, op.value}) == result.end() )
+                    {
+                        result[ir::SSAKey{ op.id, op.value}] = 0;
+                    }
+                    ++result[ir::SSAKey{ op.id, op.value}];
                 }
             }
         }
 
-        // phi
         for ( const ir::PhiNode& phi : block.phi_nodes )
         {
+            if ( result.find( ir::SSAKey{ phi.var_id, phi.version}) == result.end() )
+            {
+                result[ir::SSAKey{ phi.var_id, phi.version}] = 0;
+            }
             for ( auto& [pred, op] : phi.mapping )
             {
-                if ( (op.type  == ir::Operand::VARIABLE) &&
-                     (op.id    == var.id) &&
-                     (op.value == var.version) )
+                if ( op.type  == ir::Operand::VARIABLE )
                 {
-                    ++result;
+                    if ( result.find( ir::SSAKey{ op.id, op.value}) == result.end() )
+                    {
+                        result[ir::SSAKey{ op.id, op.value}] = 0;
+                    }
+                    ++result[ir::SSAKey{ op.id, op.value}];
                 }
             }
         }
@@ -94,34 +106,9 @@ GetUsesCount( const ir::Function& function,
     return result;
 }
 
-std::vector<ir::SSAKey>
-GetAllValues( const ir::Function& function)
-{
-    std::vector<ir::SSAKey> values;
-
-    for ( const ir::BasicBlock& block : function.BasicBlocks() )
-    {
-        for ( const ir::PhiNode& phi : block.phi_nodes )
-        {
-            values.emplace_back(phi.var_id, phi.version);
-        }
-
-        for ( const ir::Instruction& instr : block.instructions )
-        {
-            if ( instr.defines.type == ir::Operand::VARIABLE )
-            {
-                values.emplace_back( instr.defines.id,
-                                     instr.defines.value);
-            }
-        }
-    }
-
-    return values;
-}
-
 void
-RemoveDef( const ir::SSAKey& var,
-           ir::Function&     function)
+remove_def( const ir::SSAKey& var,
+            ir::Function&     function)
 {
     for ( ir::BasicBlock& block : function.BasicBlocks() )
     {
@@ -152,14 +139,7 @@ DeadCodeElimination( ir::Program& ir)
 {
     for ( ir::Function& func : ir.Functions() )
     {
-        std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> counters{};
-
-        for ( ir::SSAKey& value : GetAllValues( func) )
-        {
-            counters[value] = 0;
-
-            counters[value] += GetUsesCount( func, value);
-        }
+        std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> counters = get_uses_counters( func);
 
         bool changed = true;
 
@@ -167,19 +147,18 @@ DeadCodeElimination( ir::Program& ir)
         {
             changed = false;
 
-            std::vector<ir::SSAKey> zeros;
-
+            std::vector<ir::SSAKey> zeros{};
             for ( auto& [value, count] : counters )
             {
                 if ( count == 0 )
                 {
-                    zeros.push_back( value);
+                    zeros.emplace_back( value.id, value.version);
                 }
             }
 
             for ( ir::SSAKey& value : zeros )
             {
-                for ( ir::SSAKey& use : GetUses( value, func) )
+                for ( ir::SSAKey& use : get_uses( value, func) )
                 {
                     if ( counters.find( use) != counters.end() )
                     {
@@ -187,7 +166,7 @@ DeadCodeElimination( ir::Program& ir)
                     }
                 }
 
-                RemoveDef( value, func);
+                remove_def( value, func);
                 counters.erase( value);
                 changed = true;
             }
