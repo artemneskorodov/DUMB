@@ -138,7 +138,11 @@ private:
             parameters_.emplace_back( eval_stack_.back());
             eval_stack_.pop_back();
         }
+
+        std::unordered_map<nt::SymbolID, int> values_old = values_;
         VisitFunction( func);
+        values_ = values_old;
+
         need_return_ = false;
         eval_stack_.emplace_back( function_result_);
     }

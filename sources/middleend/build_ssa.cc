@@ -8,11 +8,6 @@
 
 #include "build_ssa.hh"
 #include "ir.hh"
-
-#include "dce.hh"
-#include "ir_dump.hh"
-#include "sccp.hh"
-
 #include "dot_graph/graph.h"
 
 namespace dumb
@@ -710,11 +705,6 @@ BuildSSA( ir::Program& ir)
                          stacks,
                          counters);
     }
-
-    ir::dump::DumpIR( ir, "before_dce.svg");
-    dce::DeadCodeElimination( ir);
-    ir::dump::DumpIR( ir, "before_sccp.svg");
-    sccp::SparseConditionalConstantPropagation( ir);
 
     return ;
 }

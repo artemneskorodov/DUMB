@@ -2,11 +2,12 @@
 #define DUMB_MIDDLEEND_HH__
 
 #include "ir.hh"
+#include "options.hh"
 
 namespace dumb
 {
 
-void RunMiddleend( ir::Program& program);
+void RunMiddleend( ir::Program& program, const option::OptionsParser& options);
 
 } // ! namespace dumb
 

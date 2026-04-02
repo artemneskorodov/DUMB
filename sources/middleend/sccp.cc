@@ -38,7 +38,7 @@ struct LatticeValue
         {
             return first;
         }
-        if ( (first.kind == LatticeKind::OVERDEFINED) ||
+        if ( (first.kind  == LatticeKind::OVERDEFINED) ||
              (second.kind == LatticeKind::OVERDEFINED) )
         {
             return LatticeValue::Overdefined();
@@ -87,7 +87,7 @@ eval_operand( const ir::Operand& op,
         auto it = values.find( { op.id, op.value});
         if (it == values.end())
         {
-            return LatticeValue::Undefined();
+            return LatticeValue::Overdefined();
         }
         return it->second;
     }
@@ -178,7 +178,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
                     for ( auto& [pred, op] : phi.mapping )
                     {
                         const ir::BasicBlock *pred_ptr = &func.BasicBlocks()[pred];
-                        if ( !executable.count(pred_ptr) )
+                        if ( executable.count(pred_ptr) == 0 )
                         {
                             continue;
                         }
@@ -191,6 +191,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
                     if ( values[key] != val )
                     {
                         values[key] = val;
+                        ssa_worklist.push( bb);
                     }
                 }
 
@@ -208,6 +209,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
                     if ( values[key] != val )
                     {
                         values[key] = val;
+                        ssa_worklist.push( bb);
                     }
                 }
 
@@ -224,8 +226,8 @@ SparseConditionalConstantPropagation(ir::Program& program)
                     }
                 } else if ( term.type != ir::CmpType::INVALID )
                 {
-                    auto left  = eval_operand( term.left, values);
-                    auto right = eval_operand( term.right, values);
+                    LatticeValue left  = eval_operand( term.left, values);
+                    LatticeValue right = eval_operand( term.right, values);
 
                     bool is_const = false;
                     bool result   = false;

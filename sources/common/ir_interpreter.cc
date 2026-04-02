@@ -171,9 +171,11 @@ private:
         {
             params_stack_[params_number - i - 1] = value( instr.operands[i + 1]);
         }
-        const Function& func = find_function( instr.operands[0].id);
 
+        std::unordered_map<SSAKey, int, SSAKeyHash> locals_old = locals_;
+        const Function& func = find_function( instr.operands[0].id);
         run_function( func);
+        locals_ = locals_old;
         if ( instr.defines.type != Operand::EMPTY )
         {
             storage( instr.defines) = function_retval_;
