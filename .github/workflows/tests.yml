@@ -158,6 +158,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           jq -r '["|Name|", "No optimizations|", "--enable-sccp|", "--enable-sccp --enable-dce"],
-            ["|:----|", "----:|", "----:|", "----:|"],
-            (.[] | ["|" + .name + "|", .no_opt + "|", .sccp + "|", .sccp_dce + "|"])
+            ["|:----|", "----:|", "----:|", "----:|", "----:|"],
+            (.[] | ["|" + .name + "|", .no_opt + "|", .sccp + "|", .sccp_dce + "|", .dce + "|"])
             | @tsv' result.json >> $GITHUB_STEP_SUMMARY
