@@ -15,7 +15,7 @@ function main()
 {
     variable num = 10;
 
-    variable counter = 1000000;
+    variable counter = 10000000;
     variable result = 0;
     while ( counter > 0 )
     {

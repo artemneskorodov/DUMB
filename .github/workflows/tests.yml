@@ -157,4 +157,9 @@ jobs:
           echo "### 📊 Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          jq -r '["|name|", "metric1|", "metric2|"], ["|:----|", "----:|", "----:|"], (.[] | ["|" + .name + "|", .metric1 + "|", .metric2 + "|"]) | @tsv' result.json >> $GITHUB_STEP_SUMMARY
+            "name":                       test,
+            "No optimizations":           result_false_false,
+            "--enable-sccp":              result_true_false,
+            "--enable-sccp --enable-dce": result_true_true
+
+          jq -r '["|Name|", "No optimizations|", "--enable-sccp|", "--enable-sccp --enable-dce"], ["|:----|", "----:|", "----:|", "----:|"], (.[] | ["|" + .name + "|", .no_opt + "|", .sccp + "|", .sccp_dce + "|"]) | @tsv' result.json >> $GITHUB_STEP_SUMMARY

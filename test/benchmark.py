@@ -19,7 +19,7 @@ workdir       = sys.argv[2]
 def run_single_test(test: str, sccp: bool, dce: bool) -> int:
     exec_name = build_exec(compiler_path, workdir, test, enable_sccp=sccp, enable_dce=dce)
     json_output = BENCHMARKS_BUILD_DIR + "/" + test + f".sccp_{sccp}.dce_{dce}.result.json"
-    subprocess.run(["hyperfine", "--export-json", json_output, f"'{exec_name}'"])
+    subprocess.run(["hyperfine", "--warmup", "5", "--export-json", json_output, f"'{exec_name}'"])
     with open(json_output, "r") as f:
         data = f.read()
         json_data = json.loads(data)
@@ -33,11 +33,14 @@ for test in benchmarking_tests:
 
     json_result.append(
         {
-            "name":                       test,
-            "No optimizations":           result_false_false,
-            "--enable-sccp":              result_true_false,
-            "--enable-sccp --enable-dce": result_true_true
+            "name":     test,
+            "no_opt":   f"{result_false_false}",
+            "sccp":     f"{result_true_false}",
+            "sccp_dce": f"{result_true_true}"
         }
     )
 
-json.dump(json_result, sys.stdout)
+OUTPUT_FILE = f"{workdir}/result.json"
+
+with open(OUTPUT_FILE, "w") as f:
+    json.dump(json_result, f)
