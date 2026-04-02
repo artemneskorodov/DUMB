@@ -44,7 +44,7 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -71,7 +71,7 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -98,7 +98,7 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -154,7 +154,10 @@ jobs:
 
       - name: Parse JSON and output Markdown table
         run: |
-          echo "### 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "### Benchmark results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          jq -r '["|Name|", "No optimizations|", "--enable-sccp|", "--enable-sccp --enable-dce"], ["|:----|", "----:|", "----:|", "----:|"], (.[] | ["|" + .name + "|", .no_opt + "|", .sccp + "|", .sccp_dce + "|"]) | @tsv' result.json >> $GITHUB_STEP_SUMMARY
+          jq -r '["|Name|", "No optimizations|", "--enable-sccp|", "--enable-sccp --enable-dce"],
+            ["|:----|", "----:|", "----:|", "----:|"],
+            (.[] | ["|" + .name + "|", .no_opt + "|", .sccp + "|", .sccp_dce + "|"])
+            | @tsv' result.json >> $GITHUB_STEP_SUMMARY
