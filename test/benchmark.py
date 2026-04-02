@@ -30,13 +30,15 @@ for test in benchmarking_tests:
     result_false_false = run_single_test(test, sccp=False, dce=False)
     result_true_false  = run_single_test(test, sccp=True,  dce=False)
     result_true_true   = run_single_test(test, sccp=True,  dce=True)
+    result_false_true  = run_single_test(test, sccp=False, dce=True)
 
     json_result.append(
         {
             "name":     test,
-            "no_opt":   f"{result_false_false}",
-            "sccp":     f"{result_true_false}",
-            "sccp_dce": f"{result_true_true}"
+            "no_opt":   f"{result_false_false / result_false_false * 100 : .3f} %",
+            "sccp":     f"{result_true_false  / result_false_false * 100 : .3f} %",
+            "sccp_dce": f"{result_true_true   / result_false_false * 100 : .3f} %",
+            "dce":      f"{result_false_true  / result_false_false * 100 : .3f} %"
         }
     )
 
