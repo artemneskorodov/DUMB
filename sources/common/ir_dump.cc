@@ -111,10 +111,6 @@ public:
             {
                 return "imm(" + std::to_string( operand.value) + ")";
             }
-            case ir::Operand::LABEL:
-            {
-                return "label(BasicBlock_" + std::to_string( operand.value) + ")";
-            }
             case ir::Operand::FUNC_LABEL:
             {
                 const nt::Symbol *sym = program_.Nametable().FindSymbol( operand.id);

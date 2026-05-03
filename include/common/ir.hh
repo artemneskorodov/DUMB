@@ -19,6 +19,9 @@ namespace ir
 
 using ImmType = int;
 
+// Predefinition to use pointers.
+struct BasicBlock;
+
 struct Operand
 {
     enum Type
@@ -27,7 +30,6 @@ struct Operand
         VARIABLE,
         GLOBAL,
         IMMEDIATE,
-        LABEL,
         FUNC_LABEL,
         STRING_LABEL,
     };
