@@ -176,9 +176,11 @@ struct BasicBlockTerminator
 
 };
 
+using BasicBlockID = int;
+
 struct BasicBlock final
 {
-    BasicBlock( int id)
+    BasicBlock( BasicBlockID id)
      :  id{ id}
     {
     }
@@ -187,7 +189,7 @@ struct BasicBlock final
     std::list<Instruction> instructions{};
     BasicBlockTerminator   terminator{};
     std::list<int>         phi_acceptors{};
-    int                    id;
+    BasicBlockID           id;
 
 };
 
@@ -205,10 +207,23 @@ public:
     }
 
     BasicBlock&
-    AddBasicBlock( int id)
+    AddBasicBlock( BasicBlockID id)
     {
         basic_blocks_.emplace_back( id);
+        basic_block_hash_[id] = &basic_blocks_.back();
         return basic_blocks_.back();
+    }
+
+    BasicBlock&
+    GetBasicBlock( BasicBlockID id) &
+    {
+        return *basic_block_hash_.at( id);
+    }
+
+    const BasicBlock&
+    GetBasicBlock( BasicBlockID id) const &
+    {
+        return *basic_block_hash_.at( id);
     }
 
     void
@@ -235,13 +250,13 @@ public:
         return params_;
     }
 
-    const std::vector<BasicBlock>&
+    const std::list<BasicBlock>&
     BasicBlocks() const &
     {
         return basic_blocks_;
     }
 
-    std::vector<BasicBlock>&
+    std::list<BasicBlock>&
     BasicBlocks() &
     {
         return basic_blocks_;
@@ -260,10 +275,11 @@ public:
     }
 
 private:
-    std::vector<SSAKey>     params_       {};
-    std::vector<BasicBlock> basic_blocks_ {};
-    std::list<SSAKey>       variables_    {};
-    int                     id_;
+    std::vector<SSAKey>                            params_       {};
+    std::list<BasicBlock>                          basic_blocks_ {};
+    std::unordered_map<BasicBlockID, BasicBlock *> basic_block_hash_{};
+    std::list<SSAKey>                              variables_    {};
+    int                                            id_;
 
 };
 
@@ -287,16 +303,15 @@ public:
     }
 
     Function&
-    Preamble( int id) &
+    GetFunction( int id) &
     {
-        preamble_ = Function{ id};
-        return preamble_;
+        return functions_[id];
     }
 
     const Function&
-    Preamble() const &
+    GetFunction( int id) const &
     {
-        return preamble_;
+        return functions_[id];
     }
 
     nt::NameTable&
@@ -351,7 +366,6 @@ public:
 private:
     nt::NameTable            nametable_;
     std::vector<Function>    functions_ {};
-    Function                 preamble_  { 0};
     std::vector<std::string> strings_   {};
     std::vector<int>         globals_{};
 

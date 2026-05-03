@@ -238,7 +238,7 @@ dump_function( const ir::Program&   program,
 
     if ( !function.BasicBlocks().empty() )
     {
-        std::string first_bb_id = basic_block_id( function.BasicBlocks()[0].id, function.Id());
+        std::string first_bb_id = basic_block_id( function.GetBasicBlock( 0).id, function.Id());
         graph.addEdge( start_id + ":Next", first_bb_id + ":Prev");
     }
 
@@ -283,7 +283,7 @@ DumpIR( const ir::Program& program,
     dot_graph::Subgraph& preamble = graph.addSubgraph( "cluster__PREAMBLE__")
                                          .setColor( kFunctionClusterColor);
 
-    dump_function( program, program.Preamble(), graph, preamble);
+    dump_function( program, program.GetFunction( 0), graph, preamble);
 
     for ( const Function& func : program.Functions() )
     {

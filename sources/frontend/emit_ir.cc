@@ -365,7 +365,7 @@ EmitIR( const ast::Program& program)
 
     nt::SymbolID start_id = ir.Nametable().AddSymbol( "_start", nt::SymbolType::FUNCTION);
 
-    ir::Function& start = ir.Preamble( start_id);
+    ir::Function& start = ir.AddFunction( start_id);
     ir::BasicBlock& basic_block = start.AddBasicBlock( 0);
 
     Emitter emitter{ ir, start, basic_block};

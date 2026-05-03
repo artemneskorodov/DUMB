@@ -34,7 +34,7 @@ public:
     void
     Run()
     {
-        run_function( program_.Preamble());
+        run_function( program_.GetFunction( 0));
     }
 
 private:
@@ -54,7 +54,7 @@ private:
             throw std::runtime_error{ "Unexpected number of parameters in parameters stack"};
         }
 
-        run_basic_block( func.BasicBlocks()[0]);
+        run_basic_block( func.GetBasicBlock( 0));
         need_return_ = false;
     }
 

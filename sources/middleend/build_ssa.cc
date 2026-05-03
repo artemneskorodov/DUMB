@@ -494,7 +494,7 @@ GetVarDefinitionBlocks( const ir::Function& func,
     std::vector<std::size_t> def_blocks{};
     for ( std::size_t bb = 0; bb != func.BasicBlocks().size(); ++bb )
     {
-        for ( const ir::Instruction& instr : func.BasicBlocks()[bb].instructions )
+        for ( const ir::Instruction& instr : func.GetBasicBlock( bb).instructions )
         {
             if ( instr.defines.type == ir::Operand::VARIABLE &&
                  instr.defines.id   == var_id )
@@ -538,7 +538,7 @@ AddPhi( ir::Program& ir)
 
                 for ( std::size_t dom : dominance_frontier.Nodes()[block].nexts )
                 {
-                    ir::BasicBlock& basic_block = func.BasicBlocks()[dom];
+                    ir::BasicBlock& basic_block = func.GetBasicBlock( dom);
                     if ( !has_phi[dom] )
                     {
                         basic_block.phi_nodes.emplace_back( var_id.id);
@@ -630,7 +630,7 @@ RenameVariables( ir::Function& function,
     } else
     {
         std::size_t id = basic_block.terminator.true_dest;
-        for ( ir::PhiNode& phi : function.BasicBlocks()[id].phi_nodes )
+        for ( ir::PhiNode& phi : function.GetBasicBlock( id).phi_nodes )
         {
             if ( !stacks[phi.var_id].empty() )
             {
@@ -644,7 +644,7 @@ RenameVariables( ir::Function& function,
         if ( basic_block.terminator.type != ir::CmpType::ALWAYS_TRUE )
         {
             id = basic_block.terminator.false_dest;
-            for ( ir::PhiNode& phi : function.BasicBlocks()[id].phi_nodes )
+            for ( ir::PhiNode& phi : function.GetBasicBlock( id).phi_nodes )
             {
                 if ( !stacks[phi.var_id].empty() )
                 {
@@ -660,7 +660,7 @@ RenameVariables( ir::Function& function,
 
     for ( std::size_t dom : dominators_tree.Nodes()[basic_block.id].nexts )
     {
-        RenameVariables( function, function.BasicBlocks()[dom], control_flow, dominators_tree, dominance_frontier, stacks, counters);
+        RenameVariables( function, function.GetBasicBlock( dom), control_flow, dominators_tree, dominance_frontier, stacks, counters);
     }
 
     for ( ir::PhiNode& phi : basic_block.phi_nodes )
@@ -698,7 +698,7 @@ BuildSSA( ir::Program& ir)
         std::unordered_map<nt::SymbolID, std::vector<int>> stacks{};
         std::unordered_map<nt::SymbolID, int> counters{};
         RenameVariables( func,
-                         func.BasicBlocks()[0],
+                         func.GetBasicBlock( 0),
                          control_flow,
                          dominators_tree,
                          dominance_frontier,
