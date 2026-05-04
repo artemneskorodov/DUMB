@@ -2,7 +2,6 @@
 #include "frontend.hh"
 #include "ir_interpreter.hh"
 #include "ir_dump.hh"
-#include "middleend.hh"
 
 int
 main( int         argc,
