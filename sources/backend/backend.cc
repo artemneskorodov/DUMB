@@ -23,11 +23,6 @@ public:
     lir::Program
     Emit()
     {
-        emit_function( program_.GetFunction( 0));
-        lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, lir::Immediate{ 60});
-        lir_.Add( lir::BinaryOp::XOR, lir::Register::RDI, lir::Register::RDI);
-        lir_.Add( lir::NoOpInstr::SYSCALL);
-
         // Functions
         for ( const ir::Function& func : program_.Functions() )
         {
