@@ -557,44 +557,24 @@ AddPhi( ir::Program& ir)
 // TODO FIXME make this non recursive
 void
 RenameVariables( ir::Function& function,
-                 ir::BasicBlock& basic_block,
-                 Graph& control_flow,
-                 Graph& dominators_tree,
-                 Graph& dominance_frontier,
-                 std::unordered_map<nt::SymbolID, std::vector<int>>& stacks,
-                 std::unordered_map<nt::SymbolID, int>& counters)
+                 const Graph&  /* control_flow */,
+                 const Graph&  dominators_tree,
+                 const Graph&  /* dominance_frontier */)
 {
-    for ( ir::PhiNode& phi : basic_block.phi_nodes )
-    {
-        nt::SymbolID id = phi.var_id;
-        bool first_time = false;
-        if ( counters.find( id) == counters.end() )
-        {
-            first_time = true;
-            counters[id] = 0;
-        }
-        int version = counters[id]++;
+    std::unordered_map<nt::SymbolID, std::vector<int>> version_stacks;
+    std::unordered_map<nt::SymbolID, int>              counters;
+    std::vector<std::size_t>                           workqueue;
 
-        stacks[id].push_back( version);
-        phi.version = version;
-        if ( !first_time )
-        {
-            function.AddVariable( id, version);
-        }
-    }
+    workqueue.push_back( 0); // Adding entry to basic block
 
-    for ( ir::Instruction& instr : basic_block.instructions )
+    while ( !workqueue.empty() )
     {
-        for ( ir::Operand& operand : instr.operands )
+        ir::BasicBlock& basic_block = function.GetBasicBlock( workqueue.back());
+        workqueue.pop_back();
+
+        for ( ir::PhiNode& phi : basic_block.phi_nodes )
         {
-            if ( !stacks[operand.id].empty() )
-            {
-                operand.value = stacks[operand.id].back();
-            }
-        }
-        if ( instr.defines.type == ir::Operand::VARIABLE )
-        {
-            nt::SymbolID id = instr.defines.id;
+            nt::SymbolID id = phi.var_id;
             bool first_time = false;
             if ( counters.find( id) == counters.end() )
             {
@@ -603,76 +583,112 @@ RenameVariables( ir::Function& function,
             }
             int version = counters[id]++;
 
-            stacks[id].push_back( version);
-
-            instr.defines.value = version;
+            version_stacks[id].push_back( version);
+            phi.version = version;
             if ( !first_time )
             {
                 function.AddVariable( id, version);
             }
         }
-    }
 
-    if ( basic_block.terminator.left.type == ir::Operand::VARIABLE &&
-         !stacks[basic_block.terminator.left.id].empty() )
-    {
-        basic_block.terminator.left.value = stacks[basic_block.terminator.left.id].back();
-    }
-    if ( basic_block.terminator.right.type == ir::Operand::VARIABLE &&
-         !stacks[basic_block.terminator.right.id].empty() )
-    {
-        basic_block.terminator.right.value = stacks[basic_block.terminator.right.id].back();
-    }
-
-    if ( basic_block.terminator.type == ir::CmpType::INVALID )
-    {
-        // Nothing
-    } else
-    {
-        std::size_t id = basic_block.terminator.true_dest;
-        for ( ir::PhiNode& phi : function.GetBasicBlock( id).phi_nodes )
+        for ( ir::Instruction& instr : basic_block.instructions )
         {
-            if ( !stacks[phi.var_id].empty() )
+            for ( ir::Operand& operand : instr.operands )
             {
-                phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE, stacks[phi.var_id].back(), phi.var_id};
-            } else
-            {
-                phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
+                if ( !version_stacks[operand.id].empty() )
+                {
+                    operand.value = version_stacks[operand.id].back();
+                }
             }
-            basic_block.phi_acceptors.emplace_back( id);
+            if ( instr.defines.type == ir::Operand::VARIABLE )
+            {
+                nt::SymbolID id = instr.defines.id;
+                bool first_time = false;
+                if ( counters.find( id) == counters.end() )
+                {
+                    first_time = true;
+                    counters[id] = 0;
+                }
+                int version = counters[id]++;
+
+                version_stacks[id].push_back( version);
+
+                instr.defines.value = version;
+                if ( !first_time )
+                {
+                    function.AddVariable( id, version);
+                }
+            }
         }
-        if ( basic_block.terminator.type != ir::CmpType::ALWAYS_TRUE )
+
+        ir::Operand& left = basic_block.terminator.left;
+        if ( left.type == ir::Operand::VARIABLE &&
+             !version_stacks[left.id].empty() )
         {
-            id = basic_block.terminator.false_dest;
+            left.value = version_stacks[left.id].back();
+        }
+
+        ir::Operand& right = basic_block.terminator.right;
+        if ( right.type == ir::Operand::VARIABLE &&
+             !version_stacks[right.id].empty() )
+        {
+            right.value = version_stacks[right.id].back();
+        }
+
+        if ( basic_block.terminator.type == ir::CmpType::INVALID )
+        {
+            // Nothing
+        } else
+        {
+            std::size_t id = basic_block.terminator.true_dest;
             for ( ir::PhiNode& phi : function.GetBasicBlock( id).phi_nodes )
             {
-                if ( !stacks[phi.var_id].empty() )
+                if ( !version_stacks[phi.var_id].empty() )
                 {
-                    phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE, stacks[phi.var_id].back(), phi.var_id};
+                    phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE,
+                                                               version_stacks[phi.var_id].back(),
+                                                               phi.var_id};
                 } else
                 {
                     phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
                 }
                 basic_block.phi_acceptors.emplace_back( id);
             }
+            if ( basic_block.terminator.type != ir::CmpType::ALWAYS_TRUE )
+            {
+                id = basic_block.terminator.false_dest;
+                for ( ir::PhiNode& phi : function.GetBasicBlock( id).phi_nodes )
+                {
+                    if ( !version_stacks[phi.var_id].empty() )
+                    {
+                        phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE,
+                                                                   version_stacks[phi.var_id].back(),
+                                                                   phi.var_id};
+                    } else
+                    {
+                        phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
+                    }
+                    basic_block.phi_acceptors.emplace_back( id);
+                }
+            }
         }
-    }
 
-    for ( std::size_t dom : dominators_tree.Nodes()[basic_block.id].nexts )
-    {
-        RenameVariables( function, function.GetBasicBlock( dom), control_flow, dominators_tree, dominance_frontier, stacks, counters);
-    }
-
-    for ( ir::PhiNode& phi : basic_block.phi_nodes )
-    {
-        stacks[phi.var_id].pop_back();
-    }
-
-    for ( ir::Instruction& instr : basic_block.instructions )
-    {
-        if ( instr.defines.type == ir::Operand::VARIABLE )
+        for ( std::size_t dom : dominators_tree.Nodes()[basic_block.id].nexts )
         {
-            stacks[instr.defines.id].pop_back();
+            workqueue.push_back( dom);
+        }
+
+        for ( ir::PhiNode& phi : basic_block.phi_nodes )
+        {
+            version_stacks[phi.var_id].pop_back();
+        }
+
+        for ( ir::Instruction& instr : basic_block.instructions )
+        {
+            if ( instr.defines.type == ir::Operand::VARIABLE )
+            {
+                version_stacks[instr.defines.id].pop_back();
+            }
         }
     }
 }
@@ -698,12 +714,9 @@ BuildSSA( ir::Program& ir)
         std::unordered_map<nt::SymbolID, std::vector<int>> stacks{};
         std::unordered_map<nt::SymbolID, int> counters{};
         RenameVariables( func,
-                         func.GetBasicBlock( 0),
                          control_flow,
                          dominators_tree,
-                         dominance_frontier,
-                         stacks,
-                         counters);
+                         dominance_frontier);
     }
 
     return ;
