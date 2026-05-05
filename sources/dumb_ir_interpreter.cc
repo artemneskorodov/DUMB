@@ -5,6 +5,7 @@
 #include "ir_dump.hh"
 #include "options.hh"
 #include "logger.hh"
+#include "middleend.hh"
 
 int
 main( int         argc,
@@ -13,6 +14,8 @@ main( int         argc,
     dumb::option::OptionsParser parser{};
 
     parser.AddOption<std::string>( "--input"      , "-i"    , ""   , true );
+    parser.AddOption<bool>       ( "--enable-sccp", "-sccp" , false, false);
+    parser.AddOption<bool>       ( "--enable-dce" , "-dce"  , false, false);
     parser.AddOption<std::string>( "--log-flags"  , "-lf"   , ""   , false);
 
     std::vector<std::string> args( argv + 1, argv + argc);
@@ -24,8 +27,14 @@ main( int         argc,
 
     dumb::ir::Program program = dumb::RunFrontend( source);
 
-    // Dumping IR
-    dumb::ir::dump::DumpIR( program, "ir_dump");
+    // Dumping IR before middleend
+    dumb::ir::dump::DumpIR( program, "ir_dump_before_opt");
+
+    // Running IR optimizations
+    dumb::RunMiddleend( program, parser);
+
+    // Dumping IR after middleend
+    dumb::ir::dump::DumpIR( program, "ir_dump_after_opt");
 
     dumb::ir::interpreter::Run( program);
     return 0;
