@@ -491,8 +491,8 @@ DumpAST( const ast::Program& program,
     std::string filename = gDumpDir + "/" + utils::GetSafeTimeFilename() + "_" + output + ".svg";
     dumper.GetGraph().translateWithDot( filename, "svg");
 
-    LOGGER(DUMP_IR) << "Dump of AST with name \"" << output << "\" is saved to file \""
-                    << filename << "\"";
+    LOGGER(DUMP_AST) << "Dump of AST with name \"" << output << "\" is saved to file \""
+                     << filename << "\"";
 }
 
 } // ! namespace dump
