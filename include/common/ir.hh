@@ -5,6 +5,7 @@
 #include <string>
 #include <unordered_map>
 #include <list>
+#include <stdexcept>
 
 #include "nametable.hh"
 
@@ -56,6 +57,28 @@ struct Operand
     ImmType value; // version for variable
     nt::SymbolID id;
 
+    std::string
+    ToStr() const
+    {
+        std::string result = "(type=";
+        switch ( type )
+        {
+            case Type::EMPTY:        result += "EMPTY";        break;
+            case Type::VARIABLE:     result += "VARIABLE";     break;
+            case Type::GLOBAL:       result += "GLOBAL";       break;
+            case Type::IMMEDIATE:    result += "IMMEDIATE";    break;
+            case Type::FUNC_LABEL:   result += "FUNC_LABEL";   break;
+            case Type::STRING_LABEL: result += "STRING_LABEL"; break;
+            default:
+            {
+                throw std::runtime_error{ "Unexpected Operand::Type value = " +
+                                          std::to_string( type)};
+            }
+        }
+
+        result += ", value=" + std::to_string( value) + ", id=" + std::to_string( id);
+        return result;
+    }
 };
 
 constexpr Operand kNoDefine = Operand{};
@@ -152,6 +175,24 @@ enum class CmpType
     ALWAYS_TRUE,
     INVALID,
 };
+
+inline std::string
+CmpTypeToStr( CmpType type)
+{
+    switch ( type )
+    {
+        case CmpType::LESS:        return "LESS";
+        case CmpType::EQUAL:       return "EQUAL";
+        case CmpType::BIGGER:      return "BIGGER";
+        case CmpType::ALWAYS_TRUE: return "ALWAYS_TRUE";
+        case CmpType::INVALID:     return "INVALID";
+        default:
+        {
+            throw std::runtime_error{ "Unexpected CmpType value = " +
+                                      std::to_string( static_cast<int>( type))};
+        }
+    }
+}
 
 struct BasicBlockTerminator
 {

@@ -9,7 +9,7 @@ class IRCompilerTest(CompilerTestBase):
         source = get_source_path(test_name, self.workdir)
         test_cases = self.parse_tests(test_name)
         exec_path = self.compiler_path
-        run_test_cases([exec_path, source], test_cases)
+        run_test_cases([exec_path, "--input", source], test_cases)
 
 @pytest.fixture
 def ir_test(config):

@@ -2,6 +2,8 @@
 
 #include "ir_dump.hh"
 #include "ir.hh"
+#include "utils.hh"
+#include "logger.hh"
 
 #include "dot_graph/html.h"
 #include "dot_graph/graph.h"
@@ -15,6 +17,8 @@ namespace dump
 
 namespace
 {
+
+static std::string gDumpDir = "./";
 
 constexpr std::string_view kFunctionClusterColor = "#75b560";
 
@@ -249,9 +253,20 @@ dump_function( const ir::Program&   program,
 } // ! anonymous namespace
 
 void
+ConfigureDump( const std::string& dir)
+{
+    gDumpDir = dir;
+}
+
+void
 DumpIR( const ir::Program& program,
         const std::string& output)
 {
+    if ( !logger::CategoryEnabled( logger::LogCategory::DUMP_IR) )
+    {
+        return ;
+    }
+
     dot_graph::Graph graph{ "Program"};
 
     html::HTMLTable header{};
@@ -288,7 +303,11 @@ DumpIR( const ir::Program& program,
         dump_function( program, func, graph, func_graph);
     }
 
-    graph.translateWithDot( output, "svg");
+    std::string filename = gDumpDir + "/" + utils::GetSafeTimeFilename() + "_" + output + ".svg";
+    graph.translateWithDot( filename, "svg");
+
+    LOGGER(DUMP_IR) << "Dump of IR with name \"" << output << "\" is saved to file \""
+                    << filename << "\"";
 }
 
 } // ! namespace dump

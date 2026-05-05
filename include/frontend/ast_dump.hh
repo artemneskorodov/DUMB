@@ -2,6 +2,7 @@
 #define DUMB_AST_DUMP_HH__
 
 #include "ast.hh"
+#include "logger.hh"
 
 namespace dumb
 {
@@ -9,6 +10,12 @@ namespace ast
 {
 namespace dump
 {
+
+///
+/// @brief Configure AST dumps directory
+/// @param dir Path of directory to save ast dumps
+///
+void ConfigureDump( const std::string& dir);
 
 ///
 /// @brief

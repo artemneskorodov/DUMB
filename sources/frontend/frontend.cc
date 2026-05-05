@@ -13,8 +13,11 @@
 namespace dumb
 {
 
-ir::Program
-RunFrontend( const std::string& filename)
+namespace
+{
+
+ast::Program
+BuildAST( const std::string& filename)
 {
     std::string source = utils::ReadTextFile( filename);
     lexer::Lexer lexer{ source};
@@ -22,9 +25,17 @@ RunFrontend( const std::string& filename)
 
     ast::Program tree = syntax::ParseSyntax( tokens, filename);
 
-    #if 1
-    ast::dump::DumpAST( tree, "dump_ast.svg");
-    #endif
+    // Dumping AST graph after syntax parsing
+    ast::dump::DumpAST( tree, "ast");
+    return tree;
+}
+
+} // ! anonymous namespace
+
+ir::Program
+RunFrontend( const std::string& filename)
+{
+    ast::Program tree = BuildAST( filename);
 
     ir::Program program = emit_ir::EmitIR( tree);
     return program;
@@ -33,11 +44,7 @@ RunFrontend( const std::string& filename)
 void
 RunASTInterpreter( const std::string& filename)
 {
-    std::string source = utils::ReadTextFile( filename);
-    lexer::Lexer lexer{ source};
-    std::vector<lexer::Token> tokens = lexer.Tokenize();
-
-    ast::Program tree = syntax::ParseSyntax( tokens, filename);
+    ast::Program tree = BuildAST( filename);
 
     ast::interpreter::Run( tree);
 }

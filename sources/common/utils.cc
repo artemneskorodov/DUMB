@@ -2,6 +2,9 @@
 #include <string>
 #include <fstream>
 #include <cstring>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 
 #include "utils.hh"
 
@@ -76,6 +79,18 @@ WriteTextFile( const std::string& filename,
     }
 
     file.close();
+}
+
+std::string
+GetSafeTimeFilename()
+{
+    auto now = std::chrono::system_clock::now();
+    auto t = std::chrono::system_clock::to_time_t( now);
+    std::tm tm = *std::localtime( &t);
+
+    std::ostringstream ss;
+    ss << std::put_time( &tm, "%m_%d_%H_%M_%S");
+    return ss.str();
 }
 
 } // ! namespace utils

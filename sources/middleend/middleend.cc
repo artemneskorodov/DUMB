@@ -14,20 +14,20 @@ RunMiddleend( ir::Program&           program,
               const option::OptionsParser& options)
 {
     build_ssa::BuildSSA( program);
-    ir::dump::DumpIR( program, "after_build_ssa.svg");
+    ir::dump::DumpIR( program, "after_build_ssa");
 
     bool need_sccp = options.GetOption<bool>( "--enable-sccp");
     if ( need_sccp )
     {
         sccp::SparseConditionalConstantPropagation( program);
-        ir::dump::DumpIR( program, "after_sccp.svg");
+        ir::dump::DumpIR( program, "after_sccp");
     }
 
     bool need_dce = options.GetOption<bool>( "--enable-dce");
     if ( need_dce )
     {
         dce::DeadCodeElimination( program);
-        ir::dump::DumpIR( program, "after_dce.svg");
+        ir::dump::DumpIR( program, "after_dce");
     }
 }
 
