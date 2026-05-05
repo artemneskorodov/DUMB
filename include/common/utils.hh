@@ -12,6 +12,7 @@ namespace utils
 std::vector<std::byte> ReadBinaryFile( const std::string& filename);
 std::string ReadTextFile( const std::string& filename);
 void WriteTextFile( const std::string& filename, std::string data);
+std::string GetSafeTimeFilename();
 
 } // ! namespace utils
 } // ! namespace dumb

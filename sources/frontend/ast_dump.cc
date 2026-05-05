@@ -2,6 +2,8 @@
 
 #include "ast.hh"
 #include "ast_dump.hh"
+#include "utils.hh"
+#include "logger.hh"
 
 #include "dot_graph/graph.h"
 
@@ -14,6 +16,8 @@ namespace dump
 
 namespace
 {
+
+static std::string gDumpDir = "./";
 
 static constexpr std::string_view kImmediateNodeColor       = "#c40f0f";
 static constexpr std::string_view kIdentifierNodeColor      = "#d8e610";
@@ -467,13 +471,28 @@ private:
 } // ! anonymous namespace
 
 void
+ConfigureDump( const std::string& dir)
+{
+    gDumpDir = dir;
+}
+
+void
 DumpAST( const ast::Program& program,
          const std::string&  output)
 {
+    if ( !logger::CategoryEnabled( logger::LogCategory::DUMP_AST) )
+    {
+        return ;
+    }
+
     ASTDumper dumper{ output};
     dumper.DumpProgram( program);
 
-    dumper.GetGraph().translateWithDot( output, "svg");
+    std::string filename = gDumpDir + "/" + utils::GetSafeTimeFilename() + "_" + output + ".svg";
+    dumper.GetGraph().translateWithDot( filename, "svg");
+
+    LOGGER(DUMP_IR) << "Dump of AST with name \"" << output << "\" is saved to file \""
+                    << filename << "\"";
 }
 
 } // ! namespace dump

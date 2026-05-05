@@ -14,18 +14,20 @@ namespace dumb
 namespace logger
 {
 
-namespace detail
-{
-
 enum class LogCategory : std::size_t
 {
     LEXER          = 0,
     PARSER         = 1,
     IR_EMITTER     = 2,
     IR_INTERPRETER = 3,
+    DUMP_AST       = 4,
+    DUMP_IR        = 5,
 
     LOG_CATEGORY_MAX
 };
+
+namespace detail
+{
 
 constexpr std::size_t kLogCatMax = static_cast<std::size_t>( LogCategory::LOG_CATEGORY_MAX);
 
@@ -33,7 +35,9 @@ constexpr std::array<std::string_view, kLogCatMax> kLogCategoriesStrings{{
     "LEXER",
     "PARSER",
     "IR_EMITTER",
-    "IR_INTERPRETER"
+    "IR_INTERPRETER",
+    "DUMP_AST",
+    "DUMP_IR"
 }};
 
 inline std::string
@@ -62,6 +66,19 @@ LogCategoryFromStr( const std::string value)
 }
 
 inline std::array<bool, kLogCatMax> gLogCategories = {};
+
+inline bool
+CategoryEnabled( LogCategory category)
+{
+    std::size_t cat_int = static_cast<std::size_t>( category);
+    if ( cat_int > kLogCatMax )
+    {
+        throw std::runtime_error{ "Unexpected LogCategory value = " +
+                                  std::to_string( cat_int)};
+    }
+
+    return gLogCategories[cat_int];
+}
 
 inline std::string
 ShortPath( std::string path)
@@ -96,15 +113,7 @@ public:
 
     ~Logger()
     {
-        std::size_t category_int = static_cast<std::size_t>( category_);
-        if ( category_int >= kLogCatMax )
-        {
-            std::cerr << "Unexpected category value = " << category_int;
-            // Aborting as we are in the destructor
-            abort();
-        }
-
-        if ( !gLogCategories[category_int] )
+        if ( !CategoryEnabled( category_) )
         {
             return ;
         }
@@ -154,7 +163,7 @@ ConfigureLogger( const std::string& categories)
         }
 
         std::string category_str = categories.substr( pos, end - pos);
-        detail::LogCategory category = detail::LogCategoryFromStr( category_str);
+        LogCategory category = detail::LogCategoryFromStr( category_str);
         detail::gLogCategories[static_cast<std::size_t>( category)] = true;
 
         pos = end;
@@ -162,8 +171,13 @@ ConfigureLogger( const std::string& categories)
 }
 
 #define LOGGER( log_category_)                                                                     \
-    ::dumb::logger::detail::Logger( ::dumb::logger::detail::LogCategory::log_category_,            \
+    ::dumb::logger::detail::Logger( ::dumb::logger::LogCategory::log_category_,                    \
                                     __FILE__, __LINE__, __FUNCTION__)                              \
+
+///
+/// @brief This using to allow calling CategoryEnabled function from dumps all across the code.
+///
+using detail::CategoryEnabled;
 
 } // ! namespace logger
 } // ! namespace dumb

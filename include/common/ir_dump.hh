@@ -10,6 +10,17 @@ namespace ir
 namespace dump
 {
 
+///
+/// @brief Configure IR dump directory.
+/// @param dir Directory to save IR dumps to.
+///
+void ConfigureDump( const std::string& dir);
+
+///
+/// @brief Dump IR if IR dumping is enabled
+/// @param program IR.
+/// @param output Name of dump.
+///
 void DumpIR( const Program& program, const std::string& output);
 
 } // ! namespace dump
