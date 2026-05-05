@@ -7,6 +7,7 @@
 #include <sstream>
 #include <array>
 #include <string_view>
+#include <stdexcept>
 
 namespace dumb
 {
