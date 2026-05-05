@@ -177,7 +177,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
 
                     for ( auto& [pred, op] : phi.mapping )
                     {
-                        const ir::BasicBlock *pred_ptr = &func.BasicBlocks()[pred];
+                        const ir::BasicBlock *pred_ptr = &func.GetBasicBlock( pred);
                         if ( executable.count(pred_ptr) == 0 )
                         {
                             continue;
@@ -217,7 +217,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
 
                 if ( term.type == ir::CmpType::ALWAYS_TRUE )
                 {
-                    const ir::BasicBlock* target = &func.BasicBlocks()[term.true_dest];
+                    const ir::BasicBlock* target = &func.GetBasicBlock( term.true_dest);
 
                     if (!executable.count( target))
                     {
@@ -245,8 +245,8 @@ SparseConditionalConstantPropagation(ir::Program& program)
                         }
                     }
 
-                    const ir::BasicBlock* true_ptr  = &func.BasicBlocks()[term.true_dest];
-                    const ir::BasicBlock* false_ptr = &func.BasicBlocks()[term.false_dest];
+                    const ir::BasicBlock* true_ptr  = &func.GetBasicBlock( term.true_dest);
+                    const ir::BasicBlock* false_ptr = &func.GetBasicBlock( term.false_dest);
 
                     if ( is_const )
                     {
@@ -351,7 +351,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
                     term.type = ir::CmpType::ALWAYS_TRUE;
                     if ( result )
                     {
-                        ir::BasicBlock& false_bb = func.BasicBlocks()[term.false_dest];
+                        ir::BasicBlock& false_bb = func.GetBasicBlock( term.false_dest);
                         for ( ir::PhiNode& phi : false_bb.phi_nodes )
                         {
                             if ( phi.mapping.count( bb.id) != 0 )
@@ -364,7 +364,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
                         term.false_dest = 0;
                     } else
                     {
-                        ir::BasicBlock& true_bb = func.BasicBlocks()[term.true_dest];
+                        ir::BasicBlock& true_bb = func.GetBasicBlock( term.true_dest);
                         for ( ir::PhiNode& phi : true_bb.phi_nodes )
                         {
                             if ( phi.mapping.count( bb.id) != 0 )

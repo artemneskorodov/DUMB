@@ -23,11 +23,6 @@ public:
     lir::Program
     Emit()
     {
-        emit_function( program_.Preamble());
-        lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, lir::Immediate{ 60});
-        lir_.Add( lir::BinaryOp::XOR, lir::Register::RDI, lir::Register::RDI);
-        lir_.Add( lir::NoOpInstr::SYSCALL);
-
         // Functions
         for ( const ir::Function& func : program_.Functions() )
         {
@@ -103,7 +98,7 @@ private:
 
         for ( int phi_acceptor : basic_block.phi_acceptors )
         {
-            for ( const ir::PhiNode& phi : func.BasicBlocks()[phi_acceptor].phi_nodes )
+            for ( const ir::PhiNode& phi : func.GetBasicBlock( phi_acceptor).phi_nodes )
             {
                 if ( phi.mapping.find( basic_block.id) != phi.mapping.end() )
                 {
