@@ -6,6 +6,7 @@
 #include <array>
 
 #include "lexer.hh"
+#include "logger.hh"
 
 namespace dumb
 {
@@ -66,6 +67,8 @@ Lexer::Lexer( const std::string &source)
     {
         skip_spaces();
 
+        LOGGER(LEXER) << "Non space symbol: " << current_char();
+
         if ( current_char() == '\"' )
         {
             tokens_.emplace_back( read_quoted_string());
@@ -83,6 +86,7 @@ Lexer::Lexer( const std::string &source)
             {
                 if ( current_char() == '\0' )
                 {
+                    LOGGER(LEXER) << "End of source code";
                     break;
                 } else
                 {
@@ -142,6 +146,8 @@ Lexer::current_char( int offset) const
 Token
 Lexer::read_immediate()
 {
+    LOGGER(LEXER) << "Reading immediate value";
+
     assert( std::isdigit( current_char()));
 
     int line = line_;
@@ -154,12 +160,15 @@ Lexer::read_immediate()
         advance();
     }
     std::string value = source_.substr( start, pos_ - start);
+
+    LOGGER(LEXER) << "Immediate = " << value;
     return Token{ TokenType::IMMEDIATE, value, line, column};
 }
 
 Token
 Lexer::read_word()
 {
+    LOGGER(LEXER) << "Reading word";
     assert( std::isalpha( current_char()) || (current_char() == '_'));
 
     int line = line_;
@@ -174,6 +183,7 @@ Lexer::read_word()
         advance();
     }
     std::string value = source_.substr( start, pos_ - start);
+    LOGGER(LEXER) << "Word = " << value;
     TokenType type;
     bool found_key_word = false;
     for ( const auto &key_word_info : kKeyWordsAlpha )
@@ -182,11 +192,13 @@ Lexer::read_word()
         {
             type           = key_word_info.type;
             found_key_word = true;
+            LOGGER(LEXER) << "Last word is key word";
             break;
         }
     }
     if ( !found_key_word )
     {
+        LOGGER(LEXER) << "Last word is user string";
         type = TokenType::USER_STRING;
     }
 
@@ -196,6 +208,7 @@ Lexer::read_word()
 std::optional<Token>
 Lexer::read_symbol()
 {
+    LOGGER(LEXER) << "Reading special symbol";
     TokenType type;
     std::string value;
 
@@ -204,22 +217,28 @@ Lexer::read_symbol()
 
     if ( current_char() == '=' )
     {
+        LOGGER(LEXER) << "Special symbol is = or ==";
         if ( current_char( 1) == '=' )
         {
+            LOGGER(LEXER) << "Special symbol is ==";
             type  = TokenType::CMP_EQUAL;
             value = "==";
         } else
         {
+            LOGGER(LEXER) << "Special symbol is =";
             type  = TokenType::ASSIGNMENT;
             value = "=";
         }
     } else
     {
+        LOGGER(LEXER) << "Special symbol is normal key word or error token, looking for "
+                      << current_char() << " in kKeyWordsNormalSymbols";
         bool found_symbol = false;
         for ( const auto& key_word : kKeyWordsNormalSymbols )
         {
             if ( current_char() == key_word.string[0] )
             {
+                LOGGER(LEXER) << "Special symbol is " << TypeToStr( key_word.type);
                 type         = key_word.type;
                 value        = key_word.string;
                 found_symbol = true;
@@ -228,6 +247,7 @@ Lexer::read_symbol()
         }
         if ( !found_symbol )
         {
+            LOGGER(LEXER) << "Did not found special symbol";
             return std::nullopt;
         }
     }
@@ -240,6 +260,7 @@ Lexer::read_symbol()
 Token
 Lexer::read_quoted_string()
 {
+    LOGGER(LEXER) << "Reading quoted string";
     assert( current_char() == '\"');
     int line = line_;
     int column = column_;
@@ -253,6 +274,8 @@ Lexer::read_quoted_string()
 
     std::string value = source_.substr( start, pos_ - start);
     advance();
+
+    LOGGER(LEXER) << "Quoted string is \"" << value << "\"";
 
     return Token{ TokenType::USER_QUOTED_STRING, value, line, column};
 }

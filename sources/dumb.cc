@@ -8,6 +8,7 @@
 
 #include "ir_dump.hh"
 #include "utils.hh"
+#include "logger.hh"
 
 int
 main( int         argc,
@@ -19,10 +20,13 @@ main( int         argc,
     parser.AddOption<std::string>( "--output"     , "-o"    , ""   , true );
     parser.AddOption<bool>       ( "--enable-sccp", "-sccp" , false, false);
     parser.AddOption<bool>       ( "--enable-dce" , "-dce"  , false, false);
+    parser.AddOption<std::string>( "--log-flags"  , "-lf"   , ""   , false);
 
     std::vector<std::string> args( argv + 1, argv + argc);
 
     parser.ParseArgs( std::move( args));
+
+    dumb::logger::ConfigureLogger( parser.GetOption<std::string>( "--log-flags"));
 
     std::string source = parser.GetOption<std::string>( "--input");
     std::string output = parser.GetOption<std::string>( "--output");
