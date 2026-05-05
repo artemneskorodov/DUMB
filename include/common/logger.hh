@@ -5,7 +5,8 @@
 #include <cstdint>
 #include <iostream>
 #include <sstream>
-#include <vector>
+#include <array>
+#include <string_view>
 
 namespace dumb
 {
