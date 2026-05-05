@@ -76,7 +76,7 @@ struct Operand
             }
         }
 
-        result += ", value=" + std::to_string( value) + ", id=" + std::to_string( id);
+        result += ", value=" + std::to_string( value) + ", id=" + std::to_string( id) + ")";
         return result;
     }
 };

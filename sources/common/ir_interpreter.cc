@@ -65,13 +65,19 @@ private:
     run_basic_block( const BasicBlock& basic_block,
                      BasicBlockID      from_id)
     {
+        LOGGER(IR_INTERPRETER) << "Running basic block " << basic_block.id;
+
         for ( const PhiNode& phi : basic_block.phi_nodes )
         {
-            storage( Operand{ Operand::VARIABLE, phi.version, phi.var_id})
-                = value( phi.mapping.at( from_id));
-        }
+            Operand dest{ Operand::VARIABLE, phi.version, phi.var_id};
+            Operand src = phi.mapping.at( from_id);
+            ImmType src_val = value( src);
 
-        LOGGER(IR_INTERPRETER) << "Running basic block " << basic_block.id;
+            LOGGER(IR_INTERPRETER) << "Running Phi node: " << dest.ToStr() << " = "
+                                   << src.ToStr() << " = " << src_val;
+
+            storage( dest) = src_val;
+        }
 
         for ( const Instruction& instr : basic_block.instructions )
         {
@@ -142,7 +148,7 @@ private:
 
         ImmType result = value( instr.operands[0]) + value( instr.operands[1]);
 
-        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr() + " = "
                                << instr.operands[0].ToStr() + " + "
                                << instr.operands[1].ToStr() + " = "
                                << result;
@@ -157,7 +163,7 @@ private:
 
         ImmType result = value( instr.operands[0]) - value( instr.operands[1]);
 
-        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr() + " = "
                                << instr.operands[0].ToStr() + " - "
                                << instr.operands[1].ToStr() + " = "
                                << result;
@@ -172,7 +178,7 @@ private:
 
         ImmType result = value( instr.operands[0]) * value( instr.operands[1]);
 
-        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr() + " = "
                                << instr.operands[0].ToStr() + " * "
                                << instr.operands[1].ToStr() + " = "
                                << result;
@@ -187,7 +193,7 @@ private:
 
         ImmType result = value( instr.operands[0]) / value( instr.operands[1]);
 
-        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr() + " = "
                                << instr.operands[0].ToStr() + " / "
                                << instr.operands[1].ToStr() + " = "
                                << result;
