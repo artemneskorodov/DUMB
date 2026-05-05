@@ -41,7 +41,8 @@
 TODO
 
 ### Опции компилятора
-1. **--log-flags** (**-lf**) - Флаги для дебажных выводов. Они разделены по категориям: LEXER, PARSER, IR_EMITTER, IR_INTERPRETER.
+1. **--log-flags** (**-lf**) - Флаги для дебажных выводов. Они разделены по категориям:
+LEXER, PARSER, IR_EMITTER, IR_INTERPRETER, DUMP_IR, DUMP_AST
 Для примера, чтобы включить логи из категорий LEXER и PARSER нужно указать опцию:
 ```
 build/dumb --log-flags LEXER,PARSER ...
