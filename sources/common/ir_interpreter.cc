@@ -4,6 +4,7 @@
 
 #include "ir_interpreter.hh"
 #include "ir.hh"
+#include "logger.hh"
 
 namespace dumb
 {
@@ -41,6 +42,8 @@ private:
     void
     run_function( const Function& func)
     {
+        LOGGER(IR_INTERPRETER) << "Running function " << func.Id();
+
         current_function_ = &func;
         for ( const SSAKey& param : func.Params() )
         {
@@ -61,6 +64,8 @@ private:
     void
     run_basic_block( const BasicBlock& basic_block)
     {
+        LOGGER(IR_INTERPRETER) << "Running basic block " << basic_block.id;
+
         for ( const Instruction& instr : basic_block.instructions )
         {
             switch ( instr.opcode )
@@ -85,18 +90,20 @@ private:
 
         if ( basic_block.terminator.type == CmpType::INVALID )
         {
+            LOGGER(IR_INTERPRETER) << "BB_" << basic_block.id << " terminator is invalid";
             return ;
         }
 
         if ( basic_block.terminator.type == CmpType::ALWAYS_TRUE )
         {
+            LOGGER(IR_INTERPRETER) << "BB_" << basic_block.id << " terminator is always true";
             const BasicBlock& dest = find_basic_block( basic_block.terminator.true_dest);
             run_basic_block( dest);
             return ;
         }
 
-        int left  = value( basic_block.terminator.left);
-        int right = value( basic_block.terminator.right);
+        ImmType left  = value( basic_block.terminator.left);
+        ImmType right = value( basic_block.terminator.right);
         bool result;
         switch ( basic_block.terminator.type )
         {
@@ -105,6 +112,10 @@ private:
             case CmpType::BIGGER:      result = (left >  right); break;
             default: throw std::runtime_error{ "Unexpected compare operation"};
         }
+
+        LOGGER(IR_INTERPRETER) << "BB_" << basic_block.id << " terminator: (" << left << " "
+                               << CmpTypeToStr( basic_block.terminator.type)
+                               << " " << right << ") = " << (result ? "true" : "false");
 
         if ( result )
         {
@@ -120,43 +131,86 @@ private:
     void
     run_instr_add( const Instruction& instr)
     {
-        int result = value( instr.operands[0]) + value( instr.operands[1]);
+        LOGGER(IR_INTERPRETER) << "Running instruction add";
+
+        ImmType result = value( instr.operands[0]) + value( instr.operands[1]);
+
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+                               << instr.operands[0].ToStr() + " + "
+                               << instr.operands[1].ToStr() + " = "
+                               << result;
+
         storage( instr.defines) = result;
     }
 
     void
     run_instr_sub( const Instruction& instr)
     {
-        int result = value( instr.operands[0]) - value( instr.operands[1]);
+        LOGGER(IR_INTERPRETER) << "Running instruction sub";
+
+        ImmType result = value( instr.operands[0]) - value( instr.operands[1]);
+
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+                               << instr.operands[0].ToStr() + " - "
+                               << instr.operands[1].ToStr() + " = "
+                               << result;
+
         storage( instr.defines) = result;
     }
 
     void
     run_instr_mul( const Instruction& instr)
     {
-        int result = value( instr.operands[0]) * value( instr.operands[1]);
+        LOGGER(IR_INTERPRETER) << "Running instruction mul";
+
+        ImmType result = value( instr.operands[0]) * value( instr.operands[1]);
+
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+                               << instr.operands[0].ToStr() + " * "
+                               << instr.operands[1].ToStr() + " = "
+                               << result;
+
         storage( instr.defines) = result;
     }
 
     void
     run_instr_div( const Instruction& instr)
     {
-        int result = value( instr.operands[0]) / value( instr.operands[1]);
+        LOGGER(IR_INTERPRETER) << "Running instruction div";
+
+        ImmType result = value( instr.operands[0]) / value( instr.operands[1]);
+
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+                               << instr.operands[0].ToStr() + " / "
+                               << instr.operands[1].ToStr() + " = "
+                               << result;
+
         storage( instr.defines) = result;
     }
 
     void
     run_instr_mov( const Instruction& instr)
     {
-        storage( instr.defines) = value( instr.operands[0]);
+        ImmType val = value( instr.operands[0]);
+
+        LOGGER(IR_INTERPRETER) << "Running instruction mov: " << instr.defines.ToStr() << " = "
+                               << instr.operands[0].ToStr() << " = " << val;
+
+        storage( instr.defines) = val;
     }
 
     void
     run_instr_ret( const Instruction& instr)
     {
+        LOGGER(IR_INTERPRETER) << "Running instruction ret";
+
         if ( instr.operands.size() == 1 )
         {
-            function_retval_ = value( instr.operands[0]);
+            ImmType val = value( instr.operands[0]);
+
+            LOGGER(IR_INTERPRETER) << "Retval = " << instr.operands[0].ToStr() << " = " << val;
+
+            function_retval_ = val;
         }
         need_return_ = true;
     }
@@ -164,20 +218,32 @@ private:
     void
     run_instr_call( const Instruction& instr)
     {
+        LOGGER(IR_INTERPRETER) << "Running instruction call";
+
         size_t params_number = instr.operands.size() - 1;
         params_stack_.resize( params_number);
 
         for ( size_t i = 0; i != params_number; ++i )
         {
-            params_stack_[params_number - i - 1] = value( instr.operands[i + 1]);
+            ImmType val = value( instr.operands[i + 1]);
+
+            LOGGER(IR_INTERPRETER) << "Pushing " << instr.operands[i + 1].ToStr() << " = " << val;
+
+            params_stack_[params_number - i - 1] = val;
         }
 
-        std::unordered_map<SSAKey, int, SSAKeyHash> locals_old = locals_;
         const Function& func = find_function( instr.operands[0].id);
+        LOGGER(IR_INTERPRETER) << "Calling function " << func.Id();
+
+        std::unordered_map<SSAKey, int, SSAKeyHash> locals_old = locals_;
         run_function( func);
         locals_ = locals_old;
+
         if ( instr.defines.type != Operand::EMPTY )
         {
+            LOGGER(IR_INTERPRETER) << "Got return value: " << instr.defines.ToStr() << " = "
+                                   << function_retval_;
+
             storage( instr.defines) = function_retval_;
         }
     }
@@ -185,6 +251,8 @@ private:
     void
     run_instr_input( const Instruction& instr)
     {
+        LOGGER(IR_INTERPRETER) << "Running instruction input";
+
         const std::string& str = program_.Strings()[instr.operands[0].value];
         std::cout << str;
 
@@ -196,6 +264,8 @@ private:
     void
     run_instr_output( const Instruction& instr)
     {
+        LOGGER(IR_INTERPRETER) << "Running instruction output";
+
         const std::string& str = program_.Strings()[instr.operands[0].value];
         std::cout << str + std::to_string( value( instr.operands[1])) << std::endl;
     }
@@ -215,16 +285,9 @@ private:
     }
 
     const BasicBlock&
-    find_basic_block( int id)
+    find_basic_block( BasicBlockID id)
     {
-        for ( const BasicBlock& bb : current_function_->BasicBlocks() )
-        {
-            if ( bb.id == id )
-            {
-                return bb;
-            }
-        }
-        throw std::runtime_error{ "No basic block with id = " + std::to_string( id)};
+        return current_function_->GetBasicBlock( id);
     }
 
     int
@@ -253,13 +316,13 @@ private:
     }
 
 private:
-    const Program&                               program_;
-    std::vector<int>                             params_stack_{};
-    std::unordered_map<SSAKey, int, SSAKeyHash>  locals_;
-    std::unordered_map<nt::SymbolID, int>        globals_;
-    const Function                              *current_function_;
-    int                                          function_retval_;
-    bool                                         need_return_{ false};
+    const Program&                                   program_;
+    std::vector<ImmType>                             params_stack_{};
+    std::unordered_map<SSAKey, ImmType, SSAKeyHash>  locals_;
+    std::unordered_map<nt::SymbolID, ImmType>        globals_;
+    const Function                                  *current_function_;
+    ImmType                                          function_retval_;
+    bool                                             need_return_{ false};
 
 };
 

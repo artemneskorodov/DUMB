@@ -131,6 +131,8 @@ target_link_libraries(dumb_ir_interpreter PRIVATE frontend)
 
 target_link_libraries(dumb_ir_interpreter PRIVATE common)
 
+target_link_libraries(dumb_ir_interpreter PRIVATE middleend)
+
 #
 # Testing
 #

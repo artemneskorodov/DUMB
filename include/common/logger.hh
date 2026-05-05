@@ -112,7 +112,7 @@ public:
         category_str.resize( 10, ' ');
 
         std::string path_str = ShortPath( file_) + ":" + std::to_string( line_) + ":" + func_;
-        path_str.resize( 45, ' ');
+        path_str.resize( 55, ' ');
 
         std::cout << "[" << category_str << "] ( " << path_str << " ): " << stream_.str() << std::endl;
     }
