@@ -147,7 +147,7 @@ RenameVariables( ir::Function&  function,
         {
             for ( ir::PhiNode& phi : basic_block.phi_nodes )
             {
-                nt::SymbolID id = phi.var_id;
+                nt::SymbolID id = phi.var.id;
                 bool first_time = false;
                 if ( counters.find( id) == counters.end() )
                 {
@@ -157,7 +157,7 @@ RenameVariables( ir::Function&  function,
                 int version = counters[id]++;
 
                 version_stacks[id].push_back( version);
-                phi.version = version;
+                phi.var.value = version;
                 if ( !first_time )
                 {
                     function.AddVariable( id, version);
@@ -216,11 +216,11 @@ RenameVariables( ir::Function&  function,
                 std::size_t id = basic_block.terminator.true_dest;
                 for ( ir::PhiNode& phi : function.GetBasicBlock( id).phi_nodes )
                 {
-                    if ( !version_stacks[phi.var_id].empty() )
+                    if ( !version_stacks[phi.var.id].empty() )
                     {
                         phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE,
-                                                                   version_stacks[phi.var_id].back(),
-                                                                   phi.var_id};
+                                                                   version_stacks[phi.var.id].back(),
+                                                                   phi.var.id};
                     } else
                     {
                         phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
@@ -232,11 +232,11 @@ RenameVariables( ir::Function&  function,
                     id = basic_block.terminator.false_dest;
                     for ( ir::PhiNode& phi : function.GetBasicBlock( id).phi_nodes )
                     {
-                        if ( !version_stacks[phi.var_id].empty() )
+                        if ( !version_stacks[phi.var.id].empty() )
                         {
                             phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::VARIABLE,
-                                                                       version_stacks[phi.var_id].back(),
-                                                                       phi.var_id};
+                                                                       version_stacks[phi.var.id].back(),
+                                                                       phi.var.id};
                         } else
                         {
                             phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
@@ -256,7 +256,7 @@ RenameVariables( ir::Function&  function,
         {
             for ( ir::PhiNode& phi : basic_block.phi_nodes )
             {
-                version_stacks[phi.var_id].pop_back();
+                version_stacks[phi.var.id].pop_back();
             }
 
             for ( ir::Instruction& instr : basic_block.instructions )

@@ -165,7 +165,7 @@ dump_basic_block( const ir::Program& program,
 
     for ( const ir::PhiNode& phi : basic_block.phi_nodes )
     {
-        std::string name = dumper.GetOperandStr( ir::Operand{ ir::Operand::VARIABLE, phi.version, phi.var_id});
+        std::string name = dumper.GetOperandStr( phi.var);
         std::string placeholder = "PHI{ ";
         for ( const auto& variants : phi.mapping )
         {

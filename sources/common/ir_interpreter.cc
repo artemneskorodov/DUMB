@@ -35,7 +35,7 @@ public:
     void
     Run()
     {
-        run_function( program_.GetFunction( program_.Entry()));
+        run_function( program_.GetFunction( 0));
     }
 
 private:
@@ -58,30 +58,27 @@ private:
             throw std::runtime_error{ "Unexpected number of parameters in parameters stack"};
         }
 
-        run_basic_block( func.GetBasicBlock( func.Entry()));
+        run_basic_block( func.GetBasicBlock( 0), 0);
         need_return_ = false;
         current_function_ = old_func;
     }
 
     void
     run_basic_block( const BasicBlock& basic_block,
-                     BasicBlockID      from_id = -1)
+                     BasicBlockID      from_id)
     {
         LOGGER(IR_INTERPRETER) << "Running basic block " << basic_block.id;
 
-        if ( from_id >= 0 )
+        for ( const PhiNode& phi : basic_block.phi_nodes )
         {
-            for ( const PhiNode& phi : basic_block.phi_nodes )
-            {
-                Operand dest{ Operand::VARIABLE, phi.version, phi.var_id};
-                Operand src = phi.mapping.at( from_id);
-                ImmType src_val = value( src);
+            Operand dest = phi.var;
+            Operand src = phi.mapping.at( from_id);
+            ImmType src_val = value( src);
 
-                LOGGER(IR_INTERPRETER) << "Running Phi node: " << dest.ToStr() << " = "
-                                       << src.ToStr() << " = " << src_val;
+            LOGGER(IR_INTERPRETER) << "Running Phi node: " << dest.ToStr() << " = "
+                                   << src.ToStr() << " = " << src_val;
 
-                storage( dest) = src_val;
-            }
+            storage( dest) = src_val;
         }
 
         for ( const Instruction& instr : basic_block.instructions )

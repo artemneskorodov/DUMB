@@ -186,7 +186,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
                         val = LatticeValue::Merge( val, eval_operand( op, values));
                     }
 
-                    ir::SSAKey key{ phi.var_id, phi.version};
+                    ir::SSAKey key{ phi.var.id, phi.var.value};
 
                     if ( values[key] != val )
                     {
