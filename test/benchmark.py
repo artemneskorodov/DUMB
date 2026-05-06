@@ -7,7 +7,8 @@ import subprocess
 json_result = []
 
 benchmarking_tests = [
-        "FibonacciRecursiveMultiple"
+        "FibonacciRecursiveMultiple",
+        "ConstantFakeFlowControl",
     ]
 
 if len(sys.argv) != 3:
