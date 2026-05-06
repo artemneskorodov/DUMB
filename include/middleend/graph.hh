@@ -120,7 +120,7 @@ public:
         {
             flags_[i] = page_val;
         }
-        LOGGER(DOMINATORS_TABLE) << "size_ = " << size_ << ", last_page_mask() = " << std::hex << last_page_mask();
+
         flags_[last] = page_val & last_page_mask();
 
         bits_on_ = (value ? size_ : 0);
