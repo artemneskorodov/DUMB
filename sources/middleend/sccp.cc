@@ -6,6 +6,7 @@
 #include "ir.hh"
 #include "sccp.hh"
 #include "ssa_framework.hh"
+#include "logger.hh"
 
 namespace dumb
 {
@@ -69,7 +70,7 @@ struct LatticeValue
     }
 
     LatticeKind kind;
-    int constant;
+    ir::ImmType constant;
 };
 
 bool
@@ -116,6 +117,8 @@ public:
     ValueMap
     Evaluate()
     {
+        LOGGER(SCCP) << "Evaluating function_" << func_.Id();
+
         ir::BasicBlockID entry = func_.Entry();
 
         executable_blocks_.insert( entry);
@@ -158,7 +161,7 @@ private:
             return ;
         }
 
-        LatticeValue value = LatticeValue::Overdefined();
+        LatticeValue value;
 
         if ( instr.opcode == ir::Opcode::MOV )
         {
@@ -184,15 +187,17 @@ private:
                     default: throw std::runtime_error{ "Unreachable"};
                 }
                 value = LatticeValue::Constant( result);
-            }
-
-            if ( (first.kind  == LatticeKind::OVERDEFINED) ||
-                 (second.kind == LatticeKind::OVERDEFINED) )
+            } else if ( (first.kind  == LatticeKind::OVERDEFINED) ||
+                        (second.kind == LatticeKind::OVERDEFINED) )
             {
                 value = LatticeValue::Overdefined();
+            } else
+            {
+                value = LatticeValue::Undefined();
             }
-
-            value = LatticeValue::Undefined();
+        } else
+        {
+            value = LatticeValue::Overdefined();
         }
 
         update_value( instr.defines, value);
@@ -217,49 +222,47 @@ private:
     void
     evaluate_basic_block( const ir::BasicBlock& block)
     {
-    // Trying to evaluate Phi nodes
-    for ( const ir::PhiNode& phi : block.phi_nodes )
-    {
-        evaluate_phi( phi);
-    }
+        LOGGER(SCCP) << "Evaluating bb_" << block.id;
 
-    // Trying to evaluate instructions
-    for ( const ir::Instruction& instr : block.instructions )
-    {
-        evaluate_instr( instr);
-    }
-
-    // Trying to evaluate terminator
-    const ir::BasicBlockTerminator& term = block.terminator;
-    if ( term.type == ir::CmpType::ALWAYS_TRUE )
-    {
-        set_executable( term.true_dest);
-        cfg_worklist_.push( term.true_dest);
-    } else if ( term.type != ir::CmpType::INVALID )
-    {
-        LatticeValue left  = eval_operand( term.left);
-        LatticeValue right = eval_operand( term.right);
-
-        if ( (left.kind  == LatticeKind::CONSTANT) &&
-             (right.kind == LatticeKind::CONSTANT) )
+        // Trying to evaluate Phi nodes
+        for ( const ir::PhiNode& phi : block.phi_nodes )
         {
-            bool cmp_result = EvaluateCmp( left.constant, right.constant, term.type);
-            ir::BasicBlockID target = cmp_result ? term.true_dest : term.false_dest;
-            set_executable( target);
-            cfg_worklist_.push( target);
-        } else
+            evaluate_phi( phi);
+        }
+
+        // Trying to evaluate instructions
+        for ( const ir::Instruction& instr : block.instructions )
         {
-            set_executable( term.true_dest);
-            set_executable( term.false_dest);
-            cfg_worklist_.push( term.true_dest);
-            cfg_worklist_.push( term.false_dest);
+            evaluate_instr( instr);
+        }
+
+        // Trying to evaluate terminator
+        const ir::BasicBlockTerminator& term = block.terminator;
+        if ( term.type == ir::CmpType::ALWAYS_TRUE )
+        {
+            add_to_cfg_worklist( term.true_dest);
+        } else if ( term.type != ir::CmpType::INVALID )
+        {
+            LatticeValue left  = eval_operand( term.left);
+            LatticeValue right = eval_operand( term.right);
+
+            if ( (left.kind  == LatticeKind::CONSTANT) &&
+                 (right.kind == LatticeKind::CONSTANT) )
+            {
+                bool cmp_result = EvaluateCmp( left.constant, right.constant, term.type);
+                ir::BasicBlockID target = cmp_result ? term.true_dest : term.false_dest;
+                add_to_cfg_worklist( target);
+            } else
+            {
+                add_to_cfg_worklist( term.true_dest);
+                add_to_cfg_worklist( term.false_dest);
+            }
         }
     }
-}
 
 private:
     LatticeValue
-    eval_operand( const ir::Operand& op)
+    eval_operand( const ir::Operand& op) const
     {
         if ( op.type == ir::Operand::IMMEDIATE )
         {
@@ -286,15 +289,6 @@ private:
     }
 
     void
-    set_executable( ir::BasicBlockID id)
-    {
-        if ( !is_executable( id) )
-        {
-            executable_blocks_.insert( id);
-        }
-    }
-
-    void
     update_value( const ir::SSAKey&   key,
                   const LatticeValue& value)
     {
@@ -302,6 +296,16 @@ private:
         {
             values_[key] = value;
             ssa_worklist_.push( key);
+        }
+    }
+
+    void
+    add_to_cfg_worklist( ir::BasicBlockID id)
+    {
+        if ( !is_executable( id) )
+        {
+            executable_blocks_.insert( id);
+            cfg_worklist_.push( id);
         }
     }
 
