@@ -289,19 +289,29 @@ public:
         id_to_size_map_[id];
     }
 
+    ///
+    /// @brief Removes ID from mapping
+    /// @warning This function is very slow
+    /// @param id Id to remove
+    ///
     void
-    Rebuild( const std::list<NodeIdT> nodes)
+    Remove( NodeIdT id)
     {
-        id_to_size_map_.clear();
-        size_to_id_map_.clear();
-
-        std::size_t index = 0;
-        for ( NodeIdT id : nodes )
+        std::vector<NodeIdT> new_size_to_id( size_to_id_map_.size() - 1);
+        for ( NodeIdT node_id : size_to_id_map_ )
         {
-            id_to_size_map_[id] = index;
-            ++index;
-            size_to_id_map_.emplace_back( id);
+            if ( id != node_id )
+            {
+                new_size_to_id.emplace_back( node_id);
+            }
         }
+        size_to_id_map_ = std::move( new_size_to_id);
+    }
+
+    const std::vector<NodeIdT>&
+    UsedNodeIds() const &
+    {
+        return size_to_id_map_;
     }
 
 private:
@@ -605,7 +615,6 @@ public:
     {
         nodes_.emplace_back( id);
         nodes_hash_[id] = &nodes_.back();
-        used_ids_.emplace_back( id);
         mapper_.Add( id);
 
         dom_table_actual_ = false;
@@ -639,13 +648,10 @@ public:
         nodes_hash_.erase( id);
         // Removing from id map
         nodes_.remove_if( [id](const Node& node)->bool { return node.id == id; });
-        // Removing from used ids
-        used_ids_.remove( id);
+        // Removing from NodeIdT <-> std::size_t mapper
+        mapper_.Remove( id);
 
         dom_table_actual_ = false;
-
-        // Rebuilding NodeIdT <-> std::size_t mapper
-        mapper_.Rebuild( used_ids_);
     }
 
     void
@@ -668,7 +674,6 @@ public:
         return nodes_hash_.at( id)->preds;
     }
 
-public:
     void
     BuildDominatorsTable()
     {
@@ -688,7 +693,7 @@ public:
         {
             changed = false;
 
-            for ( NodeIdT node_id : used_ids_ )
+            for ( NodeIdT node_id : UsedIds() )
             {
                 Dominators<NodeIdT> tmp = dominators_table_[node_id];
 
@@ -720,10 +725,10 @@ public:
         return dominators_table_;
     }
 
-    const std::list<NodeIdT>&
+    const std::vector<NodeIdT>&
     UsedIds() const &
     {
-        return used_ids_;
+        return mapper_.UsedNodeIds();
     }
 
     std::size_t
@@ -733,41 +738,8 @@ public:
     }
 
 private:
-    // TODO rework this mappers
-    std::size_t
-    id_to_size_mapper( NodeIdT id) const
-    {
-        const Node *node = nodes_hash_.at( id);
-
-        std::size_t counter = 0;
-        for ( const Node& node_in_list : nodes_ )
-        {
-            if ( node == &node_in_list )
-            {
-                return counter;
-            }
-
-            ++counter;
-        }
-        return counter;
-    }
-
-    // TODO rework this mappers
-    NodeIdT
-    size_to_id_mapper( std::size_t size) const
-    {
-        auto it = nodes_.begin();
-        for ( std::size_t i = 0; i != size; ++i )
-        {
-            ++it;
-        }
-        return it->id;
-    }
-
-private:
     std::list<Node>                          nodes_               {};
     std::unordered_map<NodeIdT, Node *>      nodes_hash_          {};
-    std::list<NodeIdT>                       used_ids_            {};
     NodeIdT                                  entry_               { 0};
     detail::IdAndSizeMapper<NodeIdT>         mapper_              {};
     DominatorsTable<NodeIdT>                 dominators_table_    { 0, &mapper_};
