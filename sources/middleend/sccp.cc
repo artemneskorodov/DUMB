@@ -4,6 +4,8 @@
 #include <iostream>
 
 #include "ir.hh"
+#include "sccp.hh"
+#include "ssa_framework.hh"
 
 namespace dumb
 {
@@ -70,71 +72,263 @@ struct LatticeValue
     int constant;
 };
 
-using ValueMap = std::unordered_map<ir::SSAKey, LatticeValue, ir::SSAKeyHash>;
-using ExecSet  = std::unordered_set<ir::BasicBlockID>;
-
-LatticeValue
-eval_operand( const ir::Operand& op,
-              const ValueMap& values)
+bool
+EvaluateCmp( ir::ImmType left,
+             ir::ImmType right,
+             ir::CmpType type)
 {
-    if ( op.type == ir::Operand::IMMEDIATE )
+    switch ( type )
     {
-        return LatticeValue::Constant( op.value);
+        case ir::CmpType::LESS:   return (left <  right);
+        case ir::CmpType::EQUAL:  return (left == right);
+        case ir::CmpType::BIGGER: return (left >  right);
+        default: throw std::runtime_error{ "Unexpected condition type"};
     }
-
-    if ( op.type == ir::Operand::VARIABLE )
-    {
-        auto it = values.find( { op.id, op.value});
-        if (it == values.end())
-        {
-            return LatticeValue::Overdefined();
-        }
-        return it->second;
-    }
-
-    return LatticeValue::Overdefined();
 }
 
-LatticeValue
-eval_instr( const ir::Instruction& instr,
-            const ValueMap& values)
+///
+/// @brief Type which is returned by evaluator. Maps variables to their values if they are defined.
+///
+using ValueMap = std::unordered_map<ir::SSAKey, LatticeValue, ir::SSAKeyHash>;
+
+///
+/// @brief Evaluator of SCCP.
+///
+/// while cfg_worklist or ssa_worklist not empty:
+///     for each basic_block in cfg_worklist:
+///         evaluate phi_nodes
+///         evaluate instructions
+///         evaluate terminator
+///         if something changed( variable became defined, or undefined):
+///             push variable to ssa_worklist
+///
+///     for each variable in ssa_worklist:
+///         evaluate all users of this variable
+///
+class SccpEvaluator
 {
-    if ( instr.opcode == ir::Opcode::MOV )
+public:
+    SccpEvaluator( const ir::Function& func)
+     :  func_{ func}
     {
-        return eval_operand( instr.operands[0], values);
     }
 
-    if ( (instr.opcode == ir::Opcode::ADD) ||
-         (instr.opcode == ir::Opcode::SUB) ||
-         (instr.opcode == ir::Opcode::MUL) ||
-         (instr.opcode == ir::Opcode::DIV) )
+    ValueMap
+    Evaluate()
     {
-        auto v1 = eval_operand( instr.operands[0], values);
-        auto v2 = eval_operand( instr.operands[1], values);
+        ir::BasicBlockID entry = func_.Entry();
 
-        if ( (v1.kind == LatticeKind::CONSTANT) &&
-             (v2.kind == LatticeKind::CONSTANT) )
+        executable_blocks_.insert( entry);
+        cfg_worklist_.push( entry);
+
+        while ( (!cfg_worklist_.empty()) ||
+                (!ssa_worklist_.empty()) )
         {
-            switch ( instr.opcode )
+            while ( !cfg_worklist_.empty() )
             {
-                case ir::Opcode::ADD: return LatticeValue::Constant( v1.constant + v2.constant);
-                case ir::Opcode::SUB: return LatticeValue::Constant( v1.constant - v2.constant);
-                case ir::Opcode::MUL: return LatticeValue::Constant( v1.constant * v2.constant);
-                case ir::Opcode::DIV: return LatticeValue::Constant( v1.constant / v2.constant);
-                default:              return LatticeValue::Overdefined();
+                ir::BasicBlockID bb_id = cfg_worklist_.front();
+                cfg_worklist_.pop();
+                evaluate_basic_block( func_.GetBasicBlock( bb_id));
+            }
+            while ( !ssa_worklist_.empty() )
+            {
+                ir::SSAKey ssa_key = ssa_worklist_.front();
+                ssa_worklist_.pop();
+                for ( const ir::PhiNode *phi : ssa::GetPhiUsers( func_, ssa_key) )
+                {
+                    evaluate_phi( *phi);
+                }
+                for ( const ir::Instruction *instr : ssa::GetInstrUsers( func_, ssa_key))
+                {
+                    evaluate_instr( *instr);
+                }
             }
         }
 
-        if ( (v1.kind == LatticeKind::OVERDEFINED) ||
-             (v2.kind == LatticeKind::OVERDEFINED) )
-        {
-            return LatticeValue::Overdefined();
-        }
-
-        return LatticeValue::Undefined();
+        return values_;
     }
 
-    return LatticeValue::Overdefined();
+private:
+    void
+    evaluate_instr( const ir::Instruction& instr)
+    {
+        if ( instr.defines.type != ir::Operand::VARIABLE )
+        {
+            // Evaluate only evaluatable instructions (defines can be VARIABLE, GLOBAL or EMPTY)
+            return ;
+        }
+
+        LatticeValue value = LatticeValue::Overdefined();
+
+        if ( instr.opcode == ir::Opcode::MOV )
+        {
+            value = eval_operand( instr.operands[0]);
+        } else if ( (instr.opcode == ir::Opcode::ADD) ||
+                    (instr.opcode == ir::Opcode::SUB) ||
+                    (instr.opcode == ir::Opcode::MUL) ||
+                    (instr.opcode == ir::Opcode::DIV) )
+        {
+            LatticeValue first  = eval_operand( instr.operands[0]);
+            LatticeValue second = eval_operand( instr.operands[1]);
+
+            if ( (first.kind  == LatticeKind::CONSTANT) &&
+                 (second.kind == LatticeKind::CONSTANT) )
+            {
+                ir::ImmType result;
+                switch ( instr.opcode )
+                {
+                    case ir::Opcode::ADD: result = first.constant + second.constant; break;
+                    case ir::Opcode::SUB: result = first.constant - second.constant; break;
+                    case ir::Opcode::MUL: result = first.constant * second.constant; break;
+                    case ir::Opcode::DIV: result = first.constant / second.constant; break;
+                    default: throw std::runtime_error{ "Unreachable"};
+                }
+                value = LatticeValue::Constant( result);
+            }
+
+            if ( (first.kind  == LatticeKind::OVERDEFINED) ||
+                 (second.kind == LatticeKind::OVERDEFINED) )
+            {
+                value = LatticeValue::Overdefined();
+            }
+
+            value = LatticeValue::Undefined();
+        }
+
+        update_value( instr.defines, value);
+    }
+
+    void
+    evaluate_phi( const ir::PhiNode& phi)
+    {
+        LatticeValue value = LatticeValue::Undefined();
+
+        for ( auto& [pred_id, operand] : phi.mapping )
+        {
+            if ( !is_executable( pred_id) )
+            {
+                continue;
+            }
+            value = LatticeValue::Merge( value, eval_operand( operand));
+        }
+        update_value( phi.var, value);
+    }
+
+    void
+    evaluate_basic_block( const ir::BasicBlock& block)
+    {
+    // Trying to evaluate Phi nodes
+    for ( const ir::PhiNode& phi : block.phi_nodes )
+    {
+        evaluate_phi( phi);
+    }
+
+    // Trying to evaluate instructions
+    for ( const ir::Instruction& instr : block.instructions )
+    {
+        evaluate_instr( instr);
+    }
+
+    // Trying to evaluate terminator
+    const ir::BasicBlockTerminator& term = block.terminator;
+    if ( term.type == ir::CmpType::ALWAYS_TRUE )
+    {
+        set_executable( term.true_dest);
+        cfg_worklist_.push( term.true_dest);
+    } else if ( term.type != ir::CmpType::INVALID )
+    {
+        LatticeValue left  = eval_operand( term.left);
+        LatticeValue right = eval_operand( term.right);
+
+        if ( (left.kind  == LatticeKind::CONSTANT) &&
+             (right.kind == LatticeKind::CONSTANT) )
+        {
+            bool cmp_result = EvaluateCmp( left.constant, right.constant, term.type);
+            ir::BasicBlockID target = cmp_result ? term.true_dest : term.false_dest;
+            set_executable( target);
+            cfg_worklist_.push( target);
+        } else
+        {
+            set_executable( term.true_dest);
+            set_executable( term.false_dest);
+            cfg_worklist_.push( term.true_dest);
+            cfg_worklist_.push( term.false_dest);
+        }
+    }
+}
+
+private:
+    LatticeValue
+    eval_operand( const ir::Operand& op)
+    {
+        if ( op.type == ir::Operand::IMMEDIATE )
+        {
+            return LatticeValue::Constant( op.value);
+        }
+
+        if ( op.type == ir::Operand::VARIABLE )
+        {
+            auto it = values_.find( { op.id, op.value});
+            if (it == values_.end())
+            {
+                return LatticeValue::Overdefined();
+            }
+            return it->second;
+        }
+
+        return LatticeValue::Overdefined();
+    }
+
+    bool
+    is_executable( ir::BasicBlockID id) const
+    {
+        return (executable_blocks_.count( id) != 0);
+    }
+
+    void
+    set_executable( ir::BasicBlockID id)
+    {
+        if ( !is_executable( id) )
+        {
+            executable_blocks_.insert( id);
+        }
+    }
+
+    void
+    update_value( const ir::SSAKey&   key,
+                  const LatticeValue& value)
+    {
+        if ( values_[key] != value )
+        {
+            values_[key] = value;
+            ssa_worklist_.push( key);
+        }
+    }
+
+private:
+    const ir::Function& func_;
+
+    ValueMap                             values_{};
+    std::unordered_set<ir::BasicBlockID> executable_blocks_{};
+
+    std::queue<ir::BasicBlockID>         cfg_worklist_{}; // Worklist of basic blocks
+    std::queue<ir::SSAKey>               ssa_worklist_{}; // Worklist of changed variables
+
+};
+
+void
+remove_predecessor( ir::BasicBlock& from,
+                    ir::BasicBlock& to_remove)
+{
+    for ( ir::PhiNode& phi : from.phi_nodes )
+    {
+        if ( phi.mapping.count( to_remove.id) != 0 )
+        {
+            phi.mapping.erase( to_remove.id);
+            to_remove.phi_acceptors.remove( from.id);
+        }
+    }
+    from.predecessors.remove( to_remove.id);
 }
 
 } // anonymous namespace
@@ -144,235 +338,60 @@ SparseConditionalConstantPropagation( ir::Program& program)
 {
     for ( ir::Function& func : program.Functions() )
     {
-        ValueMap values{};    // Lattice map of all SSA Keys
-        ExecSet executable{}; // Reachable blocks set
+        // Evaluate function with SCCP
+        SccpEvaluator evaluator{ func};
+        ValueMap values = evaluator.Evaluate();
 
-        std::queue<ir::BasicBlockID> control_flow_worklist{}; // Queue of control flow
-        std::queue<ir::BasicBlockID> ssa_worklist{};          // Queue of SSA
-
-        ir::BasicBlockID entry = func.Entry();
-
-        executable.insert( entry);
-        control_flow_worklist.push( entry);
-
-        while ( (!control_flow_worklist.empty()) ||
-                (!ssa_worklist.empty()) )
+        // Update values
+        for ( const auto& [ssa_key, lattice_value] : values )
         {
-            while ( !control_flow_worklist.empty() )
+            if ( lattice_value.kind != LatticeKind::CONSTANT )
             {
-                ir::BasicBlockID bb_id = control_flow_worklist.front();
-                control_flow_worklist.pop();
-                ssa_worklist.push( bb_id);
+                continue;
             }
 
-            while ( !ssa_worklist.empty() )
+            ir::Operand operand = ir::Operand{ ir::Operand::IMMEDIATE, lattice_value.constant};
+
+            for ( ir::Operand *use : ssa::GetUses( func, ssa_key) )
             {
-                ir::BasicBlockID bb_id = ssa_worklist.front();
-                ssa_worklist.pop();
-                const ir::BasicBlock& bb = func.GetBasicBlock( bb_id);
-
-                for ( const ir::PhiNode& phi : bb.phi_nodes )
-                {
-                    LatticeValue val = LatticeValue::Undefined();
-
-                    for ( auto& [pred_id, operand] : phi.mapping )
-                    {
-                        if ( executable.count( pred_id) == 0 )
-                        {
-                            continue;
-                        }
-
-                        val = LatticeValue::Merge( val, eval_operand( operand, values));
-                    }
-
-                    ir::SSAKey key{ phi.var.id, phi.var.value};
-
-                    if ( values[key] != val )
-                    {
-                        values[key] = val;
-                        ssa_worklist.push( bb_id);
-                    }
-                }
-
-                for ( const ir::Instruction& instr : bb.instructions )
-                {
-                    if ( instr.defines.type != ir::Operand::VARIABLE )
-                    {
-                        continue;
-                    }
-
-                    ir::SSAKey key{ instr.defines.id, instr.defines.value};
-
-                    LatticeValue val = eval_instr( instr, values);
-
-                    if ( values[key] != val )
-                    {
-                        values[key] = val;
-                        ssa_worklist.push( bb_id);
-                    }
-                }
-
-                const ir::BasicBlockTerminator& term = bb.terminator;
-
-                if ( term.type == ir::CmpType::ALWAYS_TRUE )
-                {
-                    if (!executable.count( term.true_dest))
-                    {
-                        executable.insert( term.true_dest);
-                        control_flow_worklist.push( term.true_dest);
-                    }
-                } else if ( term.type != ir::CmpType::INVALID )
-                {
-                    LatticeValue left  = eval_operand( term.left, values);
-                    LatticeValue right = eval_operand( term.right, values);
-
-                    bool is_const = false;
-                    bool result   = false;
-
-                    if ( (left.kind == LatticeKind::CONSTANT) &&
-                         (right.kind == LatticeKind::CONSTANT) )
-                    {
-                        is_const = true;
-                        switch ( term.type )
-                        {
-                            case ir::CmpType::LESS:   result = (left.constant <  right.constant); break;
-                            case ir::CmpType::EQUAL:  result = (left.constant == right.constant); break;
-                            case ir::CmpType::BIGGER: result = (left.constant >  right.constant); break;
-                            default: throw std::runtime_error{ "Unexpected condition type"};
-                        }
-                    }
-
-                    if ( is_const )
-                    {
-                        ir::BasicBlockID target_id = result ? term.true_dest : term.false_dest;
-
-                        if ( !executable.count( target_id) )
-                        {
-                            executable.insert( target_id);
-                            control_flow_worklist.push(target_id);
-                        }
-                    }
-                    else
-                    {
-                        if ( !executable.count( term.true_dest) )
-                        {
-                            executable.insert( term.true_dest);
-                            control_flow_worklist.push( term.true_dest);
-                        }
-                        if ( !executable.count( term.false_dest) )
-                        {
-                            executable.insert( term.false_dest);
-                            control_flow_worklist.push( term.false_dest);
-                        }
-                    }
-                }
+                *use = operand;
             }
         }
 
-        for ( ir::BasicBlock& bb : func.BasicBlocks() )
+        // Update basic blocks
+        for ( ir::BasicBlock& block : func.BasicBlocks() )
         {
-            for ( ir::Instruction& instr : bb.instructions )
+            ir::BasicBlockTerminator& term = block.terminator;
+
+            if ( (term.type == ir::CmpType::ALWAYS_TRUE) ||
+                 (term.type == ir::CmpType::INVALID) )
             {
-                for ( ir::Operand& op : instr.operands )
-                {
-                    if (op.type == ir::Operand::VARIABLE)
-                    {
-                        auto it = values.find( { op.id, op.value});
-                        if ( (it != values.end()) &&
-                             (it->second.kind == LatticeKind::CONSTANT) )
-                        {
-                            op.type  = ir::Operand::IMMEDIATE;
-                            op.value = it->second.constant;
-                        }
-                    }
-                }
+                // Cannot do anything better for this terminator
+                continue;
             }
 
-            for ( ir::PhiNode& phi : bb.phi_nodes )
+            if ( (term.left.type  != ir::Operand::IMMEDIATE) ||
+                 (term.right.type != ir::Operand::IMMEDIATE) )
             {
-                for ( auto& [bb_id, operand] : phi.mapping )
-                {
-                    if ( operand.type != ir::Operand::VARIABLE )
-                    {
-                        continue;
-                    }
-                    auto it = values.find( { operand.id, operand.value});
-                    if ( (it != values.end()) &&
-                         (it->second.kind == LatticeKind::CONSTANT) )
-                    {
-                        operand.type  = ir::Operand::IMMEDIATE;
-                        operand.value = it->second.constant;
-                    }
-                }
+                // Connot simplify this terminator
+                continue;
             }
 
-            ir::BasicBlockTerminator& term = bb.terminator;
-            if ( (term.type != ir::CmpType::ALWAYS_TRUE) &&
-                 (term.type != ir::CmpType::INVALID) )
-            {
-                if ( term.left.type == ir::Operand::VARIABLE )
-                {
-                    auto it = values.find( { term.left.id, term.left.value});
-                    if ( it != values.end() && it->second.kind == LatticeKind::CONSTANT )
-                    {
-                        term.left.type  = ir::Operand::IMMEDIATE;
-                        term.left.value = it->second.constant;
-                    }
-                }
-                if ( term.right.type == ir::Operand::VARIABLE )
-                {
-                    auto it = values.find( { term.right.id, term.right.value});
-                    if ( it != values.end() && it->second.kind == LatticeKind::CONSTANT )
-                    {
-                        term.right.type  = ir::Operand::IMMEDIATE;
-                        term.right.value = it->second.constant;
-                    }
-                }
-                if ( (term.left.type  == ir::Operand::IMMEDIATE) &&
-                     (term.right.type == ir::Operand::IMMEDIATE) )
-                {
-                    int left  = term.left.value;
-                    int right = term.right.value;
-                    bool result;
-                    switch ( term.type )
-                    {
-                        case ir::CmpType::LESS:   result = (left <  right); break;
-                        case ir::CmpType::EQUAL:  result = (left == right); break;
-                        case ir::CmpType::BIGGER: result = (left >  right); break;
-                        default: throw std::runtime_error{ "Unexpected condition type"};
-                    }
+            bool cmp_result = EvaluateCmp( term.left.value, term.right.value, term.type);
 
-                    term.type = ir::CmpType::ALWAYS_TRUE;
-                    if ( result )
-                    {
-                        ir::BasicBlock& false_bb = func.GetBasicBlock( term.false_dest);
-                        for ( ir::PhiNode& phi : false_bb.phi_nodes )
-                        {
-                            if ( phi.mapping.count( bb.id) != 0 )
-                            {
-                                phi.mapping.erase( bb.id);
-                                bb.phi_acceptors.remove( term.false_dest);
-                            }
-                        }
-                        false_bb.predecessors.remove( bb.id);
-                        term.true_dest  = term.true_dest;
-                        term.false_dest = 0;
-                    } else
-                    {
-                        ir::BasicBlock& true_bb = func.GetBasicBlock( term.true_dest);
-                        for ( ir::PhiNode& phi : true_bb.phi_nodes )
-                        {
-                            if ( phi.mapping.count( bb.id) != 0 )
-                            {
-                                phi.mapping.erase( bb.id);
-                                bb.phi_acceptors.remove( term.true_dest);
-                            }
-                        }
-                        true_bb.predecessors.remove( bb.id);
-                        term.true_dest  = term.false_dest;
-                        term.false_dest = 0;
-                    }
-                }
+            term.type = ir::CmpType::ALWAYS_TRUE;
+
+            if ( cmp_result )
+            {
+                ir::BasicBlock& unreachable = func.GetBasicBlock( term.false_dest);
+                remove_predecessor( unreachable, block);
+                term.false_dest = 0;
+            } else
+            {
+                ir::BasicBlock& unreachable = func.GetBasicBlock( term.false_dest);
+                remove_predecessor( unreachable, block);
+                term.true_dest = term.false_dest;
+                term.false_dest = 0;
             }
         }
     }

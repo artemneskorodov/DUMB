@@ -96,6 +96,16 @@ struct SSAKey
     {
     }
 
+    SSAKey( const Operand& operand)
+     :  id{ operand.id},
+        version{ operand.value}
+    {
+        if ( operand.type != Operand::VARIABLE )
+        {
+            throw std::runtime_error{ "Unexpected cast from non variable operand to SSAKey"};
+        }
+    }
+
     bool
     operator==( const SSAKey& other) const
     {
