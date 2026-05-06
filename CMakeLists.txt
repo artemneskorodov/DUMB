@@ -129,7 +129,7 @@ target_compile_options(dumb PRIVATE ${CXX_COMPILE_OPTIONS})
 
 target_link_libraries(dumb_ir_interpreter PRIVATE frontend)
 
-target_link_libraries(dumb_ir_interpreter PRIVATE common)
+target_link_libraries(dumb_ir_interpreter PRIVATE middleend)
 
 #
 # Testing

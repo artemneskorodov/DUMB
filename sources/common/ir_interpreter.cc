@@ -57,14 +57,27 @@ private:
             throw std::runtime_error{ "Unexpected number of parameters in parameters stack"};
         }
 
-        run_basic_block( func.GetBasicBlock( 0));
+        run_basic_block( func.GetBasicBlock( 0), 0);
         need_return_ = false;
     }
 
     void
-    run_basic_block( const BasicBlock& basic_block)
+    run_basic_block( const BasicBlock& basic_block,
+                     BasicBlockID      from_id)
     {
         LOGGER(IR_INTERPRETER) << "Running basic block " << basic_block.id;
+
+        for ( const PhiNode& phi : basic_block.phi_nodes )
+        {
+            Operand dest{ Operand::VARIABLE, phi.version, phi.var_id};
+            Operand src = phi.mapping.at( from_id);
+            ImmType src_val = value( src);
+
+            LOGGER(IR_INTERPRETER) << "Running Phi node: " << dest.ToStr() << " = "
+                                   << src.ToStr() << " = " << src_val;
+
+            storage( dest) = src_val;
+        }
 
         for ( const Instruction& instr : basic_block.instructions )
         {
@@ -98,7 +111,7 @@ private:
         {
             LOGGER(IR_INTERPRETER) << "BB_" << basic_block.id << " terminator is always true";
             const BasicBlock& dest = find_basic_block( basic_block.terminator.true_dest);
-            run_basic_block( dest);
+            run_basic_block( dest, basic_block.id);
             return ;
         }
 
@@ -120,11 +133,11 @@ private:
         if ( result )
         {
             const BasicBlock& dest = find_basic_block( basic_block.terminator.true_dest);
-            run_basic_block( dest);
+            run_basic_block( dest, basic_block.id);
         } else
         {
             const BasicBlock& dest = find_basic_block( basic_block.terminator.false_dest);
-            run_basic_block( dest);
+            run_basic_block( dest, basic_block.id);
         }
     }
 
@@ -135,7 +148,7 @@ private:
 
         ImmType result = value( instr.operands[0]) + value( instr.operands[1]);
 
-        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr() + " = "
                                << instr.operands[0].ToStr() + " + "
                                << instr.operands[1].ToStr() + " = "
                                << result;
@@ -150,7 +163,7 @@ private:
 
         ImmType result = value( instr.operands[0]) - value( instr.operands[1]);
 
-        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr() + " = "
                                << instr.operands[0].ToStr() + " - "
                                << instr.operands[1].ToStr() + " = "
                                << result;
@@ -165,7 +178,7 @@ private:
 
         ImmType result = value( instr.operands[0]) * value( instr.operands[1]);
 
-        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr() + " = "
                                << instr.operands[0].ToStr() + " * "
                                << instr.operands[1].ToStr() + " = "
                                << result;
@@ -180,7 +193,7 @@ private:
 
         ImmType result = value( instr.operands[0]) / value( instr.operands[1]);
 
-        LOGGER(IR_INTERPRETER) << instr.defines.ToStr()
+        LOGGER(IR_INTERPRETER) << instr.defines.ToStr() + " = "
                                << instr.operands[0].ToStr() + " / "
                                << instr.operands[1].ToStr() + " = "
                                << result;
