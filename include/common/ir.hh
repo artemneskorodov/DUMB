@@ -228,11 +228,12 @@ struct BasicBlock final
     {
     }
 
-    std::list<PhiNode>     phi_nodes{};
-    std::list<Instruction> instructions{};
-    BasicBlockTerminator   terminator{};
-    std::list<int>         phi_acceptors{};
-    BasicBlockID           id;
+    std::list<PhiNode>      phi_nodes{};
+    std::list<Instruction>  instructions{};
+    BasicBlockTerminator    terminator{};
+    std::list<int>          phi_acceptors{};
+    BasicBlockID            id;
+    std::list<BasicBlockID> predecessors{};
 
 };
 
@@ -250,11 +251,22 @@ public:
     }
 
     BasicBlock&
-    AddBasicBlock( BasicBlockID id)
+    AddEntryBasicBlock()
     {
-        basic_blocks_.emplace_back( id);
-        basic_block_hash_[id] = &basic_blocks_.back();
-        return basic_blocks_.back();
+        BasicBlock& bb = add_basic_block( current_bb_id_);
+        entry_ = current_bb_id_;
+        ++current_bb_id_;
+        return bb;
+    }
+
+    BasicBlock&
+    AddBasicBlock()
+    {
+        if ( entry_ < 0 )
+        {
+            throw std::runtime_error{ "It is expected to add entry basic block first"};
+        }
+        return add_basic_block( current_bb_id_++);
     }
 
     BasicBlock&
@@ -317,12 +329,33 @@ public:
         return id_;
     }
 
+    BasicBlockID
+    Entry() const
+    {
+        if ( entry_ < 0 )
+        {
+            throw std::runtime_error{ "Entry is not set"};
+        }
+        return entry_;
+    }
+
 private:
-    std::vector<SSAKey>                            params_       {};
-    std::list<BasicBlock>                          basic_blocks_ {};
-    std::unordered_map<BasicBlockID, BasicBlock *> basic_block_hash_{};
-    std::list<SSAKey>                              variables_    {};
+    BasicBlock&
+    add_basic_block( ir::BasicBlockID id)
+    {
+        basic_blocks_.emplace_back( id);
+        basic_block_hash_[id] = &basic_blocks_.back();
+        return basic_blocks_.back();
+    }
+
+private:
+    std::vector<SSAKey>                            params_           {};
+    std::list<BasicBlock>                          basic_blocks_     {};
+    std::unordered_map<BasicBlockID, BasicBlock *> basic_block_hash_ {};
+    std::list<SSAKey>                              variables_        {};
     int                                            id_;
+    BasicBlockID                                   current_bb_id_    { 0};
+    BasicBlockID                                   entry_            { -1};
 
 };
 
@@ -342,19 +375,20 @@ public:
     AddFunction( int id) &
     {
         functions_.emplace_back( id);
+        functions_hash_[id] = &functions_.back();
         return functions_.back();
     }
 
     Function&
     GetFunction( int id) &
     {
-        return functions_[id];
+        return *functions_hash_.at( id);
     }
 
     const Function&
     GetFunction( int id) const &
     {
-        return functions_[id];
+        return *functions_hash_.at( id);
     }
 
     nt::NameTable&
@@ -376,13 +410,13 @@ public:
         return strings_.size() - 1;
     }
 
-    const std::vector<Function>&
+    const std::list<Function>&
     Functions() const &
     {
         return functions_;
     }
 
-    std::vector<Function>&
+    std::list<Function>&
     Functions() &
     {
         return functions_;
@@ -406,11 +440,29 @@ public:
         return strings_;
     }
 
+    void
+    SetEntry( int entry)
+    {
+        entry_ = entry;
+    }
+
+    int
+    Entry() const
+    {
+        if ( entry_ < 0 )
+        {
+            throw std::runtime_error{ "Entry is not set"};
+        }
+        return entry_;
+    }
+
 private:
-    nt::NameTable            nametable_;
-    std::vector<Function>    functions_ {};
-    std::vector<std::string> strings_   {};
-    std::vector<int>         globals_{};
+    nt::NameTable                       nametable_;
+    std::list<Function>                 functions_      {};
+    std::unordered_map<int, Function *> functions_hash_ {};
+    std::vector<std::string>            strings_        {};
+    std::vector<int>                    globals_        {};
+    int                                 entry_          { -1};
 
 };
 

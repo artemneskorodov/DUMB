@@ -23,6 +23,7 @@ enum class LogCategory : std::size_t
     DUMP_AST         = 4,
     DUMP_IR          = 5,
     DOMINATORS_TABLE = 6,
+    BACKEND          = 7,
 
     LOG_CATEGORY_MAX
 };
@@ -39,7 +40,8 @@ constexpr std::array<std::string_view, kLogCatMax> kLogCategoriesStrings{{
     "IR_INTERPRETER",
     "DUMP_AST",
     "DUMP_IR",
-    "DOMINATORS_TABLE"
+    "DOMINATORS_TABLE",
+    "BACKEND",
 }};
 
 inline std::string

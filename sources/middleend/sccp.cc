@@ -360,6 +360,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
                                 bb.phi_acceptors.remove( term.false_dest);
                             }
                         }
+                        false_bb.predecessors.remove( bb.id);
                         term.true_dest  = term.true_dest;
                         term.false_dest = 0;
                     } else
@@ -373,6 +374,7 @@ SparseConditionalConstantPropagation(ir::Program& program)
                                 bb.phi_acceptors.remove( term.true_dest);
                             }
                         }
+                        true_bb.predecessors.remove( bb.id);
                         term.true_dest  = term.false_dest;
                         term.false_dest = 0;
                     }

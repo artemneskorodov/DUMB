@@ -155,6 +155,12 @@ dump_basic_block( const ir::Program& program,
         result.addRow().addCell( "BasicBlock_" + std::to_string( succ)).setColSpan( 4);
     }
 
+    result.addRow().addCell( "Predecessors").setColSpan( 4);
+    for ( BasicBlockID id : basic_block.predecessors )
+    {
+        result.addRow().addCell( "BasicBlock_" + std::to_string( id)).setColSpan( 4);
+    }
+
     result.addRow().addCell( "Phi nodes").setColSpan( 4);
 
     for ( const ir::PhiNode& phi : basic_block.phi_nodes )
@@ -216,7 +222,8 @@ dump_function( const ir::Program&   program,
     const nt::Symbol *sym = program.Nametable().FindSymbol( function.Id());
 
     html::HTMLRow& func_row = func_start.addRow();
-    func_row.addCell( "Function " + sym->GetName())
+    func_row.addCell( "Function " + sym->GetName() +
+                      "(id=" + std::to_string( function.Id()) + ")")
             .setPort( "Prev");
     for ( const SSAKey& param_id : function.Params() )
     {
@@ -290,11 +297,6 @@ DumpIR( const ir::Program& program,
     graph.addNode( "__PROGRAM__")
          .setHtmlLabel( static_cast<std::string>( header))
          .setShape( "box");
-
-    dot_graph::Subgraph& preamble = graph.addSubgraph( "cluster__PREAMBLE__")
-                                         .setColor( kFunctionClusterColor);
-
-    dump_function( program, program.GetFunction( 0), graph, preamble);
 
     for ( const Function& func : program.Functions() )
     {

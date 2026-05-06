@@ -4,6 +4,7 @@
 #include "ir.hh"
 #include "backend.hh"
 #include "lir.hh"
+#include "logger.hh"
 
 namespace dumb
 {
@@ -23,9 +24,18 @@ public:
     lir::Program
     Emit()
     {
-        // Functions
+        // Entry
+        int entry_id = program_.Entry();
+        LOGGER(BACKEND) << "program_.Entry() = " << entry_id;
+        emit_function( program_.GetFunction( entry_id));
+
+        // Other functions
         for ( const ir::Function& func : program_.Functions() )
         {
+            if ( func.Id() == entry_id )
+            {
+                continue;
+            }
             emit_function( func);
         }
 
@@ -47,6 +57,8 @@ private:
     void
     emit_function( const ir::Function& func)
     {
+        LOGGER(BACKEND) << "Emitting function id=" << func.Id();
+
         int offset = 0;
         for ( const ir::SSAKey& param : func.Params() )
         {
@@ -67,8 +79,17 @@ private:
         variables_size_ = static_cast<int>( func.Variables().size() * 8);
         lir_.Add( lir::BinaryOp::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
 
+        // Emitting entry basic block first
+        ir::BasicBlockID entry_id = func.Entry();
+        emit_basic_block( func, func.GetBasicBlock( entry_id));
+
+        // Emitting other basic blocks
         for ( const ir::BasicBlock& block : func.BasicBlocks() )
         {
+            if ( block.id == entry_id )
+            {
+                continue;
+            }
             emit_basic_block( func, block);
         }
         rbp_offsets_.clear();

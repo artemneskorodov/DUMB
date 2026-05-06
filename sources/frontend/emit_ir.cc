@@ -22,16 +22,16 @@ public:
              ir::Function& function)
      :  program_{ program},
         function_{ function},
-        basic_block_{ &function_.AddBasicBlock( basic_blocks_counter_++)}
+        basic_block_{ &function_.AddEntryBasicBlock()}
     {
     }
 
     Emitter( ir::Program& program,
              ir::Function& function,
-             ir::BasicBlock& basic_block)
+             ir::BasicBlock& entry)
      :  program_{ program},
         function_{ function},
-        basic_block_{ &basic_block}
+        basic_block_{ &entry}
     {
     }
 
@@ -117,15 +117,19 @@ public:
             default: throw std::runtime_error{ "Unexpected compare operation type"};
         }
 
-        // Saving basic basic block which will go after if
-        std::pair<int, int> labels = book_basic_blocks_pair();
+        ir::BasicBlock& body_bb = function_.AddBasicBlock();
+        ir::BasicBlock& next_bb = function_.AddBasicBlock();
+
+        body_bb.predecessors.emplace_back( basic_block_->id);
+        next_bb.predecessors.emplace_back( basic_block_->id);
 
         basic_block_->terminator = ir::BasicBlockTerminator( left,
                                                              right,
                                                              type,
-                                                             labels.first,
-                                                             labels.second);
-        start_new_basic_block( labels.first);
+                                                             body_bb.id,
+                                                             next_bb.id);
+
+        basic_block_ = &body_bb;
 
         for ( auto& it : node.body )
         {
@@ -133,21 +137,30 @@ public:
         }
 
         basic_block_->terminator.type      = ir::CmpType::ALWAYS_TRUE;
-        basic_block_->terminator.true_dest = labels.second;
+        basic_block_->terminator.true_dest = next_bb.id;
 
-        // Finishing basic block with new basic block label equals to false label which we saved previously
-        start_new_basic_block(labels.second);
+        next_bb.predecessors.emplace_back( body_bb.id);
+
+        basic_block_ = &next_bb;
     }
 
     void
     Visit( const ast::While& node) override
     {
-        // Adding condition basic block
-        basic_block_->terminator.type      = ir::CmpType::ALWAYS_TRUE;
-        basic_block_->terminator.true_dest = current_basic_block() + 1;
+        ir::BasicBlock& cond_bb = function_.AddBasicBlock();
+        ir::BasicBlock& body_bb = function_.AddBasicBlock();
+        ir::BasicBlock& next_bb = function_.AddBasicBlock();
 
-        start_new_basic_block();
-        int condition_block = current_basic_block();
+        // Forwarding current basic block to condition block
+        basic_block_->terminator.type      = ir::CmpType::ALWAYS_TRUE;
+        basic_block_->terminator.true_dest = cond_bb.id;
+
+        cond_bb.predecessors.emplace_back( basic_block_->id);
+        cond_bb.predecessors.emplace_back( body_bb.id);
+        body_bb.predecessors.emplace_back( cond_bb.id);
+        next_bb.predecessors.emplace_back( cond_bb.id);
+
+        basic_block_ = &cond_bb;
 
         // Emitting condition
         // Left
@@ -166,25 +179,26 @@ public:
             default: throw std::runtime_error{ "Unexpected compare operation type"};
         }
 
-        std::pair<int, int> labels = book_basic_blocks_pair();
-
         basic_block_->terminator = ir::BasicBlockTerminator( left,
                                                              right,
                                                              type,
-                                                             labels.first,
-                                                             labels.second);
+                                                             body_bb.id,
+                                                             next_bb.id);
 
-        start_new_basic_block( labels.first);
+        // Emitting while body
+        basic_block_ = &body_bb;
 
         for ( auto& it : node.body )
         {
             it.get()->Accept( *this);
         }
 
+        // Forwarding to conditional basic block
         basic_block_->terminator.type      = ir::CmpType::ALWAYS_TRUE;
-        basic_block_->terminator.true_dest = condition_block;
+        basic_block_->terminator.true_dest = cond_bb.id;
 
-        start_new_basic_block( labels.second);
+        // Adding next basic block for everything after while
+        basic_block_ = &next_bb;
     }
 
     void
@@ -291,39 +305,12 @@ public:
 private:
     ir::Operand               eval_result_{};
     std::size_t               tmp_counter_{ 0};
-    int                       basic_blocks_counter_{ 0};
 
     ir::Program              &program_;
     ir::Function             &function_;
     ir::BasicBlock           *basic_block_;
 
 private:
-    void
-    start_new_basic_block( int id)
-    {
-        basic_block_ = &function_.AddBasicBlock( id);
-    }
-
-    void
-    start_new_basic_block()
-    {
-        basic_block_ = &function_.AddBasicBlock( basic_blocks_counter_);
-        ++basic_blocks_counter_;
-    }
-
-    int
-    current_basic_block() const
-    {
-        return basic_blocks_counter_ - 1;
-    }
-
-    std::pair<int, int>
-    book_basic_blocks_pair()
-    {
-        basic_blocks_counter_ += 2;
-        return { basic_blocks_counter_ - 2, basic_blocks_counter_ - 1};
-    }
-
     ir::Operand
     get_operand( nt::SymbolID id)
     {
@@ -366,9 +353,10 @@ EmitIR( const ast::Program& program)
     nt::SymbolID start_id = ir.Nametable().AddSymbol( "_start", nt::SymbolType::FUNCTION);
 
     ir::Function& start = ir.AddFunction( start_id);
-    ir::BasicBlock& basic_block = start.AddBasicBlock( 0);
+    ir.SetEntry( start_id);
+    ir::BasicBlock& start_entry = start.AddEntryBasicBlock();
 
-    Emitter emitter{ ir, start, basic_block};
+    Emitter emitter{ ir, start, start_entry};
     for ( const ast::StmtNodePtr& stmt : program.global_variables )
     {
         stmt->Accept( emitter);
@@ -376,7 +364,7 @@ EmitIR( const ast::Program& program)
 
     const nt::Symbol *main_sym = ir.Nametable().FindSymbol( "main");
 
-    basic_block.instructions.emplace_back( ir::Opcode::CALL,
+    start_entry.instructions.emplace_back( ir::Opcode::CALL,
                                            ir::kNoDefine,
                                            std::vector<ir::Operand>{
                                                { ir::Operand::FUNC_LABEL, 0, main_sym->GetID()}
