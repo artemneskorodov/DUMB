@@ -1,0 +1,36 @@
+function test(parameter)
+{
+    variable a = parameter + 10;
+    variable b = a + 5;
+    variable c = b * 2;
+    variable d = c + 100;
+    variable e = d * 2;
+
+    return c;
+}
+
+function main()
+{
+    variable counter = 1000000;
+    variable result;
+
+    variable parameter = 10;
+
+    while ( counter > 0 )
+    {
+        result = test(parameter);
+        result = test(parameter);
+        result = test(parameter);
+        result = test(parameter);
+        result = test(parameter);
+        result = test(parameter);
+        result = test(parameter);
+        result = test(parameter);
+        result = test(parameter);
+        result = test(parameter);
+
+        counter = counter - 1;
+    }
+
+    output(result, "Result = ");
+}

@@ -1,0 +1,31 @@
+function test()
+{
+    variable a = 5;
+    variable b = a + 3;
+    variable c = b * 2;
+    return c - 16;
+}
+
+function main()
+{
+    variable counter = 1000000;
+    variable result;
+
+    while ( counter > 0 )
+    {
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+
+        counter = counter - 1;
+    }
+
+    output(result, "Result = ");
+}

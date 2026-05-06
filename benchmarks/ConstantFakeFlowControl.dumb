@@ -1,0 +1,36 @@
+function test()
+{
+    variable x = 10;
+    if ( x > 0 )
+    {
+        return 1;
+    }
+    if ( x < 0 )
+    {
+        return 2;
+    }
+}
+
+function main()
+{
+    variable counter = 1000000;
+    variable result;
+
+    while ( counter > 0 )
+    {
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+
+        counter = counter - 1;
+    }
+
+    output(result, "Result = ");
+}
