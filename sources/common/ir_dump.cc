@@ -155,6 +155,12 @@ dump_basic_block( const ir::Program& program,
         result.addRow().addCell( "BasicBlock_" + std::to_string( succ)).setColSpan( 4);
     }
 
+    result.addRow().addCell( "Predecessors").setColSpan( 4);
+    for ( BasicBlockID id : basic_block.predecessors )
+    {
+        result.addRow().addCell( "BasicBlock_" + std::to_string( id)).setColSpan( 4);
+    }
+
     result.addRow().addCell( "Phi nodes").setColSpan( 4);
 
     for ( const ir::PhiNode& phi : basic_block.phi_nodes )
