@@ -59,6 +59,19 @@ get_uses_counters( const ir::Function& function)
 {
     std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> result{};
 
+    auto increase_counter = [&result]( const ir::Operand& operand )
+                            {
+                                if ( operand.type == ir::Operand::VARIABLE )
+                                {
+                                    ir::SSAKey key{ operand.id, operand.value};
+                                    if ( result.find( key) == result.end() )
+                                    {
+                                        result[key] = 0;
+                                    }
+                                    ++result[key];
+                                }
+                            };
+
     for ( const ir::BasicBlock& block : function.BasicBlocks() )
     {
         for ( const ir::Instruction& instr : block.instructions )
@@ -72,14 +85,7 @@ get_uses_counters( const ir::Function& function)
             }
             for ( const ir::Operand& op : instr.operands )
             {
-                if ( op.type == ir::Operand::VARIABLE )
-                {
-                    if ( result.find( ir::SSAKey{ op.id, op.value}) == result.end() )
-                    {
-                        result[ir::SSAKey{ op.id, op.value}] = 0;
-                    }
-                    ++result[ir::SSAKey{ op.id, op.value}];
-                }
+                increase_counter( op);
             }
         }
 
@@ -91,16 +97,12 @@ get_uses_counters( const ir::Function& function)
             }
             for ( auto& [pred, op] : phi.mapping )
             {
-                if ( op.type  == ir::Operand::VARIABLE )
-                {
-                    if ( result.find( ir::SSAKey{ op.id, op.value}) == result.end() )
-                    {
-                        result[ir::SSAKey{ op.id, op.value}] = 0;
-                    }
-                    ++result[ir::SSAKey{ op.id, op.value}];
-                }
+                increase_counter( op);
             }
         }
+
+        increase_counter( block.terminator.left);
+        increase_counter( block.terminator.right);
     }
 
     return result;
