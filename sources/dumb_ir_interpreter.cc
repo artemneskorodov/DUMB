@@ -6,6 +6,7 @@
 #include "options.hh"
 #include "logger.hh"
 #include "middleend.hh"
+#include "ast_dump.hh"
 
 int
 main( int         argc,
@@ -17,6 +18,7 @@ main( int         argc,
     parser.AddOption<bool>       ( "--enable-sccp", "-sccp" , false, false);
     parser.AddOption<bool>       ( "--enable-dce" , "-dce"  , false, false);
     parser.AddOption<std::string>( "--log-flags"  , "-lf"   , ""   , false);
+    parser.AddOption<std::string>( "--dump-dir"   , "-dd"   , "./" , false);
 
     std::vector<std::string> args( argv + 1, argv + argc);
 
@@ -24,6 +26,10 @@ main( int         argc,
 
     dumb::logger::ConfigureLogger( parser.GetOption<std::string>( "--log-flags"));
     std::string source = parser.GetOption<std::string>( "--input");
+
+    std::string dump_dir = parser.GetOption<std::string>( "--dump-dir");
+    dumb::ast::dump::ConfigureDump( dump_dir);
+    dumb::ir::dump::ConfigureDump( dump_dir);
 
     dumb::ir::Program program = dumb::RunFrontend( source);
 
