@@ -278,8 +278,10 @@ BuildSSA( ir::Program& ir)
     for ( ir::Function& func : ir.Functions() )
     {
         BBGraph control_flow = BuildControlFlowGraph( func);
+        DrawGraph( "cf_func_" + std::to_string( func.Id()) + ".svg", control_flow);
         control_flow.BuildDominatorsTable();
         BBGraph dom_tree = graph::BuildDominatorsTree( control_flow);
+        DrawGraph( "dt_func_" + std::to_string( func.Id()) + ".svg", dom_tree);
         BBGraph dom_frontier = graph::BuildDominanceFrontier( control_flow, dom_tree);
 
         AddPhi( func, control_flow, dom_frontier);

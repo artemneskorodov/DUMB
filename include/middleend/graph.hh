@@ -286,7 +286,8 @@ public:
     void
     Add( NodeIdT id)
     {
-        id_to_size_map_[id];
+        id_to_size_map_[id] = size_to_id_map_.size();
+        size_to_id_map_.emplace_back( id);
     }
 
     ///
