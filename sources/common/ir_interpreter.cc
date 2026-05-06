@@ -44,6 +44,7 @@ private:
     {
         LOGGER(IR_INTERPRETER) << "Running function " << func.Id();
 
+        const Function* old_func = current_function_;
         current_function_ = &func;
         for ( const SSAKey& param : func.Params() )
         {
@@ -59,6 +60,7 @@ private:
 
         run_basic_block( func.GetBasicBlock( 0), 0);
         need_return_ = false;
+        current_function_ = old_func;
     }
 
     void
