@@ -6,9 +6,10 @@
 #include <unordered_map>
 #include <functional>
 #include <cstdint>
-#include <bitset>
 #include <stdexcept>
 #include <string>
+#include <climits>
+#include <vector>
 
 namespace dumb
 {
