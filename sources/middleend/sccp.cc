@@ -22,9 +22,9 @@ enum class LatticeKind
 
 struct LatticeValue
 {
-    static LatticeValue Undefined   ()       { return {LatticeKind::UNDEFINED,   0}; }
-    static LatticeValue Constant    ( int v) { return {LatticeKind::CONSTANT,    v}; }
-    static LatticeValue Overdefined ()       { return {LatticeKind::OVERDEFINED, 0}; }
+    static LatticeValue Undefined   ()               { return { LatticeKind::UNDEFINED,   0}; }
+    static LatticeValue Constant    ( ir::ImmType v) { return { LatticeKind::CONSTANT,    v}; }
+    static LatticeValue Overdefined ()               { return { LatticeKind::OVERDEFINED, 0}; }
 
     static LatticeValue
     Merge( const LatticeValue& first,
@@ -71,7 +71,7 @@ struct LatticeValue
 };
 
 using ValueMap = std::unordered_map<ir::SSAKey, LatticeValue, ir::SSAKeyHash>;
-using ExecSet  = std::unordered_set<const ir::BasicBlock*>;
+using ExecSet  = std::unordered_set<ir::BasicBlockID>;
 
 LatticeValue
 eval_operand( const ir::Operand& op,
@@ -96,8 +96,8 @@ eval_operand( const ir::Operand& op,
 }
 
 LatticeValue
-eval_instr(const ir::Instruction& instr,
-           const ValueMap& values)
+eval_instr( const ir::Instruction& instr,
+            const ValueMap& values)
 {
     if ( instr.opcode == ir::Opcode::MOV )
     {
@@ -140,17 +140,17 @@ eval_instr(const ir::Instruction& instr,
 } // anonymous namespace
 
 void
-SparseConditionalConstantPropagation(ir::Program& program)
+SparseConditionalConstantPropagation( ir::Program& program)
 {
-    for (ir::Function& func : program.Functions())
+    for ( ir::Function& func : program.Functions() )
     {
-        ValueMap values{};
-        ExecSet executable{};
+        ValueMap values{};    // Lattice map of all SSA Keys
+        ExecSet executable{}; // Reachable blocks set
 
-        std::queue<const ir::BasicBlock*> control_flow_worklist{};
-        std::queue<const ir::BasicBlock*> ssa_worklist{};
+        std::queue<ir::BasicBlockID> control_flow_worklist{}; // Queue of control flow
+        std::queue<ir::BasicBlockID> ssa_worklist{};          // Queue of SSA
 
-        const ir::BasicBlock* entry = &func.BasicBlocks().front();
+        ir::BasicBlockID entry = func.Entry();
 
         executable.insert( entry);
         control_flow_worklist.push( entry);
@@ -160,30 +160,29 @@ SparseConditionalConstantPropagation(ir::Program& program)
         {
             while ( !control_flow_worklist.empty() )
             {
-                const ir::BasicBlock* bb = control_flow_worklist.front();
+                ir::BasicBlockID bb_id = control_flow_worklist.front();
                 control_flow_worklist.pop();
-
-                ssa_worklist.push( bb);
+                ssa_worklist.push( bb_id);
             }
 
             while ( !ssa_worklist.empty() )
             {
-                const ir::BasicBlock* bb = ssa_worklist.front();
+                ir::BasicBlockID bb_id = ssa_worklist.front();
                 ssa_worklist.pop();
+                const ir::BasicBlock& bb = func.GetBasicBlock( bb_id);
 
-                for ( const ir::PhiNode& phi : bb->phi_nodes )
+                for ( const ir::PhiNode& phi : bb.phi_nodes )
                 {
                     LatticeValue val = LatticeValue::Undefined();
 
-                    for ( auto& [pred, op] : phi.mapping )
+                    for ( auto& [pred_id, operand] : phi.mapping )
                     {
-                        const ir::BasicBlock *pred_ptr = &func.GetBasicBlock( pred);
-                        if ( executable.count(pred_ptr) == 0 )
+                        if ( executable.count( pred_id) == 0 )
                         {
                             continue;
                         }
 
-                        val = LatticeValue::Merge( val, eval_operand( op, values));
+                        val = LatticeValue::Merge( val, eval_operand( operand, values));
                     }
 
                     ir::SSAKey key{ phi.var.id, phi.var.value};
@@ -191,11 +190,11 @@ SparseConditionalConstantPropagation(ir::Program& program)
                     if ( values[key] != val )
                     {
                         values[key] = val;
-                        ssa_worklist.push( bb);
+                        ssa_worklist.push( bb_id);
                     }
                 }
 
-                for ( const ir::Instruction& instr : bb->instructions )
+                for ( const ir::Instruction& instr : bb.instructions )
                 {
                     if ( instr.defines.type != ir::Operand::VARIABLE )
                     {
@@ -209,20 +208,18 @@ SparseConditionalConstantPropagation(ir::Program& program)
                     if ( values[key] != val )
                     {
                         values[key] = val;
-                        ssa_worklist.push( bb);
+                        ssa_worklist.push( bb_id);
                     }
                 }
 
-                const ir::BasicBlockTerminator& term = bb->terminator;
+                const ir::BasicBlockTerminator& term = bb.terminator;
 
                 if ( term.type == ir::CmpType::ALWAYS_TRUE )
                 {
-                    const ir::BasicBlock* target = &func.GetBasicBlock( term.true_dest);
-
-                    if (!executable.count( target))
+                    if (!executable.count( term.true_dest))
                     {
-                        executable.insert( target);
-                        control_flow_worklist.push(target);
+                        executable.insert( term.true_dest);
+                        control_flow_worklist.push( term.true_dest);
                     }
                 } else if ( term.type != ir::CmpType::INVALID )
                 {
@@ -245,41 +242,38 @@ SparseConditionalConstantPropagation(ir::Program& program)
                         }
                     }
 
-                    const ir::BasicBlock* true_ptr  = &func.GetBasicBlock( term.true_dest);
-                    const ir::BasicBlock* false_ptr = &func.GetBasicBlock( term.false_dest);
-
                     if ( is_const )
                     {
-                        const ir::BasicBlock* target = result ? true_ptr : false_ptr;
+                        ir::BasicBlockID target_id = result ? term.true_dest : term.false_dest;
 
-                        if ( !executable.count( target) )
+                        if ( !executable.count( target_id) )
                         {
-                            executable.insert( target);
-                            control_flow_worklist.push(target);
+                            executable.insert( target_id);
+                            control_flow_worklist.push(target_id);
                         }
                     }
                     else
                     {
-                        if ( !executable.count( true_ptr) )
+                        if ( !executable.count( term.true_dest) )
                         {
-                            executable.insert( true_ptr);
-                            control_flow_worklist.push( true_ptr);
+                            executable.insert( term.true_dest);
+                            control_flow_worklist.push( term.true_dest);
                         }
-                        if ( !executable.count( false_ptr) )
+                        if ( !executable.count( term.false_dest) )
                         {
-                            executable.insert( false_ptr);
-                            control_flow_worklist.push( false_ptr);
+                            executable.insert( term.false_dest);
+                            control_flow_worklist.push( term.false_dest);
                         }
                     }
                 }
             }
         }
 
-        for ( auto& bb : func.BasicBlocks() )
+        for ( ir::BasicBlock& bb : func.BasicBlocks() )
         {
-            for ( auto& instr : bb.instructions )
+            for ( ir::Instruction& instr : bb.instructions )
             {
-                for ( auto& op : instr.operands )
+                for ( ir::Operand& op : instr.operands )
                 {
                     if (op.type == ir::Operand::VARIABLE)
                     {
