@@ -10,6 +10,7 @@
 #include <string>
 #include <climits>
 #include <vector>
+#include <bit>
 
 namespace dumb
 {
@@ -48,7 +49,7 @@ private:
             owner_.set( bit_, value);
         }
 
-        operator bool()
+        operator bool() const
         {
             return owner_.get( bit_);
         }
@@ -83,7 +84,10 @@ public:
         Bitset result{ size_};
         for ( std::size_t i = 0; i != flags_.size(); ++i )
         {
-            result.flags_[i] = flags_[i] & other.flags_[i];
+            PageType page = flags_[i] & other.flags_[i];
+            result.bits_on_ += std::popcount( page);
+            result.flags_[i] = page;
+
         }
         return result;
     }
@@ -91,11 +95,13 @@ public:
     void
     SetAll( bool value)
     {
-        PageType page_val = (value ? (~0) : 0);
+        PageType page_val = (value ? (~0ull) : 0ull);
         for ( PageType& page : flags_ )
         {
             page = page_val;
         }
+
+        bits_on_ = (value ? size_ : 0);
     }
 
     bool
@@ -117,7 +123,15 @@ public:
         }
 
         std::size_t padding_size = flags_.size() * sizeof( PageType) * CHAR_BIT - size_;
-        PageType mask = ~((1 << padding_size) - 1);
+        PageType mask;
+        if ( padding_size == sizeof( PageType) * CHAR_BIT )
+        {
+            mask = ~(0ull);
+        } else
+        {
+            mask = ~((1ull << padding_size) - 1ull);
+        }
+
         if ( (flags_[last] & mask) != (other.flags_[last] & mask))
         {
             return false;
@@ -131,6 +145,29 @@ public:
         return !(*this == other);
     }
 
+    std::size_t
+    Size() const
+    {
+        return bits_on_;
+    }
+
+    bool
+    Empty() const
+    {
+        return (Size() == 0);
+    }
+
+    std::string
+    ToStr() const
+    {
+        std::string result{};
+        for ( std::size_t bit = 0; bit != size_; ++bit )
+        {
+            result += ((*this)[bit] ? "1" : "-");
+        }
+        return result;
+    }
+
 private:
     void
     set( std::size_t bit,
@@ -142,7 +179,16 @@ private:
         std::size_t bit_offset  = bit % (sizeof( PageType) * CHAR_BIT);
 
         PageType page = flags_[page_offset];
-        PageType mask = 1 << bit_offset;
+        PageType mask = 1ull << bit_offset;
+
+        bool old_value = page & mask;
+        if ( value && !old_value )
+        {
+            ++bits_on_;
+        } else if ( !value && old_value )
+        {
+            --bits_on_;
+        }
 
         if ( value )
         {
@@ -164,7 +210,7 @@ private:
         std::size_t bit_offset  = bit % (sizeof( PageType) * CHAR_BIT);
 
         PageType page = flags_[page_offset];
-        PageType mask = 1 << bit_offset;
+        PageType mask = 1ull << bit_offset;
 
         return page & mask;
     }
@@ -189,13 +235,14 @@ private:
             return bit / (sizeof( PageType) * CHAR_BIT);
         } else
         {
-            return (bit + sizeof( PageType) * CHAR_BIT - 1) / (sizeof( PageType) * CHAR_BIT);
+            return (bit + sizeof( PageType) * CHAR_BIT - 1ull) / (sizeof( PageType) * CHAR_BIT);
         }
     }
 
 private:
     std::vector<PageType> flags_;
     std::size_t           size_;
+    std::size_t           bits_on_{ 0};
 
 };
 
@@ -278,13 +325,19 @@ public:
     std::size_t
     Size() const
     {
-        return bits_on_;
+        return flags_.Size();
     }
 
     bool
     Empty() const
     {
-        return (Size() == 0);
+        return flags_.Empty();
+    }
+
+    std::string
+    ToStr() const
+    {
+        return flags_.ToStr();
     }
 
 private:
@@ -306,15 +359,6 @@ public:
     SetByIndex( std::size_t index,
                 bool        value)
     {
-        bool old_value = flags_[index];
-        if ( value && !old_value )
-        {
-            ++bits_on_;
-        } else if ( !value && old_value )
-        {
-            --bits_on_;
-        }
-
         flags_[index] = value;
     }
 
@@ -334,7 +378,6 @@ private:
 
 private:
     Bitset                              flags_;
-    std::size_t                         bits_on_;
     std::function<std::size_t(NodeIdT)> id_to_size_mapper_;
 
 };
@@ -366,16 +409,16 @@ public:
 
     bool
     Dominates( NodeIdT dominator,
-               NodeIdT other) const
+               NodeIdT node) const
     {
-        return dominates_by_index( id_to_size_mapper_( dominator), id_to_size_mapper_( other));
+        return dominates_by_index( id_to_size_mapper_( dominator), id_to_size_mapper_( node));
     }
 
     bool
     ImmDominates( NodeIdT dominator,
-                  NodeIdT other) const
+                  NodeIdT node) const
     {
-        return imm_dominates_by_index( id_to_size_mapper_( dominator), id_to_size_mapper_( other));
+        return imm_dominates_by_index( id_to_size_mapper_( dominator), id_to_size_mapper_( node));
     }
 
     NodeIdT
@@ -385,23 +428,23 @@ public:
 
         for ( std::size_t other = 0; other != dominators_.size(); ++other )
         {
-            if ( !imm_dominates_by_index( node_i, other) )
+            if ( !imm_dominates_by_index( other, node_i) )
             {
                 continue;
             }
 
-            bool is_closest = true;
+            bool has_between = true;
             for ( std::size_t between = 0; between != dominators_.size(); ++between )
             {
-                if ( !imm_dominates_by_index( between, other) ||
-                     !imm_dominates_by_index( node_i, between) )
+                if ( !imm_dominates_by_index( other, between) ||
+                     !imm_dominates_by_index( between, node_i) )
                 {
                     continue ;
                 }
-                is_closest = false;
+                has_between = false;
                 break;
             }
-            if ( is_closest )
+            if ( has_between )
             {
                 return size_to_id_mapper_( other);
             }
@@ -418,19 +461,32 @@ public:
         }
     }
 
+    std::string
+    ToStr() const
+    {
+        std::string result{};
+        std::size_t counter = 0;
+        for ( const Dominators<NodeIdT>& doms : dominators_ )
+        {
+            result += std::to_string( size_to_id_mapper_( counter)) + " " + doms.ToStr() + "\n";
+            ++counter;
+        }
+        return result;
+    }
+
 private:
     bool
     dominates_by_index( std::size_t dominator,
-                        std::size_t other) const
+                        std::size_t node) const
     {
-        return dominators_[dominator].GetByIndex( other);
+        return dominators_[node].GetByIndex(dominator);
     }
 
     bool
     imm_dominates_by_index( std::size_t dominator,
-                            std::size_t other) const
+                            std::size_t node) const
     {
-        return (dominator != other) && dominates_by_index( dominator, other);
+        return (dominator != node) && dominates_by_index( dominator, node);
     }
 
 private:
@@ -551,10 +607,9 @@ public:
 
             for ( NodeIdT node_id : used_ids_ )
             {
-                const Node& node = *nodes_hash_[node_id];
                 Dominators<NodeIdT> tmp = dominators_table_[node_id];
 
-                for ( NodeIdT pred_id : node.preds )
+                for ( NodeIdT pred_id : GetPreds( node_id) )
                 {
                     tmp = tmp & dominators_table_[pred_id];
                 }
@@ -638,10 +693,9 @@ private:
 
 template<typename NodeIdT>
 inline Graph<NodeIdT>
-BuildDominatorsTree( Graph<NodeIdT> control_flow)
+BuildDominatorsTree( const Graph<NodeIdT>& control_flow)
 {
-    control_flow.BuildDominatorsTable();
-    const DominatorsTable<NodeIdT> dom_table = control_flow.GetDominatorsTable();
+    const DominatorsTable<NodeIdT>& dom_table = control_flow.GetDominatorsTable();
 
     // Copying nodes to dominators tree
     Graph<NodeIdT> tree{};
@@ -670,7 +724,7 @@ inline Graph<NodeIdT>
 BuildDominanceFrontier( const Graph<NodeIdT>& control_flow,
                         const Graph<NodeIdT>& dom_tree)
 {
-    DominatorsTable<NodeIdT> dom_table = control_flow.GetDominatorsTable();
+    const DominatorsTable<NodeIdT>& dom_table = control_flow.GetDominatorsTable();
 
     if ( control_flow.Size() != dom_tree.Size() )
     {
@@ -690,7 +744,7 @@ BuildDominanceFrontier( const Graph<NodeIdT>& control_flow,
         for ( NodeIdT pred_id : control_flow.GetPreds( node_id) )
         {
             NodeIdT current_id = pred_id;
-            while ( !dom_table.ImmDominates( node_id, current_id) )
+            while ( !dom_table.ImmDominates( current_id, node_id) )
             {
                 dominance_frontier.AddEdge( current_id, node_id);
                 current_id = dom_tree.GetPreds( current_id).front();

@@ -134,7 +134,7 @@ RenameVariables( ir::Function&  function,
     };
     std::vector<FrameInfo> workqueue;
 
-    workqueue.push_back( { 0, false}); // Adding entry to basic block
+    workqueue.push_back( FrameInfo{ 0, false}); // Adding entry to basic block
 
     while ( !workqueue.empty() )
     {
