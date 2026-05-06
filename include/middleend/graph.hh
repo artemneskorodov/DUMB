@@ -17,6 +17,9 @@ namespace dumb
 namespace graph
 {
 
+namespace detail
+{
+
 class Bitset
 {
 private:
@@ -82,13 +85,20 @@ public:
         }
 
         Bitset result{ size_};
-        for ( std::size_t i = 0; i != flags_.size(); ++i )
+        std::size_t last = flags_.size() - 1;
+        for ( std::size_t i = 0; i != last; ++i )
         {
             PageType page = flags_[i] & other.flags_[i];
             result.bits_on_ += std::popcount( page);
             result.flags_[i] = page;
-
         }
+
+        PageType last_page = flags_[last] & other.flags_[last];
+        PageType mask = last_page_mask();
+        last_page &= mask;
+        result.bits_on_ += std::popcount( last_page);
+        result.flags_[last] = last_page;
+
         return result;
     }
 
@@ -96,10 +106,13 @@ public:
     SetAll( bool value)
     {
         PageType page_val = (value ? (~0ull) : 0ull);
-        for ( PageType& page : flags_ )
+
+        std::size_t last = flags_.size() - 1;
+        for ( std::size_t i = 0; i != last; ++i )
         {
-            page = page_val;
+            flags_[i] = page_val;
         }
+        flags_[last] = page_val & last_page_mask();
 
         bits_on_ = (value ? size_ : 0);
     }
@@ -122,15 +135,7 @@ public:
             }
         }
 
-        std::size_t padding_size = flags_.size() * sizeof( PageType) * CHAR_BIT - size_;
-        PageType mask;
-        if ( padding_size == sizeof( PageType) * CHAR_BIT )
-        {
-            mask = ~(0ull);
-        } else
-        {
-            mask = ~((1ull << padding_size) - 1ull);
-        }
+        PageType mask = last_page_mask();
 
         if ( (flags_[last] & mask) != (other.flags_[last] & mask))
         {
@@ -225,6 +230,22 @@ private:
         }
     }
 
+    PageType
+    last_page_mask() const
+    {
+        std::size_t padding = flags_.size() * sizeof( PageType) * CHAR_BIT - size_;
+
+        PageType mask;
+        if ( padding == sizeof( PageType) * CHAR_BIT )
+        {
+            mask = ~(0ull);
+        } else
+        {
+            mask = ~((1ull << padding) - 1ull);
+        }
+        return mask;
+    }
+
 private:
     static std::size_t
     bit_page( std::size_t bit,
@@ -247,13 +268,62 @@ private:
 };
 
 template<typename NodeIdT>
-class Dominators
+class IdAndSizeMapper
 {
 public:
-    Dominators( std::size_t                         nodes_number,
-                std::function<std::size_t(NodeIdT)> id_to_size_mapper)
-     :  flags_             { nodes_number},
-        id_to_size_mapper_ { std::move( id_to_size_mapper)}
+    std::size_t
+    IdToSize( NodeIdT id) const
+    {
+        return id_to_size_map_.at( id);
+    }
+
+    NodeIdT
+    SizeToId( std::size_t size) const
+    {
+        return size_to_id_map_[size];
+    }
+
+    void
+    Add( NodeIdT id)
+    {
+        id_to_size_map_[id];
+    }
+
+    void
+    Rebuild( const std::list<NodeIdT> nodes)
+    {
+        id_to_size_map_.clear();
+        size_to_id_map_.clear();
+
+        std::size_t index = 0;
+        for ( NodeIdT id : nodes )
+        {
+            id_to_size_map_[id] = index;
+            ++index;
+            size_to_id_map_.emplace_back( id);
+        }
+    }
+
+private:
+    std::unordered_map<NodeIdT, std::size_t> id_to_size_map_{};
+    std::vector<NodeIdT>                     size_to_id_map_{};
+
+};
+
+} // ! namespace detail
+
+template<typename NodeIdT>
+class Dominators
+{
+private:
+    using this_type_t = Dominators<NodeIdT>;
+    using mapper_t = detail::IdAndSizeMapper<NodeIdT>;
+
+public:
+    Dominators( std::size_t     nodes_number,
+                const mapper_t *mapper)
+     :  flags_  { nodes_number},
+        mapper_ { mapper}
     {
     }
 
@@ -261,8 +331,8 @@ private:
     class Proxy
     {
     public:
-        Proxy( Dominators<NodeIdT>& owner,
-               NodeIdT              id)
+        Proxy( this_type_t& owner,
+               NodeIdT      id)
          :  owner_ { owner},
             id_    { id}
         {
@@ -280,8 +350,8 @@ private:
         }
 
     private:
-        Dominators<NodeIdT>& owner_;
-        NodeIdT              id_;
+        this_type_t& owner_;
+        NodeIdT      id_;
 
     };
 
@@ -304,20 +374,24 @@ public:
         flags_.SetAll( value);
     }
 
-    Dominators
-    operator&( const Dominators<NodeIdT>& other) const
+    this_type_t
+    operator&( const this_type_t& other) const
     {
-        return Dominators{ flags_ & other.flags_, id_to_size_mapper_};
+        check_mappers_same( mapper_, other.mapper_);
+
+        return this_type_t{ flags_ & other.flags_, mapper_};
     }
 
     bool
-    operator==( const Dominators<NodeIdT>& other) const
+    operator==( const this_type_t& other) const
     {
+        check_mappers_same( mapper_, other.mapper_);
+
         return flags_ == other.flags_;
     }
 
     bool
-    operator!=( const Dominators<NodeIdT>& other) const
+    operator!=( const this_type_t& other) const
     {
         return !(flags_ == other.flags_);
     }
@@ -341,10 +415,10 @@ public:
     }
 
 private:
-    Dominators( Bitset                              flags,
-                std::function<std::size_t(NodeIdT)> id_to_size_mapper)
-     :  flags_             { std::move( flags)},
-        id_to_size_mapper_ { std::move( id_to_size_mapper)}
+    Dominators( detail::Bitset  flags,
+                const mapper_t *mapper)
+     :  flags_  { std::move( flags)},
+        mapper_ { mapper}
     {
     }
 
@@ -366,65 +440,78 @@ private:
     bool
     get( NodeIdT id) const
     {
-        return GetByIndex( id_to_size_mapper_( id));
+        return GetByIndex( mapper_->IdToSize( id));
     }
 
     void
     set( NodeIdT id,
          bool    value)
     {
-        SetByIndex( id_to_size_mapper_( id), value);
+        SetByIndex( mapper_->IdToSize( id), value);
+    }
+
+    void
+    check_mappers_same( const mapper_t *first,
+                        const mapper_t *second) const
+    {
+        // Comparing pointers to ensure this mappers are from same graph
+        if ( first != second )
+        {
+            throw std::runtime_error{ "Different mappers"};
+        }
     }
 
 private:
-    Bitset                              flags_;
-    std::function<std::size_t(NodeIdT)> id_to_size_mapper_;
+    detail::Bitset  flags_;
+    const mapper_t *mapper_;
 
 };
 
 template<typename NodeIdT>
 class DominatorsTable
 {
+private:
+    using dominators_type_t = Dominators<NodeIdT>;
+    using mapper_t = detail::IdAndSizeMapper<NodeIdT>;
+
 public:
-    DominatorsTable( std::size_t                         nodes_number,
-                     std::function<std::size_t(NodeIdT)> id_to_size_mapper,
-                     std::function<NodeIdT(std::size_t)> size_to_id_mapper)
-     :  dominators_( nodes_number, Dominators<NodeIdT>{ nodes_number, id_to_size_mapper}),
-        id_to_size_mapper_{ std::move( id_to_size_mapper)},
-        size_to_id_mapper_{ std::move( size_to_id_mapper)}
+    DominatorsTable( std::size_t     nodes_number,
+                     const mapper_t *mapper)
+     :  dominators_ ( nodes_number, dominators_type_t{ nodes_number, mapper}),
+        mapper_     { mapper}
     {
     }
 
-    Dominators<NodeIdT>&
+    dominators_type_t&
     operator[]( NodeIdT id) &
     {
-        return dominators_[ id_to_size_mapper_( id)];
+        return dominators_[id];
     }
 
-    const Dominators<NodeIdT>&
+    const dominators_type_t&
     operator[]( NodeIdT id) const &
     {
-        return dominators_[ id_to_size_mapper_( id)];
+        return dominators_[id];
     }
 
     bool
     Dominates( NodeIdT dominator,
                NodeIdT node) const
     {
-        return dominates_by_index( id_to_size_mapper_( dominator), id_to_size_mapper_( node));
+        return dominates_by_index( mapper_->IdToSize( dominator), mapper_->IdToSize( node));
     }
 
     bool
     ImmDominates( NodeIdT dominator,
                   NodeIdT node) const
     {
-        return imm_dominates_by_index( id_to_size_mapper_( dominator), id_to_size_mapper_( node));
+        return imm_dominates_by_index( mapper_->IdToSize( dominator), mapper_->IdToSize( node));
     }
 
     NodeIdT
     Closest( NodeIdT id) const
     {
-        std::size_t node_i = id_to_size_mapper_( id);
+        std::size_t node_i = mapper_->IdToSize( id);
 
         for ( std::size_t other = 0; other != dominators_.size(); ++other )
         {
@@ -446,7 +533,7 @@ public:
             }
             if ( has_between )
             {
-                return size_to_id_mapper_( other);
+                return mapper_->SizeToId( other);
             }
         }
         throw std::runtime_error{ "No closest dominator"};
@@ -455,7 +542,7 @@ public:
     void
     SetAll( bool value)
     {
-        for ( Dominators<NodeIdT>& dom : dominators_ )
+        for ( dominators_type_t& dom : dominators_ )
         {
             dom.SetAll( value);
         }
@@ -466,9 +553,9 @@ public:
     {
         std::string result{};
         std::size_t counter = 0;
-        for ( const Dominators<NodeIdT>& doms : dominators_ )
+        for ( const dominators_type_t& doms : dominators_ )
         {
-            result += std::to_string( size_to_id_mapper_( counter)) + " " + doms.ToStr() + "\n";
+            result += std::to_string( mapper_->SizeToId( counter)) + " " + doms.ToStr() + "\n";
             ++counter;
         }
         return result;
@@ -490,9 +577,8 @@ private:
     }
 
 private:
-    std::vector<Dominators<NodeIdT>>    dominators_;
-    std::function<std::size_t(NodeIdT)> id_to_size_mapper_;
-    std::function<NodeIdT(std::size_t)> size_to_id_mapper_;
+    std::vector<dominators_type_t> dominators_;
+    const mapper_t                *mapper_;
 
 };
 
@@ -520,6 +606,7 @@ public:
         nodes_.emplace_back( id);
         nodes_hash_[id] = &nodes_.back();
         used_ids_.emplace_back( id);
+        mapper_.Add( id);
 
         dom_table_actual_ = false;
     }
@@ -556,6 +643,9 @@ public:
         used_ids_.remove( id);
 
         dom_table_actual_ = false;
+
+        // Rebuilding NodeIdT <-> std::size_t mapper
+        mapper_.Rebuild( used_ids_);
     }
 
     void
@@ -578,6 +668,7 @@ public:
         return nodes_hash_.at( id)->preds;
     }
 
+public:
     void
     BuildDominatorsTable()
     {
@@ -586,15 +677,7 @@ public:
             return ;
         }
 
-        dominators_table_ = DominatorsTable<NodeIdT>{ nodes_.size(),
-                                                      [this](NodeIdT id)->std::size_t
-                                                      {
-                                                          return id_to_size_mapper( id);
-                                                      },
-                                                      [this](std::size_t size)->NodeIdT
-                                                      {
-                                                          return size_to_id_mapper( size);
-                                                      }};
+        dominators_table_ = DominatorsTable<NodeIdT>{ nodes_.size(), &mapper_};
 
         dominators_table_.SetAll( true);
         dominators_table_[entry_].SetAll( false);
@@ -686,7 +769,8 @@ private:
     std::unordered_map<NodeIdT, Node *>      nodes_hash_          {};
     std::list<NodeIdT>                       used_ids_            {};
     NodeIdT                                  entry_               { 0};
-    DominatorsTable<NodeIdT>                 dominators_table_    { 0, {}, {}};
+    detail::IdAndSizeMapper<NodeIdT>         mapper_              {};
+    DominatorsTable<NodeIdT>                 dominators_table_    { 0, &mapper_};
     bool                                     dom_table_actual_    { false};
 
 };
