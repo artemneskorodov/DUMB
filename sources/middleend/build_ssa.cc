@@ -8,6 +8,8 @@
 
 #include "build_ssa.hh"
 #include "ir.hh"
+#include "graph.hh"
+
 #include "dot_graph/graph.h"
 
 namespace dumb
@@ -18,393 +20,17 @@ namespace build_ssa
 namespace
 {
 
-class Dominators
-{
-public:
-    Dominators( std::size_t size)
-     :  bits_size_{ size},
-        flags_( (size + sizeof( uint64_t) - 1) / sizeof( uint64_t), 0)
-    {
-    }
+using BBGraph = graph::Graph<ir::BasicBlockID>;
 
-    class BitProxy
-    {
-    public:
-        BitProxy( Dominators& doms,
-                  std::size_t offset,
-                  std::uint64_t *pos)
-         :  doms_{ doms},
-            offset_{ offset},
-            pos_{ pos}
-        {
-        }
-
-        void
-        operator=( bool rhs)
-        {
-            std::size_t qword_offset = offset_ / (sizeof( uint64_t) * 8);
-            std::size_t bit_offset   = offset_ % (sizeof( uint64_t) * 8);
-
-            std::uint64_t bit = (rhs ? 1 : 0) << bit_offset;
-            std::uint64_t val = doms_.flags_[qword_offset];
-            bool old_value = val & (1 << bit_offset);
-            if ( rhs && !old_value )
-            {
-                ++doms_.bits_set_;
-            } else if ( !rhs && old_value )
-            {
-                --doms_.bits_set_;
-            }
-            val &= ~(1 << bit_offset);
-            val |= bit;
-            doms_.flags_[qword_offset] = val;
-
-            if ( rhs && offset_ < doms_.head_ )
-            {
-                doms_.head_ = offset_;
-            } else if ( !rhs && offset_ > doms_.head_ )
-            {
-                bool found = false;
-                for ( size_t i = qword_offset; i != doms_.flags_.size(); ++i )
-                {
-                    std::uint64_t value = doms_.flags_[i];
-                    if ( value != 0 )
-                    {
-                        std::size_t non_zero_bit_offset = 0;
-                        while ( (value & 0x1) == 0 )
-                        {
-                            ++non_zero_bit_offset;
-                            value = value >> 1;
-                        }
-                        doms_.head_ = i * sizeof( uint64_t) + non_zero_bit_offset;
-                        found = true;
-                        break;
-                    }
-                }
-                if ( !found )
-                {
-                    doms_.head_ = SIZE_MAX;
-                }
-            }
-        }
-
-        operator bool() const
-        {
-            std::uint64_t val = *pos_;
-            val &= (1 << offset_);
-            return static_cast<bool>( val);
-        }
-
-    private:
-        Dominators& doms_;
-        std::size_t offset_;
-        std::uint64_t *pos_;
-
-    };
-
-    class ConstBitProxy
-    {
-    public:
-        ConstBitProxy( std::size_t offset,
-                       const std::uint64_t *pos)
-         :  offset_{ offset},
-            pos_{ pos}
-        {
-        }
-
-        operator bool() const
-        {
-            std::uint64_t val = *pos_;
-            val &= (1 << offset_);
-            return static_cast<bool>( val);
-        }
-
-    private:
-        std::size_t offset_;
-        const std::uint64_t *pos_;
-
-    };
-
-    BitProxy
-    operator[]( std::size_t i)
-    {
-        std::size_t offset = i % 8;
-        std::uint64_t *pos = &flags_[0] + i / 8;
-        return BitProxy{ *this, offset, pos};
-    };
-
-    ConstBitProxy
-    operator[]( std::size_t i) const
-    {
-        std::size_t offset = i % 8;
-        const std::uint64_t *pos = &flags_[0] + i / 8;
-        return ConstBitProxy{ offset, pos};
-    }
-
-    static Dominators
-    Intersect( const Dominators& first, const Dominators& second)
-    {
-        // size_t first_sz = first.flags_.size();
-        // size_t second_sz = second.flags_.size();
-        Dominators result{ std::max( first.bits_size_, second.bits_size_)};
-        // for ( size_t i = 0; i != first_sz && i != second_sz; ++i )
-        // {
-            // result.flags_[i] = first.flags_[i] & second.flags_[i];
-        // }
-        for ( std::size_t i = 0; i != std::min( first.bits_size_, second.bits_size_); ++i )
-        {
-            result[i] = first[i] && second[i];
-        }
-        return result;
-    }
-
-    void
-    SetAll( bool value)
-    {
-        std::uint8_t val;
-        if ( value )
-        {
-            head_ = 0;
-            bits_set_ = bits_size_;
-            val = 0xff;
-        } else
-        {
-            head_ = SIZE_MAX;
-            bits_set_ = 0;
-            val = 0;
-        }
-        std::memset( &flags_[0], val, flags_.size() * sizeof( std::uint64_t));
-    }
-
-    bool
-    operator==( const Dominators& other) const
-    {
-        if ( other.bits_size_ != bits_size_ )
-        {
-            return false;
-        }
-        for ( size_t i = 0; i != bits_size_; ++i )
-        {
-            if ( operator[]( i) != other[i] )
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    bool
-    operator!=( const Dominators& other) const
-    {
-        return !operator==( other);
-    }
-
-    std::size_t
-    Head() const
-    {
-        return head_;
-    }
-
-    bool
-    Empty() const
-    {
-        return (bits_set_ == 0);
-    }
-
-    std::size_t
-    Size() const
-    {
-        return bits_set_;
-    }
-
-private:
-    std::size_t           bits_size_;
-    std::vector<uint64_t> flags_;
-    std::size_t           bits_set_ { 0};
-    std::size_t           head_     { SIZE_MAX};
-
-};
-
-class DominatorsTable
-{
-public:
-    DominatorsTable( std::size_t n)
-     :  doms_( n, Dominators( n))
-    {
-    }
-
-    Dominators&
-    operator[]( size_t i) &
-    {
-        return doms_[i];
-    }
-
-    const Dominators&
-    operator[]( size_t i) const &
-    {
-        return doms_[i];
-    }
-
-    bool
-    Dominates( std::size_t node,
-               std::size_t dominator) const
-    {
-        return doms_[node][dominator];
-    }
-
-    bool
-    ImmDominates( std::size_t node,
-                  std::size_t dominator) const
-    {
-        return (node != dominator) && Dominates( node, dominator);
-    }
-
-    size_t
-    Size() const
-    {
-        return doms_.size();
-    }
-
-    std::size_t
-    Closest( std::size_t node) const
-    {
-        for ( std::size_t i = 0; i != doms_.size(); ++i )
-        {
-            if ( i == node )
-            {
-                continue;
-            }
-            if ( !Dominates( node, i) )
-            {
-                continue;
-            }
-
-            bool is_immediate_dominator = true;
-            for ( std::size_t k = 0; k != doms_.size(); ++k )
-            {
-                if ( k == i || k == node )
-                {
-                    continue;
-                }
-                if ( Dominates( k, i) && Dominates( node, k) )
-                {
-                    is_immediate_dominator = false;
-                    break;
-                }
-            }
-            if ( is_immediate_dominator )
-            {
-                return i;
-            }
-        }
-        throw std::runtime_error{ "No immediate dominator"};
-    }
-
-private:
-    std::vector<Dominators> doms_;
-
-};
-
-class Graph
-{
-public:
-    struct Node
-    {
-        std::vector<std::size_t> nexts;
-        std::vector<std::size_t> preds;
-    };
-
-public:
-    Graph( std::size_t n)
-     :  nodes_( n)
-    {
-    }
-
-    void
-    Resize( std::size_t n)
-    {
-        for ( const auto& node : nodes_ )
-        {
-            for ( std::size_t next : node.nexts )
-            {
-                if ( next >= n )
-                {
-                    throw std::runtime_error{ "Unexpected to resize before removing "};
-                }
-            }
-        }
-        nodes_.resize( n);
-    }
-
-    std::size_t
-    Size() const
-    {
-        return nodes_.size();
-    }
-
-    void
-    AddEdge( std::size_t from,
-             std::size_t to)
-    {
-        nodes_[from].nexts.emplace_back( to);
-        nodes_[to].preds.emplace_back( from);
-    }
-
-    DominatorsTable
-    GetDominators() const
-    {
-        DominatorsTable dominators{ nodes_.size()};
-        dominators[0][0] = true;
-        for ( std::size_t i = 1; i != nodes_.size(); ++i )
-        {
-            dominators[i].SetAll( true);
-        }
-
-        bool changed = true;
-        while ( changed )
-        {
-            changed = false;
-            for ( size_t node_id = 0; node_id != nodes_.size(); ++node_id )
-            {
-                const Node& node = nodes_[node_id];
-                Dominators tmp = dominators[node_id];
-                for ( size_t pred : node.preds )
-                {
-                    tmp = Dominators::Intersect( tmp, dominators[pred]);
-                }
-                tmp[node_id] = true;
-                bool cmp_result = (tmp != dominators[node_id]);
-                changed = changed || cmp_result;
-                if ( cmp_result )
-                {
-                    dominators[node_id] = std::move( tmp);
-                }
-            }
-        }
-        return dominators;
-    }
-
-    const std::vector<Node>&
-    Nodes() const &
-    {
-        return nodes_;
-    }
-
-    const Node&
-    Nodes( std::size_t id) const &
-    {
-        return nodes_[id];
-    }
-
-private:
-    std::vector<Node> nodes_{};
-
-};
-
-Graph
+BBGraph
 BuildControlFlowGraph( const ir::Function& func)
 {
-    Graph graph{ func.BasicBlocks().size()};
+    BBGraph result;
+
+    for ( const ir::BasicBlock& bb : func.BasicBlocks() )
+    {
+        result.AddNode( bb.id);
+    }
 
     for ( const ir::BasicBlock& bb : func.BasicBlocks() )
     {
@@ -412,94 +38,46 @@ BuildControlFlowGraph( const ir::Function& func)
         {
             continue;
         }
-        graph.AddEdge( bb.id, bb.terminator.true_dest);
+        result.AddEdge( bb.id, bb.terminator.true_dest);
         if ( bb.terminator.type != ir::CmpType::ALWAYS_TRUE )
         {
-            graph.AddEdge( bb.id, bb.terminator.false_dest);
+            result.AddEdge( bb.id, bb.terminator.false_dest);
         }
     }
-    return graph;
-}
-
-Graph
-BuildDominatorsTree( const Graph& control_flow,
-                     const DominatorsTable& dominators)
-{
-    Graph tree{ control_flow.Size()};
-
-    for ( std::size_t node_id = 0; node_id != control_flow.Size(); ++node_id )
-    {
-        Dominators doms = dominators[node_id];
-        doms[node_id] = false;
-        if ( doms.Empty() )
-        {
-            continue;
-        } else if ( doms.Size() == 1 )
-        {
-            tree.AddEdge( doms.Head(), node_id);
-            continue;
-        }
-        tree.AddEdge( dominators.Closest( node_id), node_id);
-    }
-    return tree;
-}
-
-Graph
-BuildDominanceFrontier( const Graph& control_flow,
-                        const Graph& dominators_tree,
-                        const DominatorsTable& dominators)
-{
-    if ( control_flow.Size() != dominators_tree.Size() )
-    {
-        throw std::runtime_error{ "Dominators tree number of nodes "
-                                  "does not equal to control flow "
-                                  "number of nodes"};
-    }
-    Graph dominance_frontier{ control_flow.Size()};
-
-    for ( std::size_t node_id = 0; node_id != control_flow.Size(); ++node_id )
-    {
-        for ( std::size_t pred_id = 0; pred_id != control_flow.Nodes(node_id).preds.size(); ++pred_id )
-        {
-            std::size_t current = control_flow.Nodes()[node_id].preds[pred_id];
-            while ( !dominators.ImmDominates( node_id, current) )
-            {
-                dominance_frontier.AddEdge( current, node_id);
-                current = dominators_tree.Nodes()[current].preds[0];
-            }
-        }
-    }
-    return dominance_frontier;
+    return result;
 }
 
 void
-DrawGraph( const std::string& filename, const Graph& graph)
+DrawGraph( const std::string& filename,
+           const BBGraph&     graph)
 {
     dot_graph::Graph dot{ "Unnamed"};
-    for ( size_t i = 0; i != graph.Nodes().size(); ++i )
+
+    for ( ir::BasicBlockID id : graph.UsedIds() )
     {
-        dot.addNode( "node_" + std::to_string( i));
-        for ( size_t j : graph.Nodes()[i].nexts )
+        dot.addNode( "node_" + std::to_string( id));
+        for ( ir::BasicBlockID next : graph.GetNexts( id) )
         {
-            dot.addEdge( "node_" + std::to_string( i), "node_" + std::to_string( j));
+            dot.addEdge( "node_" + std::to_string( id), "node_" + std::to_string( next));
         }
     }
     dot.translateWithDot( filename, "svg");
 }
 
-std::vector<std::size_t>
+std::vector<ir::BasicBlockID>
 GetVarDefinitionBlocks( const ir::Function& func,
-                        nt::SymbolID var_id)
+                        nt::SymbolID        var_id)
 {
-    std::vector<std::size_t> def_blocks{};
-    for ( std::size_t bb = 0; bb != func.BasicBlocks().size(); ++bb )
+    std::vector<ir::BasicBlockID> def_blocks{};
+
+    for ( const ir::BasicBlock& bb : func.BasicBlocks() )
     {
-        for ( const ir::Instruction& instr : func.GetBasicBlock( bb).instructions )
+        for ( const ir::Instruction& instr : bb.instructions )
         {
             if ( instr.defines.type == ir::Operand::VARIABLE &&
                  instr.defines.id   == var_id )
             {
-                def_blocks.emplace_back( bb);
+                def_blocks.emplace_back( bb.id);
                 break;
             }
         }
@@ -508,76 +86,64 @@ GetVarDefinitionBlocks( const ir::Function& func,
 }
 
 void
-AddPhi( ir::Program& ir)
+AddPhi( ir::Function&  func,
+        const BBGraph& control_flow,
+        const BBGraph& dom_frontier)
 {
-    for ( ir::Function& func : ir.Functions() )
+    DrawGraph( "graph_cf.svg", control_flow);
+    DrawGraph( "graph_df.svg", dom_frontier);
+
+    for ( const ir::SSAKey& var_id : func.Variables() )
     {
-        Graph control_flow = BuildControlFlowGraph( func);
-        DominatorsTable dominators = control_flow.GetDominators();
-
-        Graph dominators_tree = BuildDominatorsTree( control_flow,
-                                                     dominators);
-        Graph dominance_frontier = BuildDominanceFrontier( control_flow,
-                                                           dominators_tree,
-                                                           dominators);
-
-        DrawGraph( "graph_cf.svg", control_flow);
-        DrawGraph( "graph_dt.svg", dominators_tree);
-        DrawGraph( "graph_df.svg", dominance_frontier);
-
-        for ( const ir::SSAKey& var_id : func.Variables() )
+        std::vector<ir::BasicBlockID> def_blocks = GetVarDefinitionBlocks( func, var_id.id);
+        std::vector<bool> has_phi( control_flow.Size(), false);
+        while ( !def_blocks.empty() )
         {
-            // Use only symbol id as all versions are 0 in this pass
-            std::vector<std::size_t> def_blocks = GetVarDefinitionBlocks( func, var_id.id);
+            ir::BasicBlockID block_id = def_blocks.back();
+            def_blocks.pop_back();
 
-            std::vector<bool> has_phi( control_flow.Size(), false);
-            while ( !def_blocks.empty() )
+            for ( ir::BasicBlockID dom_id : dom_frontier.GetNexts( block_id) )
             {
-                std::size_t block = def_blocks.back();
-                def_blocks.pop_back();
-
-                for ( std::size_t dom : dominance_frontier.Nodes()[block].nexts )
+                ir::BasicBlock& dom = func.GetBasicBlock( dom_id);
+                if ( !has_phi[dom_id] )
                 {
-                    ir::BasicBlock& basic_block = func.GetBasicBlock( dom);
-                    if ( !has_phi[dom] )
-                    {
-                        basic_block.phi_nodes.emplace_back( var_id.id);
-                        has_phi[dom] = true;
-                    }
-                    if ( std::find( def_blocks.begin(), def_blocks.end(), dom) != def_blocks.end() )
-                    {
-                        def_blocks.emplace_back( dom);
-                    }
+                    dom.phi_nodes.emplace_back( var_id.id);
+                    has_phi[dom_id] = true;
+                }
+                if ( std::find( def_blocks.begin(), def_blocks.end(), dom_id) != def_blocks.end() )
+                {
+                    def_blocks.emplace_back( dom_id);
                 }
             }
         }
     }
 }
 
-// TODO FIXME make this non recursive
 void
-RenameVariables( ir::Function& function,
-                 const Graph&  /* control_flow */,
-                 const Graph&  dominators_tree,
-                 const Graph&  /* dominance_frontier */)
+RenameVariables( ir::Function&  function,
+                 const BBGraph& dom_tree)
 {
     std::unordered_map<nt::SymbolID, std::vector<int>> version_stacks;
     std::unordered_map<nt::SymbolID, int>              counters;
-    std::vector<std::pair<std::size_t, bool>>          workqueue; // { block_id, is_exit}
+
+    struct FrameInfo
+    {
+        ir::BasicBlockID bb_id;
+        bool             is_exit;
+
+    };
+    std::vector<FrameInfo> workqueue;
 
     workqueue.push_back( { 0, false}); // Adding entry to basic block
 
     while ( !workqueue.empty() )
     {
-        auto frame_info = workqueue.back();
+        FrameInfo frame_info = workqueue.back();
         workqueue.pop_back();
 
-        std::size_t bb_id = frame_info.first;
-        bool is_exit = frame_info.second;
+        ir::BasicBlock& basic_block = function.GetBasicBlock( frame_info.bb_id);
 
-        ir::BasicBlock& basic_block = function.GetBasicBlock( bb_id);
-
-        if ( !is_exit )
+        if ( !frame_info.is_exit )
         {
             for ( ir::PhiNode& phi : basic_block.phi_nodes )
             {
@@ -680,11 +246,11 @@ RenameVariables( ir::Function& function,
                 }
             }
 
-            workqueue.push_back( { bb_id, true}); // Planning basic block exit
+            workqueue.push_back( { basic_block.id, true}); // Planning basic block exit
 
-            for ( std::size_t dom : dominators_tree.Nodes()[basic_block.id].nexts )
+            for ( ir::BasicBlockID dom : dom_tree.GetNexts( basic_block.id) )
             {
-                workqueue.push_back( { dom, false});
+                workqueue.push_back( FrameInfo{ dom, false});
             }
         } else
         {
@@ -709,25 +275,23 @@ RenameVariables( ir::Function& function,
 void
 BuildSSA( ir::Program& ir)
 {
-    AddPhi( ir);
+    for ( ir::Function& func : ir.Functions() )
+    {
+        BBGraph control_flow = BuildControlFlowGraph( func);
+        control_flow.BuildDominatorsTable();
+        BBGraph dom_tree = graph::BuildDominatorsTree( control_flow);
+        BBGraph dom_frontier = graph::BuildDominanceFrontier( control_flow, dom_tree);
+
+        AddPhi( func, control_flow, dom_frontier);
+    }
 
     for ( ir::Function& func : ir.Functions() )
     {
-        Graph control_flow = BuildControlFlowGraph( func);
-        DominatorsTable dominators = control_flow.GetDominators();
+        graph::Graph<ir::BasicBlockID> control_flow = BuildControlFlowGraph( func);
+        control_flow.BuildDominatorsTable();
+        BBGraph dom_tree = graph::BuildDominatorsTree( control_flow);
 
-        Graph dominators_tree    = BuildDominatorsTree( control_flow,
-                                                        dominators);
-        Graph dominance_frontier = BuildDominanceFrontier( control_flow,
-                                                           dominators_tree,
-                                                           dominators);
-
-        std::unordered_map<nt::SymbolID, std::vector<int>> stacks{};
-        std::unordered_map<nt::SymbolID, int> counters{};
-        RenameVariables( func,
-                         control_flow,
-                         dominators_tree,
-                         dominance_frontier);
+        RenameVariables( func, dom_tree);
     }
 
     return ;
