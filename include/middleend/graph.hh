@@ -12,6 +12,8 @@
 #include <vector>
 #include <bit>
 
+#include "logger.hh"
+
 namespace dumb
 {
 namespace graph
@@ -107,11 +109,18 @@ public:
     {
         PageType page_val = (value ? (~0ull) : 0ull);
 
+        LOGGER(DOMINATORS_TABLE) << "SetAll " << (value ? "true" : "false")
+                                 << ": page_val = " << std::hex << page_val
+                                 << ", last_page_mask() = " << std::hex << last_page_mask()
+                                 << ", flags_.size() = " << flags_.size()
+                                 << ", size_ = " << size_;
+
         std::size_t last = flags_.size() - 1;
         for ( std::size_t i = 0; i != last; ++i )
         {
             flags_[i] = page_val;
         }
+        LOGGER(DOMINATORS_TABLE) << "size_ = " << size_ << ", last_page_mask() = " << std::hex << last_page_mask();
         flags_[last] = page_val & last_page_mask();
 
         bits_on_ = (value ? size_ : 0);
@@ -241,7 +250,7 @@ private:
             mask = ~(0ull);
         } else
         {
-            mask = ~((1ull << padding) - 1ull);
+            mask = ((1ull << padding) - 1ull);
         }
         return mask;
     }
@@ -692,6 +701,7 @@ public:
         bool changed = true;
         while ( changed )
         {
+            LOGGER(DOMINATORS_TABLE) << dominators_table_.ToStr();
             changed = false;
 
             for ( NodeIdT node_id : UsedIds() )
