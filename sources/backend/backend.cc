@@ -4,6 +4,7 @@
 #include "ir.hh"
 #include "backend.hh"
 #include "lir.hh"
+#include "logger.hh"
 
 namespace dumb
 {
@@ -25,6 +26,7 @@ public:
     {
         // Entry
         int entry_id = program_.Entry();
+        LOGGER(BACKEND) << "program_.Entry() = " << entry_id;
         emit_function( program_.GetFunction( entry_id));
 
         // Other functions
@@ -55,6 +57,8 @@ private:
     void
     emit_function( const ir::Function& func)
     {
+        LOGGER(BACKEND) << "Emitting function id=" << func.Id();
+
         int offset = 0;
         for ( const ir::SSAKey& param : func.Params() )
         {
@@ -77,6 +81,7 @@ private:
 
         // Emitting entry basic block first
         ir::BasicBlockID entry_id = func.Entry();
+        emit_basic_block( func, func.GetBasicBlock( entry_id));
 
         // Emitting other basic blocks
         for ( const ir::BasicBlock& block : func.BasicBlocks() )
