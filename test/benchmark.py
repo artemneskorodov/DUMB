@@ -9,7 +9,8 @@ json_result = []
 benchmarking_tests = [
         "FibonacciRecursiveMultiple",
         "ConstantFakeFlowControl",
-        "EmptyCalculations"
+        "EmptyCalculations",
+        "DeadCalculations",
     ]
 
 if len(sys.argv) != 3:
