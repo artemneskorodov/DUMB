@@ -222,7 +222,8 @@ dump_function( const ir::Program&   program,
     const nt::Symbol *sym = program.Nametable().FindSymbol( function.Id());
 
     html::HTMLRow& func_row = func_start.addRow();
-    func_row.addCell( "Function " + sym->GetName())
+    func_row.addCell( "Function " + sym->GetName() +
+                      "(id=" + std::to_string( function.Id()) + ")")
             .setPort( "Prev");
     for ( const SSAKey& param_id : function.Params() )
     {
@@ -296,11 +297,6 @@ DumpIR( const ir::Program& program,
     graph.addNode( "__PROGRAM__")
          .setHtmlLabel( static_cast<std::string>( header))
          .setShape( "box");
-
-    dot_graph::Subgraph& preamble = graph.addSubgraph( "cluster__PREAMBLE__")
-                                         .setColor( kFunctionClusterColor);
-
-    dump_function( program, program.GetFunction( 0), graph, preamble);
 
     for ( const Function& func : program.Functions() )
     {

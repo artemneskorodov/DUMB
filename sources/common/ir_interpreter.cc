@@ -69,7 +69,7 @@ private:
     {
         LOGGER(IR_INTERPRETER) << "Running basic block " << basic_block.id;
 
-        if ( from_id > 0 )
+        if ( from_id >= 0 )
         {
             for ( const PhiNode& phi : basic_block.phi_nodes )
             {

@@ -156,9 +156,9 @@ public:
         basic_block_->terminator.true_dest = cond_bb.id;
 
         cond_bb.predecessors.emplace_back( basic_block_->id);
+        cond_bb.predecessors.emplace_back( body_bb.id);
         body_bb.predecessors.emplace_back( cond_bb.id);
         next_bb.predecessors.emplace_back( cond_bb.id);
-        next_bb.predecessors.emplace_back( body_bb.id);
 
         basic_block_ = &cond_bb;
 
