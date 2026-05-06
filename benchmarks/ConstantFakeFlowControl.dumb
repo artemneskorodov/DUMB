@@ -13,12 +13,22 @@ function test()
 
 function main()
 {
-    variable counter = 10000000;
+    variable counter = 1000000;
     variable result;
 
     while ( counter > 0 )
     {
         result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+        result = test();
+
         counter = counter - 1;
     }
 
