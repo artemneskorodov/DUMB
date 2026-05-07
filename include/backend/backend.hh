@@ -8,12 +8,15 @@ namespace dumb
 
 struct BackendOptions
 {
-    BackendOptions( bool build_benchmark_asm)
-     :  build_benchmark_asm{ build_benchmark_asm}
+    BackendOptions( bool build_benchmark_asm,
+                    int  benchmarks_cycles)
+     :  build_benchmark_asm{ build_benchmark_asm},
+        benchmarks_cycles{ benchmarks_cycles}
     {
     }
 
     bool build_benchmark_asm;
+    int benchmarks_cycles;
 
 };
 

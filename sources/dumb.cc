@@ -24,6 +24,7 @@ main( int         argc,
     parser.AddOption<std::string>( "--log-flags"  , "-lf"   , ""   , false);
     parser.AddOption<std::string>( "--dump-dir"   , "-dd"   , "./" , false);
     parser.AddOption<bool>       ( "--benchmark"  , "-b"    , false, false);
+    parser.AddOption<int>        ( "--cycles"     , "-c"    , 10000, false);
 
     std::vector<std::string> args( argv + 1, argv + argc);
 
@@ -54,7 +55,8 @@ main( int         argc,
     dumb::ir::dump::DumpIR( program_ir, "ir_dump_after_middleend");
 
     // Running backend
-    dumb::BackendOptions backend_options{ parser.GetOption<bool>( "--benchmark")};
+    dumb::BackendOptions backend_options{ parser.GetOption<bool>( "--benchmark"),
+                                          parser.GetOption<int> ( "--cycles")};
     std::string result = dumb::RunBackend( program_ir, backend_options);
 
     dumb::utils::WriteTextFile( output, result);

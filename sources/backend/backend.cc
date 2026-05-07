@@ -77,34 +77,38 @@ public:
         // Turning on flag of test function emitting. It shows for RET that it has to jump
         // to next function copy instead of emitting real return.
         emitting_test_function_ = true;
-        test_function_entry_id_ = test_entry_bb_id;
 
         // Function header (move of RBP and RSP)
         prepare_rbp_offsets( test_func);
-
         lir_.AddLabel( test_sym->GetName());
         lir_.Add( lir::BinaryOp::MOV, lir::Register::RBP, lir::Register::RSP);
         variables_size_ = static_cast<int>( test_func.Variables().size() * 8);
         lir_.Add( lir::BinaryOp::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
 
+        // Register R15 is used for counter
+        lir_.Add( lir::BinaryOp::MOV,
+                  lir::Register::R15,
+                  lir::Immediate{ static_cast<ir::ImmType>( cycles)});
+
+        // Adding benchmark loop condition
+        lir_.AddLabel( std::string{ kBenchmarkConditionLabel});
+        lir_.Add( lir::BinaryOp::TEST, lir::Register::R15, lir::Register::R15);
+        lir_.AddJmp( lir::JmpType::JE, std::string{ kBenchmarkExitLabel});
+
         // Emitting body of test function many times
-        for ( std::size_t i = 0; i != cycles; ++i )
+        emit_basic_block( test_func, test_entry_bb);
+        for ( const ir::BasicBlock& block : test_func.BasicBlocks() )
         {
-            current_test_iter_ = i;
-            emit_basic_block( test_func, test_entry_bb);
-            for ( const ir::BasicBlock& block : test_func.BasicBlocks() )
+            if ( block.id == test_entry_bb_id )
             {
-                if ( block.id == test_entry_bb_id )
-                {
-                    continue;
-                }
-                emit_basic_block( test_func, block);
+                continue;
             }
+            emit_basic_block( test_func, block);
         }
+        lir_.AddLabel( std::string{ kBenchmarkExitLabel});
 
         // Adding return basic block
-        // All returns in last emitted basic block go to .LOC_{cycles}_0
-        lir_.AddLabel( local_label( 0, cycles));
+        // .LOC_0_{cycles} is added in lir_.ToStr(), all returns in last copy go here
         lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
         lir_.Add( lir::NoOpInstr::RET);
 
@@ -314,7 +318,8 @@ private:
             lir_.Add( lir::NoOpInstr::RET);
         } else
         {
-            lir_.AddJmp( lir::JmpType::JMP, local_label( test_function_entry_id_, current_test_iter_ + 1));
+            lir_.Add( lir::UnaryOp::DEC, lir::Register::R15); // Decrement loop counter
+            lir_.AddJmp( lir::JmpType::JMP, std::string{ kBenchmarkConditionLabel});
         }
     }
 
@@ -447,19 +452,14 @@ private:
     }
 
     std::string
-    local_label( ir::BasicBlockID id,
-                 int              test_iter = -1)
+    local_label( ir::BasicBlockID id)
     {
-        if ( !emitting_test_function_ )
-        {
-            return ".LOC" + std::to_string( id);
-        } else
-        {
-            int label_test_iter = (test_iter < 0 ? current_test_iter_
-                                                 : test_iter);
-            return ".LOC_" + std::to_string( label_test_iter) + "_" + std::to_string( id);
-        }
+        return ".LOC_" + std::to_string( id);
     }
+
+private:
+    static constexpr std::string_view kBenchmarkConditionLabel = ".LOC_BENCHMARK_CONDITION";
+    static constexpr std::string_view kBenchmarkExitLabel      = ".LOC_BENCHMARK_EXIT";
 
 private:
     lir::Program                                        lir_                    {};
@@ -469,9 +469,7 @@ private:
     // Variables above are used for state. They show if current function is '_test'
     // it is used for returns in '_test' to be replaced with go_to_next_basic_block
     // it is also used to create right local labels
-    int                                                 current_test_iter_;
     bool                                                emitting_test_function_ { false};
-    ir::BasicBlockID                                    test_function_entry_id_;
 
 };
 
@@ -490,7 +488,7 @@ RunBackend( const ir::Program&    program,
         lir = emitter.Emit();
     } else
     {
-        lir = emitter.EmitBenchmark( 1000);
+        lir = emitter.EmitBenchmark( options.benchmarks_cycles);
     }
     return lir.ToStr();
 }

@@ -19,6 +19,6 @@ function _test(num)
 
 function main()
 {
-    variable result = _test(10);
+    variable result = _test(35);
     output(result, "Result = ");
 }

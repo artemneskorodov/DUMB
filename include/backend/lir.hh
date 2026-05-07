@@ -143,6 +143,7 @@ enum class UnaryOp
     IDIV,
     PUSH,
     POP,
+    DEC
 };
 
 struct UnaryOpInstr
@@ -167,6 +168,7 @@ enum class BinaryOp
     SUB,
     XOR,
     CMP,
+    TEST,
 };
 
 struct BinaryOpInstr

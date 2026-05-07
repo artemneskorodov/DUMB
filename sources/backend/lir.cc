@@ -112,6 +112,7 @@ unary_op_to_str( const UnaryOpInstr& instr)
         case UnaryOp::IDIV: op_string = "idiv"; break;
         case UnaryOp::PUSH: op_string = "push"; break;
         case UnaryOp::POP:  op_string =  "pop"; break;
+        case UnaryOp::DEC:  op_string =  "dec"; break;
         default: throw std::runtime_error{ "Unexpected op instruction"};
     }
 
@@ -125,11 +126,12 @@ binary_op_to_str( const BinaryOpInstr& instr)
 
     switch( instr.instr )
     {
-        case BinaryOp::MOV: op_string = "mov"; break;
-        case BinaryOp::ADD: op_string = "add"; break;
-        case BinaryOp::SUB: op_string = "sub"; break;
-        case BinaryOp::XOR: op_string = "xor"; break;
-        case BinaryOp::CMP: op_string = "cmp"; break;
+        case BinaryOp::MOV:  op_string = "mov";  break;
+        case BinaryOp::ADD:  op_string = "add";  break;
+        case BinaryOp::SUB:  op_string = "sub";  break;
+        case BinaryOp::XOR:  op_string = "xor";  break;
+        case BinaryOp::CMP:  op_string = "cmp";  break;
+        case BinaryOp::TEST: op_string = "test"; break;
         default: throw std::runtime_error{ "Unexpected op instruction"};
     }
 
