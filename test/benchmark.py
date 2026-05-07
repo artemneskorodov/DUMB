@@ -107,36 +107,20 @@ def create_advanced_table(result_rows, output_file="performance_table.png"):
 if __name__ == "__main__":
     result_rows = []
 
-    result_rows.append({
-                "name":     "Name1",
-                "no_opt":   100,
-                "sccp":     85,
-                "sccp_dce": 15,
-                "dce":      65,
-    })
+    for test in BENCHMARKING_TESTS:
+        result_false_false = run_single_test(test.name, sccp=False, dce=False, cycles=test.cycles)
+        result_true_false  = run_single_test(test.name, sccp=True,  dce=False, cycles=test.cycles)
+        result_true_true   = run_single_test(test.name, sccp=True,  dce=True , cycles=test.cycles)
+        result_false_true  = run_single_test(test.name, sccp=False, dce=True , cycles=test.cycles)
 
-    result_rows.append({
-                "name":     "Name2",
-                "no_opt":   100,
-                "sccp":     90,
-                "sccp_dce": 45,
-                "dce":      75,
-    })
-
-#     for test in BENCHMARKING_TESTS:
-#         result_false_false = run_single_test(test.name, sccp=False, dce=False, cycles=test.cycles)
-#         result_true_false  = run_single_test(test.name, sccp=True,  dce=False, cycles=test.cycles)
-#         result_true_true   = run_single_test(test.name, sccp=True,  dce=True , cycles=test.cycles)
-#         result_false_true  = run_single_test(test.name, sccp=False, dce=True , cycles=test.cycles)
-#
-#         result_rows.append(
-#             {
-#                 "name":     test.name,
-#                 "no_opt":   result_false_false / result_false_false * 100,
-#                 "sccp":     result_true_false  / result_false_false * 100,
-#                 "sccp_dce": result_true_true   / result_false_false * 100,
-#                 "dce":      result_false_true  / result_false_false * 100,
-#             }
-#         )
+        result_rows.append(
+            {
+                "name":     test.name,
+                "no_opt":   result_false_false / result_false_false * 100,
+                "sccp":     result_true_false  / result_false_false * 100,
+                "sccp_dce": result_true_true   / result_false_false * 100,
+                "dce":      result_false_true  / result_false_false * 100,
+            }
+        )
 
     create_advanced_table(result_rows)
