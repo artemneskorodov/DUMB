@@ -73,7 +73,7 @@ private:
         {
             for ( const PhiNode& phi : basic_block.phi_nodes )
             {
-                Operand dest{ Operand::VARIABLE, phi.version, phi.var_id};
+                Operand dest = phi.var;
                 Operand src = phi.mapping.at( from_id);
                 ImmType src_val = value( src);
 

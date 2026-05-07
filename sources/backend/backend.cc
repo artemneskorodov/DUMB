@@ -124,7 +124,7 @@ private:
                 if ( phi.mapping.find( basic_block.id) != phi.mapping.end() )
                 {
                     lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, operand( phi.mapping.at( basic_block.id)));
-                    lir_.Add( lir::BinaryOp::MOV, var_operand( phi.var_id, phi.version), lir::Register::RAX);
+                    lir_.Add( lir::BinaryOp::MOV, operand( phi.var), lir::Register::RAX);
                 }
             }
         }

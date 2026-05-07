@@ -45,7 +45,7 @@ get_uses( const ir::SSAKey&   var,
                      (op.id    == var.id) &&
                      (op.value == var.version) )
                 {
-                    result.emplace_back( phi.var_id, phi.version);
+                    result.emplace_back( phi.var.id, phi.var.id);
                 }
             }
         }
@@ -91,9 +91,9 @@ get_uses_counters( const ir::Function& function)
 
         for ( const ir::PhiNode& phi : block.phi_nodes )
         {
-            if ( result.find( ir::SSAKey{ phi.var_id, phi.version}) == result.end() )
+            if ( result.find( ir::SSAKey{ phi.var.id, phi.var.id}) == result.end() )
             {
-                result[ir::SSAKey{ phi.var_id, phi.version}] = 0;
+                result[ir::SSAKey{ phi.var.id, phi.var.id}] = 0;
             }
             for ( auto& [pred, op] : phi.mapping )
             {
@@ -126,8 +126,8 @@ remove_def( const ir::SSAKey& var,
         block.phi_nodes.remove_if(
             [var](const ir::PhiNode& phi)
             {
-                return (phi.var_id  == var.id) &&
-                       (phi.version == var.version);
+                return (phi.var.id    == var.id) &&
+                       (phi.var.value == var.version);
             }
         );
     }

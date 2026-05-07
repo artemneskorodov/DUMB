@@ -96,6 +96,16 @@ struct SSAKey
     {
     }
 
+    SSAKey( const Operand& operand)
+     :  id{ operand.id},
+        version{ operand.value}
+    {
+        if ( operand.type != Operand::VARIABLE )
+        {
+            throw std::runtime_error{ "Unexpected cast from non variable operand to SSAKey"};
+        }
+    }
+
     bool
     operator==( const SSAKey& other) const
     {
@@ -150,16 +160,20 @@ struct Instruction
 
 };
 
+///
+/// @brief BasicBlockID is declared here to use in PhiNode. This is local label index type.
+///
+using BasicBlockID = int;
+
 struct PhiNode
 {
-    PhiNode( int var)
-    :  var_id{ var}
+    PhiNode( nt::SymbolID var)
+     :  var{ Operand::VARIABLE, 0, var}
     {
     }
 
-    nt::SymbolID                     var_id;
-    int                              version;
-    std::unordered_map<int, Operand> mapping;
+    Operand                                   var;
+    std::unordered_map<BasicBlockID, Operand> mapping;
 
 };
 
@@ -218,8 +232,6 @@ struct BasicBlockTerminator
     int       false_dest { 0};
 
 };
-
-using BasicBlockID = int;
 
 struct BasicBlock final
 {
