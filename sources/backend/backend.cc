@@ -114,7 +114,8 @@ public:
         // Emitting other functions
         for ( const ir::Function& func : program_.Functions() )
         {
-            if ( func.Id() == test_sym->GetID() )
+            if ( (func.Id() == test_sym->GetID()) ||
+                 (func.Id() == entry_id) )
             {
                 continue;
             }
