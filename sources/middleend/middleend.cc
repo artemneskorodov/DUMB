@@ -10,23 +10,33 @@ namespace dumb
 {
 
 void
-RunMiddleend( ir::Program&           program,
-              const option::OptionsParser& options)
+RunMiddleend( ir::Program&            program,
+              const MiddleendOptions& options)
 {
-    build_ssa::BuildSSA( program);
+    // Skipping main optimizations if building benchmark
+    int skip_optimizations = -1;
+    if ( options.benchmark_build )
+    {
+        const nt::Symbol *main_sym = program.Nametable().FindSymbol( "main");
+        if ( main_sym == nullptr )
+        {
+            throw std::runtime_error{ "Program is expected to have 'main' function"};
+        }
+        skip_optimizations = main_sym->GetID();
+    }
+
+    build_ssa::BuildSSA( program, skip_optimizations);
     ir::dump::DumpIR( program, "after_build_ssa");
 
-    bool need_sccp = options.GetOption<bool>( "--enable-sccp");
-    if ( need_sccp )
+    if ( options.enable_sccp )
     {
-        sccp::SparseConditionalConstantPropagation( program);
+        sccp::SparseConditionalConstantPropagation( program, skip_optimizations);
         ir::dump::DumpIR( program, "after_sccp");
     }
 
-    bool need_dce = options.GetOption<bool>( "--enable-dce");
-    if ( need_dce )
+    if ( options.enable_dce )
     {
-        dce::DeadCodeElimination( program);
+        dce::DeadCodeElimination( program, skip_optimizations);
         ir::dump::DumpIR( program, "after_dce");
     }
 }

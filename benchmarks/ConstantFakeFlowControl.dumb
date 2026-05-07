@@ -1,36 +1,32 @@
-function test()
+function _test()
 {
-    variable x = 10;
-    if ( x > 0 )
-    {
-        return 1;
-    }
-    if ( x < 0 )
-    {
-        return 2;
-    }
+    variable a0;
+    variable a1;
+    variable a2;
+    variable a3;
+    variable a4;
+    variable a5;
+    variable a6;
+    variable a7;
+    variable a8;
+    variable a9;
+
+    variable x0 = 10; if ( x0 > 0 ) { a0 = 1; } if ( x0 < 0 ) { a0 = 2; }
+    variable x1 = 10; if ( x1 > 0 ) { a1 = 1; } if ( x1 < 0 ) { a1 = 2; }
+    variable x2 = 10; if ( x2 > 0 ) { a2 = 1; } if ( x2 < 0 ) { a2 = 2; }
+    variable x3 = 10; if ( x3 > 0 ) { a3 = 1; } if ( x3 < 0 ) { a3 = 2; }
+    variable x4 = 10; if ( x4 > 0 ) { a4 = 1; } if ( x4 < 0 ) { a4 = 2; }
+    variable x5 = 10; if ( x5 > 0 ) { a5 = 1; } if ( x5 < 0 ) { a5 = 2; }
+    variable x6 = 10; if ( x6 > 0 ) { a6 = 1; } if ( x6 < 0 ) { a6 = 2; }
+    variable x7 = 10; if ( x7 > 0 ) { a7 = 1; } if ( x7 < 0 ) { a7 = 2; }
+    variable x8 = 10; if ( x8 > 0 ) { a8 = 1; } if ( x8 < 0 ) { a8 = 2; }
+    variable x9 = 10; if ( x9 > 0 ) { a9 = 1; } if ( x9 < 0 ) { a9 = 2; }
+
+    return x0 + x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9;
 }
 
 function main()
 {
-    variable counter = 1000000;
-    variable result;
-
-    while ( counter > 0 )
-    {
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-
-        counter = counter - 1;
-    }
-
+    variable result = _test();
     output(result, "Result = ");
 }

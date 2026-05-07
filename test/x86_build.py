@@ -3,7 +3,7 @@ from test_utils import get_source_path
 
 BENCHMARKS_BUILD_DIR = "benchmarks_build"
 
-def build_exec(compiler_path: str, workdir: str, test_name: str, enable_sccp=True, enable_dce=True) -> str:
+def build_exec(compiler_path: str, workdir: str, test_name: str, enable_sccp=True, enable_dce=True, build_benchmark=False, cycles=-1) -> str:
     source  = get_source_path(test_name, workdir)
     asm     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.s"
     obj     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.o"
@@ -16,6 +16,13 @@ def build_exec(compiler_path: str, workdir: str, test_name: str, enable_sccp=Tru
         compile_command.append("--enable-sccp")
     if enable_dce:
         compile_command.append("--enable-dce")
+    if build_benchmark:
+        compile_command.append("--benchmark")
+    if cycles >= 0:
+        compile_command.append("--cycles")
+        compile_command.append(str(cycles))
+
+    print(compile_command)
 
     subprocess.run(["mkdir", "-p", f"{workdir}/{BENCHMARKS_BUILD_DIR}"], check=True)
     subprocess.run(compile_command,                                      check=True)

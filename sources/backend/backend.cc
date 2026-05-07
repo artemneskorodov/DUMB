@@ -53,24 +53,101 @@ public:
         return std::move( lir_);
     }
 
+    lir::Program
+    EmitBenchmark( std::size_t cycles)
+    {
+        // Entry
+        int entry_id = program_.Entry();
+        LOGGER(BACKEND) << "program_.Entry() = " << entry_id;
+        emit_function( program_.GetFunction( entry_id));
+
+        // Emitting test
+        const nt::Symbol *test_sym = program_.Nametable().FindSymbol( "_test");
+        if ( (test_sym == nullptr) ||
+             (test_sym->GetType() != nt::SymbolType::FUNCTION) )
+        {
+            throw std::runtime_error{ "Program to build with '--benchmark' option is expected to "
+                                      "have '_test' function without parameters"};
+        }
+
+        const ir::Function& test_func = program_.GetFunction( test_sym->GetID());
+        ir::BasicBlockID test_entry_bb_id = test_func.Entry();
+        const ir::BasicBlock& test_entry_bb = test_func.GetBasicBlock( test_entry_bb_id);
+
+        // Turning on flag of test function emitting. It shows for RET that it has to jump
+        // to next function copy instead of emitting real return.
+        emitting_test_function_ = true;
+
+        // Function header (move of RBP and RSP)
+        prepare_rbp_offsets( test_func);
+        lir_.AddLabel( test_sym->GetName());
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RBP, lir::Register::RSP);
+        variables_size_ = static_cast<int>( test_func.Variables().size() * 8);
+        lir_.Add( lir::BinaryOp::SUB, lir::Register::RSP, lir::Immediate{ variables_size_});
+
+        // Register R15 is used for counter
+        lir_.Add( lir::BinaryOp::MOV,
+                  lir::Register::R15,
+                  lir::Immediate{ static_cast<ir::ImmType>( cycles)});
+
+        // Adding benchmark loop condition
+        lir_.AddLabel( std::string{ kBenchmarkConditionLabel});
+        lir_.Add( lir::BinaryOp::TEST, lir::Register::R15, lir::Register::R15);
+        lir_.AddJmp( lir::JmpType::JE, std::string{ kBenchmarkExitLabel});
+
+        // Emitting body of test function many times
+        emit_basic_block( test_func, test_entry_bb);
+        for ( const ir::BasicBlock& block : test_func.BasicBlocks() )
+        {
+            if ( block.id == test_entry_bb_id )
+            {
+                continue;
+            }
+            emit_basic_block( test_func, block);
+        }
+        lir_.AddLabel( std::string{ kBenchmarkExitLabel});
+
+        // Adding return basic block
+        // .LOC_0_{cycles} is added in lir_.ToStr(), all returns in last copy go here
+        lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
+        lir_.Add( lir::NoOpInstr::RET);
+
+        // Turning off flag of test function emitting.
+        emitting_test_function_ = false;
+
+        // Emitting other functions
+        for ( const ir::Function& func : program_.Functions() )
+        {
+            if ( (func.Id() == test_sym->GetID()) ||
+                 (func.Id() == entry_id) )
+            {
+                continue;
+            }
+            emit_function( func);
+        }
+
+        // Adding globals and global strings
+        for ( int global : program_.Globals() )
+        {
+            const nt::Symbol* sym = program_.Nametable().FindSymbol( global);
+            lir_.AddGlobal( sym->GetName(), 0);
+        }
+        for ( std::size_t str_id = 0; str_id != program_.Strings().size(); ++str_id )
+        {
+            lir_.AddStrConst( string_label( str_id),
+                              program_.Strings()[str_id]);
+        }
+
+        return std::move( lir_);
+    }
+
 private:
     void
     emit_function( const ir::Function& func)
     {
         LOGGER(BACKEND) << "Emitting function id=" << func.Id();
 
-        int offset = 0;
-        for ( const ir::SSAKey& param : func.Params() )
-        {
-            rbp_offsets_[param] = 8 + offset;
-            offset += 8;
-        }
-        offset = 0;
-        for ( const ir::SSAKey& var : func.Variables() )
-        {
-            rbp_offsets_[var] = -8 - offset;
-            offset += 8;
-        }
+        prepare_rbp_offsets( func);
 
         const nt::Symbol *sym = program_.Nametable().FindSymbol( func.Id());
         lir_.AddLabel( sym->GetName());
@@ -235,8 +312,15 @@ private:
             check_operands( instr, 0);
         }
 
-        lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
-        lir_.Add( lir::NoOpInstr::RET);
+        if ( !emitting_test_function_ )
+        {
+            lir_.Add( lir::BinaryOp::ADD, lir::Register::RSP, lir::Immediate{ variables_size_});
+            lir_.Add( lir::NoOpInstr::RET);
+        } else
+        {
+            lir_.Add( lir::UnaryOp::DEC, lir::Register::R15); // Decrement loop counter
+            lir_.AddJmp( lir::JmpType::JMP, std::string{ kBenchmarkConditionLabel});
+        }
     }
 
     void
@@ -303,6 +387,23 @@ private:
 
 private:
     void
+    prepare_rbp_offsets( const ir::Function& func)
+    {
+        int offset = 0;
+        for ( const ir::SSAKey& param : func.Params() )
+        {
+            rbp_offsets_[param] = 8 + offset;
+            offset += 8;
+        }
+        offset = 0;
+        for ( const ir::SSAKey& var : func.Variables() )
+        {
+            rbp_offsets_[var] = -8 - offset;
+            offset += 8;
+        }
+    }
+
+    void
     check_operands( const ir::Instruction& instr,
                     std::size_t expected)
     {
@@ -351,26 +452,44 @@ private:
     }
 
     std::string
-    local_label( int id)
+    local_label( ir::BasicBlockID id)
     {
-        return ".LOC" + std::to_string( id);
+        return ".LOC_" + std::to_string( id);
     }
 
 private:
-    lir::Program lir_{};
-    const ir::Program& program_;
-    int variables_size_{};
-    std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> rbp_offsets_{};
+    static constexpr std::string_view kBenchmarkConditionLabel = ".LOC_BENCHMARK_CONDITION";
+    static constexpr std::string_view kBenchmarkExitLabel      = ".LOC_BENCHMARK_EXIT";
+
+private:
+    lir::Program                                        lir_                    {};
+    const ir::Program&                                  program_;
+    int                                                 variables_size_         {};
+    std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> rbp_offsets_            {};
+    // Variables above are used for state. They show if current function is '_test'
+    // it is used for returns in '_test' to be replaced with go_to_next_basic_block
+    // it is also used to create right local labels
+    bool                                                emitting_test_function_ { false};
 
 };
 
 } // ! anonymous namespace
 
 std::string
-RunBackend( const ir::Program& program)
+RunBackend( const ir::Program&    program,
+            const BackendOptions& options)
 {
     InstructionsEmitter emitter{ program};
-    lir::Program lir = emitter.Emit();
+
+    lir::Program lir;
+
+    if ( !options.build_benchmark_asm )
+    {
+        lir = emitter.Emit();
+    } else
+    {
+        lir = emitter.EmitBenchmark( options.benchmarks_cycles);
+    }
     return lir.ToStr();
 }
 

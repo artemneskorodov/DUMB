@@ -1,36 +1,22 @@
-function test(parameter)
+function _test(parameter)
 {
     variable a = parameter + 10;
     variable b = a + 5;
     variable c = b * 2;
-    variable d = c + 100;
-    variable e = d * 2;
+    variable d = c * 120;
+    variable e = d / 30;
+    variable f = e * 35;
+    variable g = f / 5;
+    variable h = g / 7;
+
+    variable x = c + 100;
+    variable y = d * 2;
 
     return c;
 }
 
 function main()
 {
-    variable counter = 1000000;
-    variable result;
-
-    variable parameter = 10;
-
-    while ( counter > 0 )
-    {
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-
-        counter = counter - 1;
-    }
-
+    variable result = _test(10);
     output(result, "Result = ");
 }

@@ -8,7 +8,7 @@ namespace dumb
 namespace dce
 {
 
-void DeadCodeElimination( ir::Program& ir);
+void DeadCodeElimination( ir::Program& ir, int skip_func);
 
 } // ! namespace dce
 } // ! namespace dumb

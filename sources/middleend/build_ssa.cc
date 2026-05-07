@@ -273,10 +273,15 @@ RenameVariables( ir::Function&  function,
 } // ! anonymous namespace
 
 void
-BuildSSA( ir::Program& ir)
+BuildSSA( ir::Program& ir,
+          int          skip_func)
 {
     for ( ir::Function& func : ir.Functions() )
     {
+        if ( func.Id() == skip_func )
+        {
+            continue;
+        }
         BBGraph control_flow = BuildControlFlowGraph( func);
         control_flow.BuildDominatorsTable();
         BBGraph dom_tree = graph::BuildDominatorsTree( control_flow);
@@ -287,6 +292,10 @@ BuildSSA( ir::Program& ir)
 
     for ( ir::Function& func : ir.Functions() )
     {
+        if ( func.Id() == skip_func )
+        {
+            continue;
+        }
         graph::Graph<ir::BasicBlockID> control_flow = BuildControlFlowGraph( func);
         control_flow.BuildDominatorsTable();
         BBGraph dom_tree = graph::BuildDominatorsTree( control_flow);

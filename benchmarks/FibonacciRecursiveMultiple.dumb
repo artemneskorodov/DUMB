@@ -8,19 +8,17 @@ function fib(num)
     {
         return 1;
     }
-    return fib(num - 1) + fib(num - 2);
+
+    return fib( num - 1) + fib( num - 2);
+}
+
+function _test(num)
+{
+    return fib( num);
 }
 
 function main()
 {
-    variable num = 10;
-
-    variable counter = 10000000;
-    variable result = 0;
-    while ( counter > 0 )
-    {
-        result = result + fib(num);
-        counter = counter - 1;
-    }
+    variable result = _test(35);
     output(result, "Result = ");
 }

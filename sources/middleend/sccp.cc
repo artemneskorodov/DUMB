@@ -347,10 +347,16 @@ remove_predecessor( ir::BasicBlock& from,
 } // anonymous namespace
 
 void
-SparseConditionalConstantPropagation( ir::Program& program)
+SparseConditionalConstantPropagation( ir::Program& program,
+                                      int          skip_func)
 {
     for ( ir::Function& func : program.Functions() )
     {
+        if ( func.Id() == skip_func )
+        {
+            continue;
+        }
+
         // Evaluate function with SCCP
         SccpEvaluator evaluator{ func};
         ValueMap values = evaluator.Evaluate();

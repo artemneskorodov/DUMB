@@ -8,7 +8,7 @@ namespace dumb
 namespace sccp
 {
 
-void SparseConditionalConstantPropagation( ir::Program& ir);
+void SparseConditionalConstantPropagation( ir::Program& ir, int skip_func);
 
 } // ! namespace sccp
 } // ! namespace dumb

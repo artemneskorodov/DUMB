@@ -137,10 +137,16 @@ remove_def( const ir::SSAKey& var,
 } // anonymous namespace
 
 void
-DeadCodeElimination( ir::Program& ir)
+DeadCodeElimination( ir::Program& ir,
+                     int          skip_func)
 {
     for ( ir::Function& func : ir.Functions() )
     {
+        if ( func.Id() == skip_func )
+        {
+            continue;
+        }
+
         std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash> counters = get_uses_counters( func);
 
         bool changed = true;
