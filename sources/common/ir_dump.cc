@@ -52,6 +52,7 @@ public:
             case ir::Opcode::CALL:   opcode = "call";   break;
             case ir::Opcode::INPUT:  opcode = "input";  break;
             case ir::Opcode::OUTPUT: opcode = "output"; break;
+            case ir::Opcode::EXIT:   opcode = "exit";   break;
             default: throw std::runtime_error{ "Unexpected instruction"};
         }
         std::string result = opcode + " { ";

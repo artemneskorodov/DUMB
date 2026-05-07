@@ -10,4 +10,5 @@ function main()
 {
     variable result = _test();
     output(result, "Result = ");
+    return 0;
 }

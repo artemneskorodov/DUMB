@@ -36,10 +36,10 @@ def run_single_test(test: str, sccp: bool, dce: bool, cycles: int) -> int:
     return json_data['results'][0]['mean']
 
 for test in benchmarking_tests:
-    result_false_false = run_single_test(test.name, sccp=False, dce=False, cycles=test.cycles // 1000)
-    result_true_false  = run_single_test(test.name, sccp=True,  dce=False, cycles=test.cycles // 1000)
-    result_true_true   = run_single_test(test.name, sccp=True,  dce=True , cycles=test.cycles // 1000)
-    result_false_true  = run_single_test(test.name, sccp=False, dce=True , cycles=test.cycles // 1000)
+    result_false_false = run_single_test(test.name, sccp=False, dce=False, cycles=test.cycles)
+    result_true_false  = run_single_test(test.name, sccp=True,  dce=False, cycles=test.cycles)
+    result_true_true   = run_single_test(test.name, sccp=True,  dce=True , cycles=test.cycles)
+    result_false_true  = run_single_test(test.name, sccp=False, dce=True , cycles=test.cycles)
 
     json_result.append(
         {

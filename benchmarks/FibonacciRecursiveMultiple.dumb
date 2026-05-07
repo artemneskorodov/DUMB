@@ -21,4 +21,5 @@ function main()
 {
     variable result = _test(35);
     output(result, "Result = ");
+    return 0;
 }
