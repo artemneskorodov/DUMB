@@ -19,4 +19,5 @@ function main()
     variable result = fib(num);
 
     output(result, "Fib(num) = ");
+    return 0;
 }
