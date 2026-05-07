@@ -145,6 +145,10 @@ public:
                 {
                     evaluate_instr( *instr);
                 }
+                for ( const ir::BasicBlockTerminator *term : ssa::GetTermUsers( func_, ssa_key) )
+                {
+                    evaluate_terminator( *term);
+                }
             }
         }
 
@@ -220,24 +224,8 @@ private:
     }
 
     void
-    evaluate_basic_block( const ir::BasicBlock& block)
+    evaluate_terminator( const ir::BasicBlockTerminator& term)
     {
-        LOGGER(SCCP) << "Evaluating bb_" << block.id;
-
-        // Trying to evaluate Phi nodes
-        for ( const ir::PhiNode& phi : block.phi_nodes )
-        {
-            evaluate_phi( phi);
-        }
-
-        // Trying to evaluate instructions
-        for ( const ir::Instruction& instr : block.instructions )
-        {
-            evaluate_instr( instr);
-        }
-
-        // Trying to evaluate terminator
-        const ir::BasicBlockTerminator& term = block.terminator;
         if ( term.type == ir::CmpType::ALWAYS_TRUE )
         {
             add_to_cfg_worklist( term.true_dest);
@@ -258,6 +246,27 @@ private:
                 add_to_cfg_worklist( term.false_dest);
             }
         }
+    }
+
+    void
+    evaluate_basic_block( const ir::BasicBlock& block)
+    {
+        LOGGER(SCCP) << "Evaluating bb_" << block.id;
+
+        // Trying to evaluate Phi nodes
+        for ( const ir::PhiNode& phi : block.phi_nodes )
+        {
+            evaluate_phi( phi);
+        }
+
+        // Trying to evaluate instructions
+        for ( const ir::Instruction& instr : block.instructions )
+        {
+            evaluate_instr( instr);
+        }
+
+        // Trying to evaluate terminator
+        evaluate_terminator( block.terminator);
     }
 
 private:
