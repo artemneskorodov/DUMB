@@ -20,7 +20,7 @@ compiler_path = sys.argv[1]
 workdir       = sys.argv[2]
 
 def run_single_test(test: str, sccp: bool, dce: bool) -> int:
-    exec_name = build_exec(compiler_path, workdir, test, enable_sccp=sccp, enable_dce=dce)
+    exec_name = build_exec(compiler_path, workdir, test, enable_sccp=sccp, enable_dce=dce, build_benchmark=True)
     json_output = BENCHMARKS_BUILD_DIR + "/" + test + f".sccp_{sccp}.dce_{dce}.result.json"
     subprocess.run(["hyperfine", "--warmup", "5", "--export-json", json_output, f"'{exec_name}'"])
     with open(json_output, "r") as f:

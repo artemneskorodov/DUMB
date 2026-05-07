@@ -6,7 +6,18 @@
 namespace dumb
 {
 
-std::string RunBackend( const ir::Program& program);
+struct BackendOptions
+{
+    BackendOptions( bool build_benchmark_asm)
+     :  build_benchmark_asm{ build_benchmark_asm}
+    {
+    }
+
+    bool build_benchmark_asm;
+
+};
+
+std::string RunBackend( const ir::Program& program, const BackendOptions& options);
 
 } // ! namespace dumb
 

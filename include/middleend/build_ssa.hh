@@ -8,7 +8,7 @@ namespace dumb
 namespace build_ssa
 {
 
-void BuildSSA( ir::Program& ir);
+void BuildSSA( ir::Program& ir, int skip_func);
 
 } // ! namespace build_ssa
 } // ! namespace dumb

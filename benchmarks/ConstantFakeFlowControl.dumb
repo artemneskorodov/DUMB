@@ -1,4 +1,4 @@
-function test()
+function _test()
 {
     variable x = 10;
     if ( x > 0 )
@@ -13,24 +13,6 @@ function test()
 
 function main()
 {
-    variable counter = 1000000;
-    variable result;
-
-    while ( counter > 0 )
-    {
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-        result = test();
-
-        counter = counter - 1;
-    }
-
+    variable result = _test();
     output(result, "Result = ");
 }

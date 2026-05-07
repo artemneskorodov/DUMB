@@ -1,4 +1,4 @@
-function test(parameter)
+function _test(parameter)
 {
     variable a = parameter + 10;
     variable b = a + 5;
@@ -11,26 +11,6 @@ function test(parameter)
 
 function main()
 {
-    variable counter = 1000000;
-    variable result;
-
-    variable parameter = 10;
-
-    while ( counter > 0 )
-    {
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-        result = test(parameter);
-
-        counter = counter - 1;
-    }
-
+    variable result = _test(10);
     output(result, "Result = ");
 }

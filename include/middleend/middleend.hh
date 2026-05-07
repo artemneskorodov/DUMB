@@ -2,12 +2,28 @@
 #define DUMB_MIDDLEEND_HH__
 
 #include "ir.hh"
-#include "options.hh"
 
 namespace dumb
 {
 
-void RunMiddleend( ir::Program& program, const option::OptionsParser& options);
+struct MiddleendOptions
+{
+    MiddleendOptions( bool enable_sccp,
+                      bool enable_dce,
+                      bool benchmark_build)
+     :  enable_sccp     { enable_sccp},
+        enable_dce      { enable_dce},
+        benchmark_build { benchmark_build}
+    {
+    }
+
+    bool enable_sccp;
+    bool enable_dce;
+    bool benchmark_build;
+
+};
+
+void RunMiddleend( ir::Program& program, const MiddleendOptions& options);
 
 } // ! namespace dumb
 

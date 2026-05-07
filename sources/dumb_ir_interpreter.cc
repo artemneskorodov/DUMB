@@ -36,8 +36,11 @@ main( int         argc,
     // Dumping IR before middleend
     dumb::ir::dump::DumpIR( program, "ir_dump_before_opt");
 
-    // Running IR optimizations
-    dumb::RunMiddleend( program, parser);
+    // Running optimizations
+    dumb::MiddleendOptions middleend_options{ parser.GetOption<bool>( "--enable-sccp"),
+                                              parser.GetOption<bool>( "--enable-dce"),
+                                              false};
+    dumb::RunMiddleend( program, middleend_options);
 
     // Dumping IR after middleend
     dumb::ir::dump::DumpIR( program, "ir_dump_after_opt");

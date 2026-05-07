@@ -1,4 +1,4 @@
-function fib(num)
+function _test()
 {
     if ( num == 0 )
     {
@@ -13,14 +13,6 @@ function fib(num)
 
 function main()
 {
-    variable num = 10;
-
-    variable counter = 10000000;
-    variable result = 0;
-    while ( counter > 0 )
-    {
-        result = result + fib(num);
-        counter = counter - 1;
-    }
+    variable result = _test(10);
     output(result, "Result = ");
 }
