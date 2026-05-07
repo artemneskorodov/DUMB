@@ -141,6 +141,7 @@ enum class Opcode
     CALL,
     INPUT,
     OUTPUT,
+    EXIT,
 };
 
 struct Instruction

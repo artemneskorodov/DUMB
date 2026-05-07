@@ -369,6 +369,9 @@ EmitIR( const ast::Program& program)
                                            std::vector<ir::Operand>{
                                                { ir::Operand::FUNC_LABEL, 0, main_sym->GetID()}
                                            });
+    start_entry.instructions.emplace_back( ir::Opcode::EXIT,
+                                           ir::kNoDefine,
+                                           std::vector<ir::Operand>{});
 
     for ( const ast::Function& func : program.functions )
     {

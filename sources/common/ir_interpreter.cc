@@ -36,6 +36,10 @@ public:
     Run()
     {
         run_function( program_.GetFunction( program_.Entry()));
+        if ( !need_exit_ )
+        {
+            throw std::runtime_error{ "No exit instruction found. UB."};
+        }
     }
 
 private:
@@ -97,10 +101,15 @@ private:
                 case Opcode::CALL:   run_instr_call   ( instr); break;
                 case Opcode::INPUT:  run_instr_input  ( instr); break;
                 case Opcode::OUTPUT: run_instr_output ( instr); break;
+                case Opcode::EXIT:   run_instr_exit   ( instr); break;
                 default: throw std::runtime_error{ "Unexpected instruction opcode"};
             }
 
             if ( need_return_ )
+            {
+                return ;
+            }
+            if ( need_exit_ )
             {
                 return ;
             }
@@ -288,6 +297,14 @@ private:
         std::cout << str + std::to_string( value( instr.operands[1])) << std::endl;
     }
 
+    void
+    run_instr_exit( const Instruction& /*instr*/)
+    {
+        LOGGER(IR_INTERPRETER) << "Running instruction EXIT";
+
+        need_exit_ = true;
+    }
+
 private:
     const Function&
     find_function( int id)
@@ -340,7 +357,8 @@ private:
     std::unordered_map<nt::SymbolID, ImmType>        globals_;
     const Function                                  *current_function_;
     ImmType                                          function_retval_;
-    bool                                             need_return_{ false};
+    bool                                             need_return_ { false};
+    bool                                             need_exit_   { false};
 
 };
 

@@ -190,6 +190,7 @@ private:
                 case ir::Opcode::CALL:   emit_instr_call   ( instr); break;
                 case ir::Opcode::INPUT:  emit_instr_input  ( instr); break;
                 case ir::Opcode::OUTPUT: emit_instr_output ( instr); break;
+                case ir::Opcode::EXIT:   emit_instr_exit   ( instr); break;
                 default: throw std::runtime_error{ "Unexpected instruction opcode"};
             }
         }
@@ -214,9 +215,6 @@ private:
     {
         if ( terminator.type == ir::CmpType::INVALID )
         {
-            lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, lir::Immediate{ 60});
-            lir_.Add( lir::BinaryOp::XOR, lir::Register::RDI, lir::Register::RDI);
-            lir_.Add( lir::NoOpInstr::SYSCALL);
             return ;
         }
 
@@ -383,6 +381,16 @@ private:
         lir_.Add( lir::UnaryOp::PUSH, lir::Register::RBP);
         lir_.AddCall( "__std_output");
         lir_.Add( lir::UnaryOp::POP, lir::Register::RBP);
+    }
+
+    void
+    emit_instr_exit( const ir::Instruction& instr)
+    {
+        check_operands( instr, 0);
+
+        lir_.Add( lir::BinaryOp::MOV, lir::Register::RAX, lir::Immediate{ 60});
+        lir_.Add( lir::BinaryOp::XOR, lir::Register::RDI, lir::Register::RDI);
+        lir_.Add( lir::NoOpInstr::SYSCALL);
     }
 
 private:
