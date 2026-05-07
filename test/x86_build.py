@@ -17,7 +17,7 @@ def build_exec(compiler_path: str, workdir: str, test_name: str, enable_sccp=Tru
     if enable_dce:
         compile_command.append("--enable-dce")
     if build_benchmark:
-        compile_command.append("benchmark")
+        compile_command.append("--benchmark")
 
     subprocess.run(["mkdir", "-p", f"{workdir}/{BENCHMARKS_BUILD_DIR}"], check=True)
     subprocess.run(compile_command,                                      check=True)
