@@ -150,7 +150,7 @@ jobs:
       - name: Run time tests
         id: run_script
         run: |
-          python test/benchmark.py ${{ github.workspace }}/build/dumb ${{ github.workspace }} > result.json
+          python test/benchmark.py ${{ github.workspace }}/build/dumb ${{ github.workspace }}
 
       - name: Parse JSON and output Markdown table
         run: |
