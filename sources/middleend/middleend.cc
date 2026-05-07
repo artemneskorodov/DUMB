@@ -13,6 +13,7 @@ void
 RunMiddleend( ir::Program&            program,
               const MiddleendOptions& options)
 {
+    // Skipping main optimizations if building benchmark
     int skip_optimizations = -1;
     if ( options.benchmark_build )
     {

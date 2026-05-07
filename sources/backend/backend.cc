@@ -118,6 +118,7 @@ public:
             {
                 continue;
             }
+            emit_function( func);
         }
 
         // Adding globals and global strings
