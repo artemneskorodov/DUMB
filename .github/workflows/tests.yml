@@ -154,10 +154,4 @@ jobs:
 
       - name: Parse JSON and output Markdown table
         run: |
-          echo "### Benchmark results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          jq -r '["|Name|", "No optimizations|", "--enable-sccp|", "--enable-sccp --enable-dce|", "--enable-dce|"],
-            ["|:----|", "----:|", "----:|", "----:|", "----:|"],
-            (.[] | ["|" + .name + "|", .no_opt + "|", .sccp + "|", .sccp_dce + "|", .dce + "|"])
-            | @tsv' result.json >> $GITHUB_STEP_SUMMARY
+          echo "![Alt text](${{ github.workspace }}/performance_table.png)" >> $GITHUB_STEP_SUMMARY

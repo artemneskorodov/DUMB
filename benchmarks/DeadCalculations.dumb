@@ -9,10 +9,14 @@ function _test(parameter)
     variable g = f / 5;
     variable h = g / 7;
 
-    variable x = c + 100;
-    variable y = d * 2;
+    variable x1 = c + 100;
+    variable x2 = d * 2;
+    variable x3 = c * 100;
+    variable x4 = h * 700;
+    variable x5 = f * 10;
+    variable x6 = h + 25;
 
-    return c;
+    return h;
 }
 
 function main()
