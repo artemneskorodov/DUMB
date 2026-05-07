@@ -1,4 +1,4 @@
-function _test()
+function _test(num)
 {
     if ( num == 0 )
     {
@@ -8,7 +8,7 @@ function _test()
     {
         return 1;
     }
-    return fib(num - 1) + fib(num - 2);
+    return _test(num - 1) + _test(num - 2);
 }
 
 function main()
