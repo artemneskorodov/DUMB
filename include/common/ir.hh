@@ -216,8 +216,8 @@ struct BasicBlockTerminator
     BasicBlockTerminator( Operand      left,
                           Operand      right,
                           CmpType      type,
-                          int          true_dest,
-                          int          false_dest)
+                          BasicBlockID true_dest,
+                          BasicBlockID false_dest)
      :  left       { std::move( left)},
         right      { std::move( right)},
         type       { type},
@@ -226,11 +226,11 @@ struct BasicBlockTerminator
     {
     }
 
-    Operand   left       {};
-    Operand   right      {};
-    CmpType   type       { CmpType::INVALID};
-    int       true_dest  { 0xffffff}; // Random number for default constructor
-    int       false_dest { 0};
+    Operand      left       {};
+    Operand      right      {};
+    CmpType      type       { CmpType::INVALID};
+    BasicBlockID true_dest  { 0xffffff}; // Random number for default constructor
+    BasicBlockID false_dest { 0};
 
 };
 
