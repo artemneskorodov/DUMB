@@ -108,14 +108,7 @@ public:
         node.condition.right->Accept( *this);
         ir::Operand right = eval_result_;
 
-        ir::CmpType type;
-        switch ( node.condition.operation )
-        {
-            case ast::CompareOp::Operation::OP_CMP_LESS:   type = ir::CmpType::LESS;   break;
-            case ast::CompareOp::Operation::OP_CMP_EQUAL:  type = ir::CmpType::EQUAL;  break;
-            case ast::CompareOp::Operation::OP_CMP_BIGGER: type = ir::CmpType::BIGGER; break;
-            default: throw std::runtime_error{ "Unexpected compare operation type"};
-        }
+        ir::CmpType type = ast::CompareOp::ToIr( node.condition.operation);
 
         ir::BasicBlock& body_bb = function_.AddBasicBlock();
         ir::BasicBlock& next_bb = function_.AddBasicBlock();
@@ -147,57 +140,68 @@ public:
     void
     Visit( const ast::While& node) override
     {
-        ir::BasicBlock& cond_bb = function_.AddBasicBlock();
-        ir::BasicBlock& body_bb = function_.AddBasicBlock();
-        ir::BasicBlock& next_bb = function_.AddBasicBlock();
+        //
+        // While is emitted in canonical form:
+        // - loop has preheader
+        // - only one back arc
+        // - every blocks which loop includes are strictly dominated by its preheader
+        //
+        // BB_{old}:
+        //  ...
+        //  if ( condition of loop is true ) goto BB_PREHEADER; else goto BB_NEXT;
+        //
+        // BB_PREHEADER:
+        //  ... (invariants can be moved here)
+        //  if ( true ) goto BB_FIRST_BODY;
+        //
+        // BB_FIRST_BODY:
+        //  ... # body of loop
+        //  ...
+        // BB_LAST_BODY:
+        //  ...
+        //  if ( condition of loop is true ) goto BB_FIRST_BODY; else goto BB_NEXT;
+        //
+        // BB_NEXT:
+        //  ...
+        //
+        ir::BasicBlock& preheader_bb  = function_.AddBasicBlock();
+        ir::BasicBlock& first_body_bb = function_.AddBasicBlock();
+        ir::BasicBlock& next_bb       = function_.AddBasicBlock();
 
-        // Forwarding current basic block to condition block
-        basic_block_->terminator.type      = ir::CmpType::ALWAYS_TRUE;
-        basic_block_->terminator.true_dest = cond_bb.id;
-
-        cond_bb.predecessors.emplace_back( basic_block_->id);
-        cond_bb.predecessors.emplace_back( body_bb.id);
-        body_bb.predecessors.emplace_back( cond_bb.id);
-        next_bb.predecessors.emplace_back( cond_bb.id);
-
-        basic_block_ = &cond_bb;
-
-        // Emitting condition
-        // Left
+        // Emitting condition in current basic block as we use form of loop with
+        // if ( cond ) { ...; do{ ... } while ( cond ) }
         node.condition.left->Accept( *this);
         ir::Operand left = eval_result_;
-        //Right
         node.condition.right->Accept( *this);
         ir::Operand right = eval_result_;
+        ir::CmpType cmp_type = ast::CompareOp::ToIr( node.condition.operation);
 
-        ir::CmpType type;
-        switch ( node.condition.operation )
-        {
-            case ast::CompareOp::Operation::OP_CMP_LESS:   type = ir::CmpType::LESS;   break;
-            case ast::CompareOp::Operation::OP_CMP_EQUAL:  type = ir::CmpType::EQUAL;  break;
-            case ast::CompareOp::Operation::OP_CMP_BIGGER: type = ir::CmpType::BIGGER; break;
-            default: throw std::runtime_error{ "Unexpected compare operation type"};
-        }
-
-        basic_block_->terminator = ir::BasicBlockTerminator( left,
+        basic_block_->terminator = ir::BasicBlockTerminator{ left,
                                                              right,
-                                                             type,
-                                                             body_bb.id,
-                                                             next_bb.id);
+                                                             cmp_type,
+                                                             preheader_bb.id,
+                                                             next_bb.id};
 
-        // Emitting while body
-        basic_block_ = &body_bb;
+        // Adding empty preheader basic block with only terminator included for preheader
+        basic_block_ = &preheader_bb;
+        basic_block_->terminator.type      = ir::CmpType::ALWAYS_TRUE;
+        basic_block_->terminator.true_dest = first_body_bb.id;
 
-        for ( auto& it : node.body )
+        // Adding loop body (it can include many basic blocks, but we start with first_body_bb)
+        basic_block_ = &first_body_bb;
+        for ( const ast::StmtNodePtr& stmt : node.body )
         {
-            it.get()->Accept( *this);
+            stmt->Accept( *this);
         }
 
-        // Forwarding to conditional basic block
-        basic_block_->terminator.type      = ir::CmpType::ALWAYS_TRUE;
-        basic_block_->terminator.true_dest = cond_bb.id;
+        // Checking loop condition (the part with while (cond ) in used loop form)
+        basic_block_->terminator = ir::BasicBlockTerminator{ left,
+                                                             right,
+                                                             cmp_type,
+                                                             first_body_bb.id,
+                                                             next_bb.id};
 
-        // Adding next basic block for everything after while
+        // Setting current basic block to next basic block to emit part after loop
         basic_block_ = &next_bb;
     }
 

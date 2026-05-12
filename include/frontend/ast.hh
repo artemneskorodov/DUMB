@@ -195,6 +195,18 @@ struct CompareOp
     {
     }
 
+    static ir::CmpType
+    ToIr( Operation op)
+    {
+        switch ( op )
+        {
+            case ast::CompareOp::Operation::OP_CMP_LESS:   return ir::CmpType::LESS;
+            case ast::CompareOp::Operation::OP_CMP_EQUAL:  return ir::CmpType::EQUAL;
+            case ast::CompareOp::Operation::OP_CMP_BIGGER: return ir::CmpType::BIGGER;
+            default: throw std::runtime_error{ "Unexpected compare operation type"};
+        }
+    }
+
     Operation   operation;
     ExprNodePtr left;
     ExprNodePtr right;
