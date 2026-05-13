@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <list>
 #include <stdexcept>
+#include <algorithm>
 
 #include "nametable.hh"
 
@@ -265,6 +266,19 @@ struct BasicBlock final
     BasicBlock( BasicBlockID id)
      :  id{ id}
     {
+    }
+
+    ///
+    /// @brief    Add phi acceptor to block
+    /// @param id ID of accepting block
+    ///
+    void
+    AddPhiAcceptor( BasicBlockID id)
+    {
+        if ( std::find( phi_acceptors.begin(), phi_acceptors.end(), id) == phi_acceptors.end() )
+        {
+            phi_acceptors.emplace_back( id);
+        }
     }
 
     std::list<PhiNode>      phi_nodes{};
