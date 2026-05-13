@@ -5,6 +5,7 @@
 #include "options.hh"
 #include "sccp.hh"
 #include "dce.hh"
+#include "squash_instructions.hh"
 
 namespace dumb
 {
@@ -39,6 +40,9 @@ RunMiddleend( ir::Program&            program,
         dce::DeadCodeElimination( program, skip_optimizations);
         ir::dump::DumpIR( program, "after_dce");
     }
+
+    squash_instructions::SquashInstructions( program);
+    ir::dump::DumpIR( program, "after_instructions_squash");
 }
 
 } // ! namespace dumb

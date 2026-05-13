@@ -232,6 +232,16 @@ dump_function( const ir::Program&   program,
         html::HTMLRow& row = func_start.addRow();
         row.addCell( param_sym->GetName() + "." + std::to_string( param_id.version));
     }
+
+    func_start.addRow().addCell( "Function local variables");
+    for ( const SSAKey& var : function.Variables() )
+    {
+        const nt::Symbol *var_sym = program.Nametable().FindSymbol( var.id);
+        html::HTMLRow& row = func_start.addRow();
+        row.addCell( var_sym->GetName() + ": id=" + std::to_string( var.id) +
+                     ", ver=" + std::to_string( var.version));
+    }
+
     html::HTMLRow& start_row = func_start.addRow();
     start_row.addCell( "Start")
              .setPort( "Next");

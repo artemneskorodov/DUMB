@@ -86,6 +86,47 @@ GetTermUsers( const ir::Function& func,
     return users;
 }
 
+std::size_t
+GetUsesCount( const ir::Function& func,
+              const ir::SSAKey&   ssa_key)
+{
+    std::size_t uses = 0;
+
+    for ( const ir::BasicBlock& block : func.BasicBlocks() )
+    {
+        for ( const ir::PhiNode& phi : block.phi_nodes )
+        {
+            for ( const auto& [pred_id, operand] : phi.mapping )
+            {
+                if ( is_same_var( ssa_key, operand) )
+                {
+                    ++uses;
+                }
+            }
+        }
+        for ( const ir::Instruction& instr : block.instructions )
+        {
+            for ( const ir::Operand& operand : instr.operands )
+            {
+                if ( is_same_var( ssa_key, operand) )
+                {
+                    ++uses;
+                }
+            }
+        }
+        const ir::BasicBlockTerminator& term = block.terminator;
+        if ( is_same_var( ssa_key, term.left) )
+        {
+            ++uses;
+        }
+        if ( is_same_var( ssa_key, term.right) )
+        {
+            ++uses;
+        }
+    }
+    return uses;
+}
+
 std::vector<ir::Operand *>
 GetUses( ir::Function&     func,
          const ir::SSAKey& ssa_key)
