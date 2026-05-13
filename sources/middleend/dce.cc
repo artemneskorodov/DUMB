@@ -11,47 +11,63 @@ namespace dce
 namespace
 {
 
-std::vector<ir::SSAKey>
-get_uses( const ir::SSAKey&   var,
-          const ir::Function& function)
+void
+decrement_uses_of_definition( const ir::Function&                                  func,
+                              const ir::SSAKey&                                    var,
+                              std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash>& counters)
 {
-    std::vector<ir::SSAKey> result{};
-
-    for ( const ir::BasicBlock& block : function.BasicBlocks() )
+    for ( const ir::BasicBlock& block : func.BasicBlocks() )
     {
+        bool found_definition = false;
+
+        // Searching for definition in instructions
         for ( const ir::Instruction& instr : block.instructions )
         {
-            if ( instr.defines.type != ir::Operand::VARIABLE )
+            if ( (instr.defines.type  == ir::Operand::VARIABLE) &&
+                 (instr.defines.id    == var.id) &&
+                 (instr.defines.value == var.version) )
             {
-                continue;
-            }
-            for ( const ir::Operand& op : instr.operands )
-            {
-                if ( (op.type  == ir::Operand::VARIABLE) &&
-                     (op.id    == var.id) &&
-                     (op.value == var.version) )
+                // Decrementing uses counters for every operand
+                for ( const ir::Operand& operand : instr.operands )
                 {
-                    result.emplace_back( instr.defines.id,
-                                         instr.defines.value);
+                    if ( operand.type == ir::Operand::VARIABLE )
+                    {
+                        ir::SSAKey key{ operand.id, operand.value};
+                        --counters[key];
+                    }
                 }
+                found_definition = true;
+                break;
             }
         }
+        if ( found_definition )
+        {
+            break;
+        }
 
+        // Searching for definition in phi nodes
         for ( const ir::PhiNode& phi : block.phi_nodes )
         {
-            for ( auto& [pred, op] : phi.mapping )
+            if ( phi.var == var )
             {
-                if ( (op.type  == ir::Operand::VARIABLE) &&
-                     (op.id    == var.id) &&
-                     (op.value == var.version) )
+                // Decrementing uses counters for every operand
+                for ( const auto& [bb_id, operand] : phi.mapping )
                 {
-                    result.emplace_back( phi.var.id, phi.var.id);
+                    if ( operand.type == ir::Operand::VARIABLE )
+                    {
+                        ir::SSAKey key{ operand.id, operand.value};
+                        --counters[key];
+                    }
                 }
+                found_definition = true;
+                break;
             }
         }
+        if ( found_definition )
+        {
+            break;
+        }
     }
-
-    return result;
 }
 
 std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash>
@@ -91,9 +107,9 @@ get_uses_counters( const ir::Function& function)
 
         for ( const ir::PhiNode& phi : block.phi_nodes )
         {
-            if ( result.find( ir::SSAKey{ phi.var.id, phi.var.id}) == result.end() )
+            if ( result.find( phi.var) == result.end() )
             {
-                result[ir::SSAKey{ phi.var.id, phi.var.id}] = 0;
+                result[phi.var] = 0;
             }
             for ( auto& [pred, op] : phi.mapping )
             {
@@ -166,13 +182,7 @@ DeadCodeElimination( ir::Program& ir,
 
             for ( ir::SSAKey& value : zeros )
             {
-                for ( ir::SSAKey& use : get_uses( value, func) )
-                {
-                    if ( counters.find( use) != counters.end() )
-                    {
-                        counters[use] -= 1;
-                    }
-                }
+                decrement_uses_of_definition( func, value, counters);
 
                 remove_def( value, func);
                 counters.erase( value);
