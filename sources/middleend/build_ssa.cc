@@ -225,7 +225,7 @@ RenameVariables( ir::Function&  function,
                     {
                         phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
                     }
-                    basic_block.phi_acceptors.emplace_back( id);
+                    basic_block.AddPhiAcceptor( id);
                 }
                 if ( basic_block.terminator.type != ir::CmpType::ALWAYS_TRUE )
                 {
@@ -241,7 +241,7 @@ RenameVariables( ir::Function&  function,
                         {
                             phi.mapping[basic_block.id] = ir::Operand{ ir::Operand::IMMEDIATE, 0};
                         }
-                        basic_block.phi_acceptors.emplace_back( id);
+                        basic_block.AddPhiAcceptor( id);
                     }
                 }
             }
