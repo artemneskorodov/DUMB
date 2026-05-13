@@ -1,0 +1,14 @@
+function main()
+{
+    variable result = 0;
+    input(result, "Start value = ");
+
+    variable induction = 0;
+    while ( induction < 10 )
+    {
+        result = result + induction * 4;
+        induction = induction + 1;
+    }
+    output(result, "Result = ");
+    return 0;
+}

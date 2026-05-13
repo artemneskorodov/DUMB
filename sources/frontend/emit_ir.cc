@@ -201,6 +201,9 @@ public:
                                                              first_body_bb.id,
                                                              next_bb.id};
 
+        // Adding loop information
+        function_.AddLoop( preheader_bb.id, first_body_bb.id, basic_block_->id);
+
         // Setting current basic block to next basic block to emit part after loop
         basic_block_ = &next_bb;
     }
