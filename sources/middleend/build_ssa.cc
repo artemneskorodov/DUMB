@@ -47,6 +47,11 @@ BuildControlFlowGraph( const ir::Function& func)
     return result;
 }
 
+#if 0
+
+///
+/// @todo Move this to graph library
+///
 void
 DrawGraph( const std::string& filename,
            const BBGraph&     graph)
@@ -63,6 +68,8 @@ DrawGraph( const std::string& filename,
     }
     dot.translateWithDot( filename, "svg");
 }
+
+#endif
 
 std::vector<ir::BasicBlockID>
 GetVarDefinitionBlocks( const ir::Function& func,
@@ -90,9 +97,6 @@ AddPhi( ir::Function&  func,
         const BBGraph& control_flow,
         const BBGraph& dom_frontier)
 {
-    DrawGraph( "graph_cf.svg", control_flow);
-    DrawGraph( "graph_df.svg", dom_frontier);
-
     for ( const ir::SSAKey& var_id : func.Variables() )
     {
         std::vector<ir::BasicBlockID> def_blocks = GetVarDefinitionBlocks( func, var_id.id);
