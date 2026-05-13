@@ -6,6 +6,7 @@
 #include "sccp.hh"
 #include "dce.hh"
 #include "squash_instructions.hh"
+#include "inductive_variables.hh"
 
 namespace dumb
 {
@@ -43,6 +44,8 @@ RunMiddleend( ir::Program&            program,
 
     squash_instructions::SquashInstructions( program);
     ir::dump::DumpIR( program, "after_instructions_squash");
+
+    iv::GetInductiveVariables( program);
 }
 
 } // ! namespace dumb
