@@ -25,7 +25,7 @@ enum class LogCategory : std::size_t
     DOMINATORS_TABLE = 6,
     BACKEND          = 7,
     SCCP             = 8,
-    IND_VAR          = 9,
+    LOOP_ANALYSIS    = 9,
 
     LOG_CATEGORY_MAX
 };
@@ -45,7 +45,7 @@ constexpr std::array<std::string_view, kLogCatMax> kLogCategoriesStrings{{
     "DOMINATORS_TABLE",
     "BACKEND",
     "SCCP",
-    "IND_VAR"
+    "LOOP_ANALYSIS"
 }};
 
 inline std::string

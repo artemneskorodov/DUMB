@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "ir.hh"
+#include "loops_search.hh"
 
 namespace dumb
 {
@@ -19,12 +20,13 @@ namespace iv
 struct BasicInductionVar
 {
     ir::PhiNode *phi_node;
-    ir::Loop *loop;
-    ir::Operand init;
-    ir::Operand step;
+    loops::Loop *loop;
+    ir::Operand  init;
+    ir::Operand  step;
 };
 
-std::vector<BasicInductionVar> GetInductiveVariables( ir::Program& program);
+std::vector<BasicInductionVar> GetInductiveVariables( ir::Function&           func,
+                                                      const loops::LoopsInfo& loops);
 
 } // ! namespace iv
 } // ! namespace dumb

@@ -290,16 +290,6 @@ struct BasicBlock final
 
 };
 
-///
-/// @brief Helper structure to store information about loops.
-///
-struct Loop
-{
-    BasicBlockID preheader;
-    BasicBlockID header;
-    BasicBlockID exiting;
-};
-
 //
 // Function
 //
@@ -402,26 +392,6 @@ public:
         return entry_;
     }
 
-    void
-    AddLoop( BasicBlockID preheader,
-             BasicBlockID header,
-             BasicBlockID exiting)
-    {
-        loops_.emplace_back( Loop{ preheader, header, exiting});
-    }
-
-    std::list<Loop>&
-    GetLoops() &
-    {
-        return loops_;
-    }
-
-    const std::list<Loop>&
-    GetLoops() const &
-    {
-        return loops_;
-    }
-
 private:
     BasicBlock&
     add_basic_block( ir::BasicBlockID id)
@@ -439,7 +409,6 @@ private:
     int                                            id_;
     BasicBlockID                                   current_bb_id_    { 0};
     BasicBlockID                                   entry_            { -1};
-    std::list<Loop>                                loops_            {};
 
 };
 
