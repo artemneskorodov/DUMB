@@ -59,7 +59,7 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 python3-pip graphviz nasm
+          sudo apt-get install -y python3 python3-pip nasm
           pip3 install -r ${{ github.workspace }}/requirements.txt
 
       - name: Run tests
@@ -86,7 +86,7 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 python3-pip graphviz
+          sudo apt-get install -y python3 python3-pip
           pip3 install -r ${{ github.workspace }}/requirements.txt
 
       - name: Run tests
@@ -113,7 +113,7 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 python3-pip graphviz
+          sudo apt-get install -y python3 python3-pip
           pip3 install -r ${{ github.workspace }}/requirements.txt
 
       - name: Run tests
@@ -144,7 +144,7 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 python3-pip graphviz nasm hyperfine
+          sudo apt-get install -y python3 python3-pip nasm hyperfine
           pip3 install -r ${{ github.workspace }}/requirements.txt
 
       - name: Run time tests
