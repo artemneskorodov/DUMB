@@ -155,7 +155,6 @@ GetInductiveVariables( ir::Program& program)
     {
         for ( ir::Loop& loop : func.GetLoops() )
         {
-            LOGGER(IND_VAR) << "LOOP";
             ir::BasicBlock& header = func.GetBasicBlock( loop.header);
             for ( ir::PhiNode& phi : header.phi_nodes )
             {
