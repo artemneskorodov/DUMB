@@ -50,6 +50,16 @@ std::vector<ir::Operand *>
 GetUses( ir::Function&     func,
          const ir::SSAKey& ssa_key);
 
+///
+/// @brief         Get number of uses of SSA variable.
+/// @param func    Function to look for uses.
+/// @param ssa_key Variable to search for.
+/// @return        Number of SSA uses.
+///
+std::size_t
+GetUsesCount( const ir::Function& func,
+              const ir::SSAKey&   ssa_key);
+
 } // ! namespace ssa
 } // ! namespace dumb
 

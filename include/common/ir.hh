@@ -79,6 +79,32 @@ struct Operand
         result += ", value=" + std::to_string( value) + ", id=" + std::to_string( id) + ")";
         return result;
     }
+
+    bool
+    operator==( const Operand& other)
+    {
+        if ( type == Type::VARIABLE )
+        {
+            return ( (type  == other.type) &&
+                     (id    == other.id) &&
+                     (value == other.value) );
+        } else if ( (type == Type::GLOBAL) ||
+                    (type == Type::FUNC_LABEL) )
+        {
+            return ( (type == other.type) &&
+                     (id   == other.id) );
+        } else
+        {
+            return ( (type == other.type) &&
+                     (value == other.value) );
+        }
+    }
+
+    bool
+    operator!=( const Operand& other)
+    {
+        return !(*this == other);
+    }
 };
 
 constexpr Operand kNoDefine = Operand{};

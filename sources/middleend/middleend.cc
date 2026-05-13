@@ -5,6 +5,7 @@
 #include "options.hh"
 #include "sccp.hh"
 #include "dce.hh"
+#include "squash_instructions.hh"
 
 namespace dumb
 {
@@ -24,6 +25,9 @@ RunMiddleend( ir::Program&            program,
         }
         skip_optimizations = main_sym->GetID();
     }
+
+    squash_instructions::SquashInstructions( program);
+    ir::dump::DumpIR( program, "after_instructions_squash");
 
     build_ssa::BuildSSA( program, skip_optimizations);
     ir::dump::DumpIR( program, "after_build_ssa");
