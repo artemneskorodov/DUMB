@@ -47,6 +47,8 @@ BuildControlFlowGraph( const ir::Function& func)
     return result;
 }
 
+#if 0
+
 ///
 /// @todo Move this to graph library
 ///
@@ -66,6 +68,8 @@ DrawGraph( const std::string& filename,
     }
     dot.translateWithDot( filename, "svg");
 }
+
+#endif
 
 std::vector<ir::BasicBlockID>
 GetVarDefinitionBlocks( const ir::Function& func,
