@@ -2,7 +2,7 @@
 #include "graph.hh"
 #include "loops_search.hh"
 #include "logger.hh"
-#include "inductive_variables.hh"
+#include "iv_search.hh"
 
 namespace dumb
 {
@@ -52,14 +52,18 @@ InductionVariablesOptimization( ir::Program& program)
         LOGGER(LOOP_ANALYSIS) << loops_info.ToStr();
 
         // Creating basic induction variables list
-        std::vector<BasicInductionVar> basic_inductions = GetInductiveVariables( func, loops_info);
-        for ( const BasicInductionVar& ind_var : basic_inductions )
+        BasicIndVarList basic_inductions = GetInductiveVariables( func, loops_info);
+        for ( const BasicInductionVar& basic_ind : basic_inductions )
         {
-            LOGGER(LOOP_ANALYSIS) << "Induction var: init = " << ind_var.init.ToStr()
-                                  << ", step = " << ind_var.step.ToStr()
-                                  << ", in loop(header=" << ind_var.loop->header
-                                  << ", latch=" << ind_var.loop->latch << ")";
+            LOGGER(LOOP_ANALYSIS) << "Basic induction: " << basic_ind.ToStr();
+        }
 
+        DerivedIndVarList derived_inductions = GetDerivedInductiveVariables( func,
+                                                                             loops_info,
+                                                                             basic_inductions);
+        for ( const DerivedInductionVar& derived_ind : derived_inductions )
+        {
+            LOGGER(LOOP_ANALYSIS) << "Derived induction: " << derived_ind.ToStr();
         }
     }
 }

@@ -50,6 +50,24 @@ struct Loop
     }
 
     bool
+    IsBlockDirectlyInLoop( ir::BasicBlockID block) const
+    {
+        if ( !Contains( block) )
+        {
+            return false;
+        }
+        for ( Loop *child : children )
+        {
+            if ( child->Contains( block) )
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    bool
     Contains( const Loop& other) const
     {
         if ( blocks.size() < other.blocks.size() )
