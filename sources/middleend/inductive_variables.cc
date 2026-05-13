@@ -40,7 +40,7 @@ find_definition( ir::Function& func,
 }
 
 std::optional<BasicInductionVar>
-match_basic_induction( ir::Loop&     loop,
+match_basic_induction( loops::Loop&  loop,
                        ir::PhiNode&  phi,
                        ir::Function& func)
 {
@@ -73,7 +73,7 @@ match_basic_induction( ir::Loop&     loop,
         if ( bb_from == loop.preheader )
         {
             init_operand = operand;
-        } else if ( bb_from == loop.exiting )
+        } else if ( bb_from == loop.latch )
         {
             backedge_operand = operand;
             found_backedge = true;
@@ -147,25 +147,20 @@ match_basic_induction( ir::Loop&     loop,
 } // ! anonymous namespace
 
 std::vector<BasicInductionVar>
-GetInductiveVariables( ir::Program& program)
+GetInductiveVariables( ir::Function&           func,
+                       const loops::LoopsInfo& loops)
 {
     std::vector<BasicInductionVar> inductions{};
 
-    for ( ir::Function& func : program.Functions() )
+    for ( const std::unique_ptr<loops::Loop>& loop : loops.Loops() )
     {
-        for ( ir::Loop& loop : func.GetLoops() )
+        ir::BasicBlock& header = func.GetBasicBlock( loop->header);
+        for ( ir::PhiNode& phi : header.phi_nodes )
         {
-            ir::BasicBlock& header = func.GetBasicBlock( loop.header);
-            for ( ir::PhiNode& phi : header.phi_nodes )
+            std::optional<BasicInductionVar> induction = match_basic_induction( *loop, phi, func);
+            if ( induction.has_value() )
             {
-                std::optional<BasicInductionVar> induction = match_basic_induction( loop, phi, func);
-                if ( induction.has_value() )
-                {
-                    LOGGER(IND_VAR) << "Found induction variable: init = "
-                                    << induction.value().init.ToStr()
-                                    << "step = " << induction.value().step.ToStr();
-                    inductions.emplace_back( induction.value());
-                }
+                inductions.emplace_back( induction.value());
             }
         }
     }

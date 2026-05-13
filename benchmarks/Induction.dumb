@@ -6,6 +6,12 @@ function main()
     variable induction = 0;
     while ( induction < 10 )
     {
+        variable inner_induction = 10;
+        while ( inner_induction < 25 )
+        {
+            result = result + inner_induction * inner_induction;
+            inner_induction = inner_induction + 5;
+        }
         result = result + induction * 4;
         induction = induction + 1;
     }
