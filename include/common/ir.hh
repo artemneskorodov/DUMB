@@ -116,6 +116,8 @@ constexpr Operand kNoDefine = Operand{};
 
 struct SSAKey
 {
+    SSAKey() = default;
+
     SSAKey( nt::SymbolID id,
             ImmType version)
      :  id{ id},
