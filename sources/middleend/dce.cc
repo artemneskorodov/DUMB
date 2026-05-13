@@ -11,15 +11,52 @@ namespace dce
 namespace
 {
 
-void
+bool
+has_side_effects( const ir::Instruction& instr)
+{
+    if ( instr.opcode == ir::Opcode::INPUT ||
+         instr.opcode == ir::Opcode::OUTPUT ||
+         instr.opcode == ir::Opcode::EXIT ||
+         instr.opcode == ir::Opcode::RET )
+    {
+        return false;
+    }
+    if ( instr.opcode == ir::Opcode::ADD ||
+         instr.opcode == ir::Opcode::SUB ||
+         instr.opcode == ir::Opcode::DIV ||
+         instr.opcode == ir::Opcode::MUL ||
+         instr.opcode == ir::Opcode::MOV )
+    {
+        if ( instr.defines.type == ir::Operand::GLOBAL )
+        {
+            return false;
+        } else
+        {
+            return true;
+        }
+    }
+    if ( instr.opcode == ir::Opcode::CALL )
+    {
+        return false;
+    }
+
+    return false;
+}
+
+///
+/// @brief          Decrement counters for all operands of definition of variable.
+/// @param func     Function to look for definition.
+/// @param var      Variable to search for.
+/// @param counters Counters of uses of all variables - state of IR
+/// @return         true if definition of variable can be deleted
+///
+bool
 decrement_uses_of_definition( const ir::Function&                                  func,
                               const ir::SSAKey&                                    var,
                               std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash>& counters)
 {
     for ( const ir::BasicBlock& block : func.BasicBlocks() )
     {
-        bool found_definition = false;
-
         // Searching for definition in instructions
         for ( const ir::Instruction& instr : block.instructions )
         {
@@ -27,6 +64,10 @@ decrement_uses_of_definition( const ir::Function&                               
                  (instr.defines.id    == var.id) &&
                  (instr.defines.value == var.version) )
             {
+                if ( has_side_effects( instr) )
+                {
+                    return false;
+                }
                 // Decrementing uses counters for every operand
                 for ( const ir::Operand& operand : instr.operands )
                 {
@@ -36,13 +77,8 @@ decrement_uses_of_definition( const ir::Function&                               
                         --counters[key];
                     }
                 }
-                found_definition = true;
-                break;
+                return true;
             }
-        }
-        if ( found_definition )
-        {
-            break;
         }
 
         // Searching for definition in phi nodes
@@ -59,15 +95,13 @@ decrement_uses_of_definition( const ir::Function&                               
                         --counters[key];
                     }
                 }
-                found_definition = true;
-                break;
+                return true;
             }
         }
-        if ( found_definition )
-        {
-            break;
-        }
     }
+
+    // TODO can reach this?
+    return true;
 }
 
 std::unordered_map<ir::SSAKey, int, ir::SSAKeyHash>
@@ -182,11 +216,12 @@ DeadCodeElimination( ir::Program& ir,
 
             for ( ir::SSAKey& value : zeros )
             {
-                decrement_uses_of_definition( func, value, counters);
-
-                remove_def( value, func);
-                counters.erase( value);
-                changed = true;
+                if ( decrement_uses_of_definition( func, value, counters) )
+                {
+                    remove_def( value, func);
+                    counters.erase( value);
+                    changed = true;
+                }
             }
         }
     }
