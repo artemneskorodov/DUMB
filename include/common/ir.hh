@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <list>
 #include <stdexcept>
-#include <algorithm>gi
+#include <algorithm>
 
 #include "nametable.hh"
 
