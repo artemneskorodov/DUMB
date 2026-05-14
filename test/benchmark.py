@@ -12,16 +12,26 @@ class TestCase:
     name: str
     cycles: int
 
-benchmarking_tests = [
+BENCHMARKING_TESTS = [
         TestCase("FibonacciRecursiveMultiple", 10),
         TestCase("ConstantFakeFlowControl",    100000000),
         TestCase("EmptyCalculations",          100000000),
         TestCase("DeadCalculations",           100000000),
-        TestCase("LsrBenchmark",               100000),
+        TestCase("LsrBenchmark",               1000),
     ]
 
-if len(sys.argv) != 3:
+if len(sys.argv) < 3:
     raise RuntimeError("Unexpected number of parameters")
+
+if len(sys.argv) == 3:
+    benchmarking_tests = BENCHMARKING_TESTS
+else:
+    benchmarking_tests = []
+    for elem in sys.argv[3:]:
+        for test_case in BENCHMARKING_TESTS:
+            if test_case.name == elem:
+                benchmarking_tests.append(test_case)
+                break
 
 compiler_path = sys.argv[1]
 workdir       = sys.argv[2]
@@ -82,7 +92,7 @@ def generate_markdown_table(results: List[TestResult]) -> str:
 
     for r in results:
         grouped.setdefault(r.name, {})
-        grouped[r.test_name][config_name(r.flags)] = r.time
+        grouped[r.name][config_name(r.flags)] = r.time
 
     for test_name, values in grouped.items():
         row = [test_name]

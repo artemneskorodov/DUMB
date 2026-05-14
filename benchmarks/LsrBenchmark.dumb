@@ -1,7 +1,7 @@
 function _test(start)
 {
     variable result = start;
-    variable induction = 10;
+    variable induction = start;
     while ( induction < 1000 )
     {
         variable inner_induction = induction + 5;
@@ -15,6 +15,7 @@ function _test(start)
         result = result * 2 * derived;
         induction = induction + 2;
     }
+    return 0;
 }
 
 function main()
