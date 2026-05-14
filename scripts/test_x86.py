@@ -5,7 +5,7 @@ from x86_build import build_exec
 
 class X86CompilerTest(CompilerTestBase):
     def build_executable(self, test_name: str) -> str:
-        return build_exec(self.compiler_path, self.workdir, test_name)
+        return build_exec(self.compiler_path, self.workdir, test_name, test_name_function=get_source_path)
 
     def run_test(self, test_name: str) -> None:
         exec_path = self.build_executable(test_name)

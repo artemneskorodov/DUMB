@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "ir.hh"
+#include "graph.hh"
 
 namespace dumb
 {
@@ -59,6 +60,13 @@ GetUses( ir::Function&     func,
 std::size_t
 GetUsesCount( const ir::Function& func,
               const ir::SSAKey&   ssa_key);
+
+///
+/// @brief  Build control flow graph for function.
+/// @return Control flow graph with basic blocks ids as nodes.
+///
+graph::Graph<ir::BasicBlockID>
+BuildCFG( const ir::Function& func);
 
 } // ! namespace ssa
 } // ! namespace dumb

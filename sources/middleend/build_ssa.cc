@@ -9,6 +9,7 @@
 #include "build_ssa.hh"
 #include "ir.hh"
 #include "graph.hh"
+#include "ssa_framework.hh"
 
 #include "dot_graph/graph.h"
 
@@ -21,31 +22,6 @@ namespace
 {
 
 using BBGraph = graph::Graph<ir::BasicBlockID>;
-
-BBGraph
-BuildControlFlowGraph( const ir::Function& func)
-{
-    BBGraph result;
-
-    for ( const ir::BasicBlock& bb : func.BasicBlocks() )
-    {
-        result.AddNode( bb.id);
-    }
-
-    for ( const ir::BasicBlock& bb : func.BasicBlocks() )
-    {
-        if ( bb.terminator.type == ir::CmpType::INVALID )
-        {
-            continue;
-        }
-        result.AddEdge( bb.id, bb.terminator.true_dest);
-        if ( bb.terminator.type != ir::CmpType::ALWAYS_TRUE )
-        {
-            result.AddEdge( bb.id, bb.terminator.false_dest);
-        }
-    }
-    return result;
-}
 
 #if 0
 
@@ -286,7 +262,7 @@ BuildSSA( ir::Program& ir,
         {
             continue;
         }
-        BBGraph control_flow = BuildControlFlowGraph( func);
+        BBGraph control_flow = ssa::BuildCFG( func);
         control_flow.BuildDominatorsTable();
         BBGraph dom_tree = graph::BuildDominatorsTree( control_flow);
         BBGraph dom_frontier = graph::BuildDominanceFrontier( control_flow, dom_tree);
@@ -300,7 +276,7 @@ BuildSSA( ir::Program& ir,
         {
             continue;
         }
-        graph::Graph<ir::BasicBlockID> control_flow = BuildControlFlowGraph( func);
+        BBGraph control_flow = ssa::BuildCFG( func);
         control_flow.BuildDominatorsTable();
         BBGraph dom_tree = graph::BuildDominatorsTree( control_flow);
 

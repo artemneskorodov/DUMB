@@ -1,4 +1,6 @@
 #include "lsr.hh"
+#include "ssa_framework.hh"
+#include "iv_search.hh"
 
 namespace dumb
 {
@@ -20,12 +22,10 @@ get_tmp( ir::Program&  program,
     return ir::Operand{ ir::Operand::VARIABLE, 0, id};
 }
 
-} // ! anonymous namespace
-
 void
-LoopStrengthReduction( ir::Program&                 program,
-                       ir::Function&                func,
-                       const iv::DerivedIndVarList& derived_inductions)
+loop_strength_reduction( ir::Program&                 program,
+                         ir::Function&                func,
+                         const iv::DerivedIndVarList& derived_inductions)
 {
     std::size_t tmp_counter = 0;
 
@@ -115,6 +115,45 @@ LoopStrengthReduction( ir::Program&                 program,
         instr->opcode = ir::Opcode::ADD;
         instr->operands[0] = phi_tmp;
         instr->operands[1] = step;
+    }
+}
+
+} // ! anonymous namespace
+
+void
+LoopStrengthReduction( ir::Program& program,
+                       nt::SymbolID skip_optimizations)
+{
+    for ( ir::Function& func : program.Functions() )
+    {
+        if ( func.Id() == skip_optimizations )
+        {
+            continue;
+        }
+
+        graph::Graph<ir::BasicBlockID> cfg = ssa::BuildCFG( func);
+        cfg.BuildDominatorsTable();
+
+        // Creating loops tree
+        loops::LoopsInfo loops_info{ cfg};
+        LOGGER(LOOP_ANALYSIS) << loops_info.ToStr();
+
+        // Creating basic induction variables list
+        iv::BasicIndVarList basic_inductions = iv::GetInductiveVariables( func, loops_info);
+        for ( const iv::BasicInductionVar& basic_ind : basic_inductions )
+        {
+            LOGGER(LOOP_ANALYSIS) << "Basic induction: " << basic_ind.ToStr();
+        }
+
+        iv::DerivedIndVarList derived_inductions = iv::GetDerivedInductiveVariables( func,
+                                                                                     loops_info,
+                                                                                     basic_inductions);
+        for ( const iv::DerivedInductionVar& derived_ind : derived_inductions )
+        {
+            LOGGER(LOOP_ANALYSIS) << "Derived induction: " << derived_ind.ToStr();
+        }
+
+        loop_strength_reduction( program, func, derived_inductions);
     }
 }
 
