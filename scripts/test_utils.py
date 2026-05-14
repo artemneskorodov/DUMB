@@ -64,6 +64,9 @@ def get_test_path(test_name: str, workdir: str) -> str:
 def get_source_path(test_name: str, workdir: str) -> str:
     return f"{workdir}/tests/{test_name}.dumb"
 
+def get_bench_path(name: str, workdir: str) -> str:
+    return f"{workdir}/benchmarks/{name}.dumb"
+
 class CompilerTestBase:
     def __init__(self, compiler_path: str, workdir: str):
         self.compiler_path = compiler_path

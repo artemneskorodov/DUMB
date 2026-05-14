@@ -1,6 +1,7 @@
 import json
 import sys
-from x86_build import build_exec, BENCHMARKS_BUILD_DIR, OPTIONS
+from x86_build import build_exec, BENCHMARKS_BUILD_DIR
+from test_utils import get_bench_path
 import time
 import subprocess
 from dataclasses import dataclass
@@ -63,7 +64,7 @@ def config_name(flags: List[str]) -> str:
 # Build and run single test
 #
 def run_single_test(test: str, cycles: int, optimization: str) -> int:
-    exec_name = build_exec(compiler_path, workdir, test, build_benchmark=True, cycles=cycles, pipeline=optimization)
+    exec_name = build_exec(compiler_path, workdir, test, build_benchmark=True, cycles=cycles, pipeline=optimization, test_name_function=get_bench_path)
     json_output = BENCHMARKS_BUILD_DIR + "/" + test + f".result.json"
     subprocess.run(["hyperfine", "--warmup", "5", "--export-json", json_output, f"'{exec_name}'"])
     with open(json_output, "r") as f:

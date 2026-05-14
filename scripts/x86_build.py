@@ -1,10 +1,9 @@
 import subprocess
-from test_utils import get_source_path
 
 BENCHMARKS_BUILD_DIR = "benchmarks_build"
 
-def build_exec(compiler_path: str, workdir: str, test_name: str, pipeline=None, build_benchmark=False, cycles=-1) -> str:
-    source  = get_source_path(test_name, workdir)
+def build_exec(compiler_path: str, workdir: str, test_name: str, pipeline=None, build_benchmark=False, cycles=-1, test_name_function=None) -> str:
+    source  = test_name_function(test_name, workdir)
     asm     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.s"
     obj     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.o"
     elf     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}"
