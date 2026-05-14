@@ -22,6 +22,7 @@ BENCHMARKING_TESTS = [
     ]
 
 OPTIMIZATIONS = [
+    "",
     "sccp",
     "dce",
     "lsr",
@@ -72,12 +73,14 @@ def run_single_test(test: str, cycles: int, optimization: str) -> int:
         json_data = json.loads(data)
 
     optname = optimization
-    if optname == None:
+    if optname is None:
         optname = "default-pipeline"
+    if optname == "":
+        optname = "none"
 
     return TestResult(
         name=test,
-        flags=optimization,
+        optimization=optname,
         time=json_data['results'][0]['mean'],
     )
 
@@ -100,9 +103,14 @@ def generate_markdown_table(results: List[TestResult]) -> str:
 
     for test in tests:
         row = [test]
+        none_time = results_map[test].get("none")
         for pipeline in pipelines:
-            time = results_map[test].get(pipeline, "")
-            row.append(f"{time:.3f}" if time != "" else "")
+            t = results_map[test].get(pipeline)
+            if t is None or none_time is None:
+                row.append("")
+            else:
+                percent = (t / none_time) * 100
+                row.append(f"{percent : .1f}%")
         table.append("| " + " | ".join(row) + " |")
 
     return "\n".join(table)
