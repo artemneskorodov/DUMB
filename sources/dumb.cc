@@ -25,6 +25,7 @@ main( int         argc,
     parser.AddOption<std::string>( "--dump-dir"   , "-dd"   , "./" , false);
     parser.AddOption<bool>       ( "--benchmark"  , "-b"    , false, false);
     parser.AddOption<int>        ( "--cycles"     , "-c"    , 10000, false);
+    parser.AddOption<bool>       ( "--enable-lsr" , "-lsr"  , false, false);
 
     std::vector<std::string> args( argv + 1, argv + argc);
 
@@ -48,7 +49,8 @@ main( int         argc,
     // Running optimizations
     dumb::MiddleendOptions middleend_options{ parser.GetOption<bool>( "--enable-sccp"),
                                               parser.GetOption<bool>( "--enable-dce"),
-                                              parser.GetOption<bool>( "--benchmark")};
+                                              parser.GetOption<bool>( "--benchmark"),
+                                              parser.GetOption<bool>( "--enable-lsr")};
     dumb::RunMiddleend( program_ir, middleend_options);
 
     // Dumping IR after middleend

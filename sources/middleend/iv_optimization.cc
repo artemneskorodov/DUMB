@@ -3,6 +3,8 @@
 #include "loops_search.hh"
 #include "logger.hh"
 #include "iv_search.hh"
+#include "lsr.hh"
+#include "ir_dump.hh"
 
 namespace dumb
 {
@@ -40,31 +42,38 @@ BuildControlFlowGraph( const ir::Function& func)
 } // ! anonymous namespace
 
 void
-InductionVariablesOptimization( ir::Program& program)
+InductionVariablesOptimization( ir::Program&            program,
+                                const MiddleendOptions& options)
 {
-    for ( ir::Function& func : program.Functions() )
+    if ( options.enable_lsr )
     {
-        graph::Graph<ir::BasicBlockID> cfg = BuildControlFlowGraph( func);
-        cfg.BuildDominatorsTable();
-
-        // Creating loops tree
-        loops::LoopsInfo loops_info{ cfg};
-        LOGGER(LOOP_ANALYSIS) << loops_info.ToStr();
-
-        // Creating basic induction variables list
-        BasicIndVarList basic_inductions = GetInductiveVariables( func, loops_info);
-        for ( const BasicInductionVar& basic_ind : basic_inductions )
+        for ( ir::Function& func : program.Functions() )
         {
-            LOGGER(LOOP_ANALYSIS) << "Basic induction: " << basic_ind.ToStr();
-        }
+            graph::Graph<ir::BasicBlockID> cfg = BuildControlFlowGraph( func);
+            cfg.BuildDominatorsTable();
 
-        DerivedIndVarList derived_inductions = GetDerivedInductiveVariables( func,
-                                                                             loops_info,
-                                                                             basic_inductions);
-        for ( const DerivedInductionVar& derived_ind : derived_inductions )
-        {
-            LOGGER(LOOP_ANALYSIS) << "Derived induction: " << derived_ind.ToStr();
+            // Creating loops tree
+            loops::LoopsInfo loops_info{ cfg};
+            LOGGER(LOOP_ANALYSIS) << loops_info.ToStr();
+
+            // Creating basic induction variables list
+            BasicIndVarList basic_inductions = GetInductiveVariables( func, loops_info);
+            for ( const BasicInductionVar& basic_ind : basic_inductions )
+            {
+                LOGGER(LOOP_ANALYSIS) << "Basic induction: " << basic_ind.ToStr();
+            }
+
+            DerivedIndVarList derived_inductions = GetDerivedInductiveVariables( func,
+                                                                                 loops_info,
+                                                                                 basic_inductions);
+            for ( const DerivedInductionVar& derived_ind : derived_inductions )
+            {
+                LOGGER(LOOP_ANALYSIS) << "Derived induction: " << derived_ind.ToStr();
+            }
+
+            lsr::LoopStrengthReduction( program, func, derived_inductions);
         }
+        ir::dump::DumpIR( program, "iv_opts");
     }
 }
 

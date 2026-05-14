@@ -43,11 +43,21 @@ RunMiddleend( ir::Program&            program,
     }
 
     squash_instructions::SquashInstructions( program);
-    ir::dump::DumpIR( program, "after_instructions_squash");
+    ir::dump::DumpIR( program, "instr_squash");
 
-    #if 1
-    iv::InductionVariablesOptimization( program);
-    #endif
+    iv::InductionVariablesOptimization( program, options);
+
+    // Running SCCP and DCE one more time to fix the garbage from LSR
+    if ( options.enable_sccp )
+    {
+        sccp::SparseConditionalConstantPropagation( program, skip_optimizations);
+        ir::dump::DumpIR( program, "sccp_2");
+    }
+    if ( options.enable_dce )
+    {
+        dce::DeadCodeElimination( program, skip_optimizations);
+        ir::dump::DumpIR( program, "dce_2");
+    }
 }
 
 } // ! namespace dumb

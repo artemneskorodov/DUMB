@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "ir.hh"
+#include "logger.hh"
 
 namespace dumb
 {
@@ -19,7 +20,7 @@ has_side_effects( const ir::Instruction& instr)
          instr.opcode == ir::Opcode::EXIT ||
          instr.opcode == ir::Opcode::RET )
     {
-        return false;
+        return true;
     }
     if ( instr.opcode == ir::Opcode::ADD ||
          instr.opcode == ir::Opcode::SUB ||
@@ -29,18 +30,18 @@ has_side_effects( const ir::Instruction& instr)
     {
         if ( instr.defines.type == ir::Operand::GLOBAL )
         {
-            return false;
+            return true;
         } else
         {
-            return true;
+            return false;
         }
     }
     if ( instr.opcode == ir::Opcode::CALL )
     {
-        return false;
+        return true;
     }
 
-    return false;
+    return true;
 }
 
 ///
