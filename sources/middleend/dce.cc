@@ -12,38 +12,6 @@ namespace dce
 namespace
 {
 
-bool
-has_side_effects( const ir::Instruction& instr)
-{
-    if ( instr.opcode == ir::Opcode::INPUT ||
-         instr.opcode == ir::Opcode::OUTPUT ||
-         instr.opcode == ir::Opcode::EXIT ||
-         instr.opcode == ir::Opcode::RET )
-    {
-        return true;
-    }
-    if ( instr.opcode == ir::Opcode::ADD ||
-         instr.opcode == ir::Opcode::SUB ||
-         instr.opcode == ir::Opcode::DIV ||
-         instr.opcode == ir::Opcode::MUL ||
-         instr.opcode == ir::Opcode::MOV )
-    {
-        if ( instr.defines.type == ir::Operand::GLOBAL )
-        {
-            return true;
-        } else
-        {
-            return false;
-        }
-    }
-    if ( instr.opcode == ir::Opcode::CALL )
-    {
-        return true;
-    }
-
-    return true;
-}
-
 ///
 /// @brief          Decrement counters for all operands of definition of variable.
 /// @param func     Function to look for definition.
@@ -65,7 +33,7 @@ decrement_uses_of_definition( const ir::Function&                               
                  (instr.defines.id    == var.id) &&
                  (instr.defines.value == var.version) )
             {
-                if ( has_side_effects( instr) )
+                if ( instr.HasSideEffect() )
                 {
                     return false;
                 }

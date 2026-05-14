@@ -19,6 +19,7 @@ BENCHMARKING_TESTS = [
         TestCase("EmptyCalculations",          100000000),
         TestCase("DeadCalculations",           100000000),
         TestCase("LsrBenchmark",               1000),
+        TestCase("LicmBenchmark",              1000)
     ]
 
 OPTIMIZATIONS = [
