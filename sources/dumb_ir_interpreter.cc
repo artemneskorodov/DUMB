@@ -19,6 +19,7 @@ main( int         argc,
     parser.AddOption<bool>       ( "--enable-dce" , "-dce"  , false, false);
     parser.AddOption<std::string>( "--log-flags"  , "-lf"   , ""   , false);
     parser.AddOption<std::string>( "--dump-dir"   , "-dd"   , "./" , false);
+    parser.AddOption<bool>       ( "--enable-lsr" , "-lsr"  , false, false);
 
     std::vector<std::string> args( argv + 1, argv + argc);
 
@@ -39,7 +40,8 @@ main( int         argc,
     // Running optimizations
     dumb::MiddleendOptions middleend_options{ parser.GetOption<bool>( "--enable-sccp"),
                                               parser.GetOption<bool>( "--enable-dce"),
-                                              false};
+                                              false,
+                                              parser.GetOption<bool>( "--enable-lsr")};
     dumb::RunMiddleend( program, middleend_options);
 
     // Dumping IR after middleend

@@ -10,16 +10,19 @@ struct MiddleendOptions
 {
     MiddleendOptions( bool enable_sccp,
                       bool enable_dce,
-                      bool benchmark_build)
+                      bool benchmark_build,
+                      bool enable_lsr)
      :  enable_sccp     { enable_sccp},
         enable_dce      { enable_dce},
-        benchmark_build { benchmark_build}
+        benchmark_build { benchmark_build},
+        enable_lsr      { enable_lsr}
     {
     }
 
     bool enable_sccp;
     bool enable_dce;
     bool benchmark_build;
+    bool enable_lsr;
 
 };
 

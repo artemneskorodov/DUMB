@@ -26,9 +26,9 @@ if len(sys.argv) != 3:
 compiler_path = sys.argv[1]
 workdir       = sys.argv[2]
 
-def run_single_test(test: str, sccp: bool, dce: bool, cycles: int) -> int:
-    exec_name = build_exec(compiler_path, workdir, test, enable_sccp=sccp, enable_dce=dce, build_benchmark=True, cycles=cycles)
-    json_output = BENCHMARKS_BUILD_DIR + "/" + test + f".sccp_{sccp}.dce_{dce}.result.json"
+def run_single_test(test: str, sccp: bool, dce: bool, lsr: bool, cycles: int) -> int:
+    exec_name = build_exec(compiler_path, workdir, test, enable_sccp=sccp, enable_dce=dce, enable_lsr=lsr, build_benchmark=True, cycles=cycles)
+    json_output = BENCHMARKS_BUILD_DIR + "/" + test + f".sccp_{sccp}.dce_{dce}.lsr_{lsr}.result.json"
     subprocess.run(["hyperfine", "--warmup", "5", "--export-json", json_output, f"'{exec_name}'"])
     with open(json_output, "r") as f:
         data = f.read()
@@ -37,18 +37,26 @@ def run_single_test(test: str, sccp: bool, dce: bool, cycles: int) -> int:
     return json_data['results'][0]['mean']
 
 for test in benchmarking_tests:
-    result_false_false = run_single_test(test.name, sccp=False, dce=False, cycles=test.cycles)
-    result_true_false  = run_single_test(test.name, sccp=True,  dce=False, cycles=test.cycles)
-    result_true_true   = run_single_test(test.name, sccp=True,  dce=True , cycles=test.cycles)
-    result_false_true  = run_single_test(test.name, sccp=False, dce=True , cycles=test.cycles)
+    result_fff = run_single_test(test.name, sccp=False, dce=False, lsr=False, cycles=test.cycles)
+    result_tff = run_single_test(test.name, sccp=True,  dce=False, lsr=False, cycles=test.cycles)
+    result_ttf = run_single_test(test.name, sccp=True,  dce=True , lsr=False, cycles=test.cycles)
+    result_ftf = run_single_test(test.name, sccp=False, dce=True , lsr=False, cycles=test.cycles)
+    result_fft = run_single_test(test.name, sccp=False, dce=False, lsr=True , cycles=test.cycles)
+    result_tft = run_single_test(test.name, sccp=True,  dce=False, lsr=True , cycles=test.cycles)
+    result_ttt = run_single_test(test.name, sccp=True,  dce=True , lsr=True , cycles=test.cycles)
+    result_ftt = run_single_test(test.name, sccp=False, dce=True , lsr=True , cycles=test.cycles)
 
     json_result.append(
         {
-            "name":     test.name,
-            "no_opt":   f"{result_false_false / result_false_false * 100 : .3f} %",
-            "sccp":     f"{result_true_false  / result_false_false * 100 : .3f} %",
-            "sccp_dce": f"{result_true_true   / result_false_false * 100 : .3f} %",
-            "dce":      f"{result_false_true  / result_false_false * 100 : .3f} %"
+            "name":         test.name,
+            "no_opt":       f"{result_fff / result_fff * 100 : .3f} %",
+            "sccp":         f"{result_tff / result_fff * 100 : .3f} %",
+            "sccp_dce":     f"{result_ttf / result_fff * 100 : .3f} %",
+            "dce":          f"{result_ftf / result_fff * 100 : .3f} %",
+            "lsr":          f"{result_fft / result_fff * 100 : .3f} %",
+            "sccp_lsr":     f"{result_tft / result_fff * 100 : .3f} %",
+            "sccp_dce_lsr": f"{result_ttt / result_fff * 100 : .3f} %",
+            "dce_lsr":      f"{result_ftt / result_fff * 100 : .3f} %"
         }
     )
 
