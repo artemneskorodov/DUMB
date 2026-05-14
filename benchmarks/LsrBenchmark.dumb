@@ -2,10 +2,17 @@ function _test(start)
 {
     variable result = start;
     variable induction = 10;
-    while ( induction < 100 )
+    while ( induction < 1000 )
     {
+        variable inner_induction = induction + 5;
+        while ( inner_induction < 1000 )
+        {
+            variable inner_derived = 7 * inner_induction + 2;
+            result = result * inner_derived;
+            inner_induction = inner_induction + 1;
+        }
         variable derived = 7 * induction + 2;
-        result = result + 2 * derived;
+        result = result * 2 * derived;
         induction = induction + 2;
     }
 }
