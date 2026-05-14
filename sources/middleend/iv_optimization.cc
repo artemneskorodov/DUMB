@@ -3,6 +3,7 @@
 #include "loops_search.hh"
 #include "logger.hh"
 #include "iv_search.hh"
+#include "lsr.hh"
 
 namespace dumb
 {
@@ -65,6 +66,8 @@ InductionVariablesOptimization( ir::Program& program)
         {
             LOGGER(LOOP_ANALYSIS) << "Derived induction: " << derived_ind.ToStr();
         }
+
+        lsr::LoopStrengthReduction( program, func, derived_inductions);
     }
 }
 

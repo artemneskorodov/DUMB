@@ -47,6 +47,7 @@ RunMiddleend( ir::Program&            program,
 
     #if 1
     iv::InductionVariablesOptimization( program);
+    ir::dump::DumpIR( program, "iv_opts");
     #endif
 }
 

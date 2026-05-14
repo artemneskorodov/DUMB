@@ -1,0 +1,18 @@
+function _test(start)
+{
+    variable result = start;
+    variable induction = 10;
+    while ( induction < 100 )
+    {
+        variable derived = 7 * induction + 2;
+        result = result + 2 * derived;
+        induction = induction + 2;
+    }
+}
+
+function main()
+{
+    variable result = _test(10);
+    output(result, "Result = ");
+    return 0;
+}
