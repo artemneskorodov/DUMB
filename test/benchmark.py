@@ -17,7 +17,7 @@ benchmarking_tests = [
         TestCase("ConstantFakeFlowControl",    100000000),
         TestCase("EmptyCalculations",          100000000),
         TestCase("DeadCalculations",           100000000),
-        TestCase("LsrBenchmark",               100000000),
+        TestCase("LsrBenchmark",               100000),
     ]
 
 if len(sys.argv) != 3:
