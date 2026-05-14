@@ -81,8 +81,8 @@ def generate_markdown_table(results: List[TestResult]) -> str:
     grouped = {}
 
     for r in results:
-        grouped.setdefault(r.test_name, {})
-        grouped[r.test_name][config_name(r.flags)] = r.execution_time
+        grouped.setdefault(r.name, {})
+        grouped[r.test_name][config_name(r.flags)] = r.time
 
     for test_name, values in grouped.items():
         row = [test_name]
