@@ -3,13 +3,7 @@ from test_utils import get_source_path
 
 BENCHMARKS_BUILD_DIR = "benchmarks_build"
 
-OPTIONS = [
-    "--enable-sccp",
-    "--enable-dce",
-    "--enable-lsr"
-]
-
-def build_exec(compiler_path: str, workdir: str, test_name: str, flags=OPTIONS, build_benchmark=False, cycles=-1) -> str:
+def build_exec(compiler_path: str, workdir: str, test_name: str, pipeline=None, build_benchmark=False, cycles=-1) -> str:
     source  = get_source_path(test_name, workdir)
     asm     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.s"
     obj     = f"{workdir}/{BENCHMARKS_BUILD_DIR}/{test_name}.o"
@@ -23,8 +17,9 @@ def build_exec(compiler_path: str, workdir: str, test_name: str, flags=OPTIONS, 
     if cycles >= 0:
         compile_command.append("--cycles")
         compile_command.append(str(cycles))
-    for flag in flags:
-        compile_command.append( flag)
+    if pipeline != None:
+        compile_command.append("--pipeline")
+        compile_command.append(pipeline)
 
     print(compile_command)
 

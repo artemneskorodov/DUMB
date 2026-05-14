@@ -9,9 +9,7 @@ namespace dumb
 namespace lsr
 {
 
-void LoopStrengthReduction( ir::Program&                 program,
-                            ir::Function&                func,
-                            const iv::DerivedIndVarList& derived_inductions);
+void LoopStrengthReduction( ir::Program& program, nt::SymbolID skip_optimizations);
 
 } // ! namespace lsr
 } // ! namespace dumb

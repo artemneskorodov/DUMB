@@ -4,8 +4,8 @@ from x86_build import build_exec, BENCHMARKS_BUILD_DIR, OPTIONS
 import time
 import subprocess
 from dataclasses import dataclass
-from itertools import product
-from typing import Dict, List
+from typing import List
+from collections import defaultdict
 
 @dataclass
 class TestCase:
@@ -19,6 +19,13 @@ BENCHMARKING_TESTS = [
         TestCase("DeadCalculations",           100000000),
         TestCase("LsrBenchmark",               1000),
     ]
+
+OPTIMIZATIONS = [
+    "sccp",
+    "dce",
+    "lsr",
+    None
+]
 
 if len(sys.argv) < 3:
     raise RuntimeError("Unexpected number of parameters")
@@ -41,7 +48,7 @@ OUTPUT_FILE = f"{workdir}/result.md"
 @dataclass
 class TestResult:
     name: str
-    flags: Dict[str, bool]
+    optimization: str
     time: float
 
 #
@@ -55,17 +62,21 @@ def config_name(flags: List[str]) -> str:
 #
 # Build and run single test
 #
-def run_single_test(test: str, cycles: int, flags) -> int:
-    exec_name = build_exec(compiler_path, workdir, test, build_benchmark=True, cycles=cycles, flags=flags)
+def run_single_test(test: str, cycles: int, optimization: str) -> int:
+    exec_name = build_exec(compiler_path, workdir, test, build_benchmark=True, cycles=cycles, pipeline=optimization)
     json_output = BENCHMARKS_BUILD_DIR + "/" + test + f".result.json"
     subprocess.run(["hyperfine", "--warmup", "5", "--export-json", json_output, f"'{exec_name}'"])
     with open(json_output, "r") as f:
         data = f.read()
         json_data = json.loads(data)
 
+    optname = optimization
+    if optname == None:
+        optname = "default-pipeline"
+
     return TestResult(
         name=test,
-        flags=flags,
+        flags=optimization,
         time=json_data['results'][0]['mean'],
     )
 
@@ -73,41 +84,27 @@ def run_single_test(test: str, cycles: int, flags) -> int:
 # Markdown table generator
 #
 def generate_markdown_table(results: List[TestResult]) -> str:
-    configs = []
+    tests = sorted({r.name for r in results})
+    pipelines = sorted({r.optimization for r in results})
 
+    results_map = defaultdict(dict)
     for r in results:
-        name = config_name(r.flags)
+        results_map[r.name][r.optimization] = r.time
 
-        if name not in configs:
-            configs.append(name)
+    table = []
 
-    lines = []
+    header = ["Test"] + pipelines
+    table.append("| " + " | ".join(header) + " |")
+    table.append("|" + "|".join(["---"] * len(header)) + "|")
 
-    header = ["Test", *configs]
+    for test in tests:
+        row = [test]
+        for pipeline in pipelines:
+            time = results_map[test].get(pipeline, "")
+            row.append(f"{time:.3f}" if time != "" else "")
+        table.append("| " + " | ".join(row) + " |")
 
-    lines.append("| " + " | ".join(header) + " |")
-    lines.append("| " + " | ".join(["---"] * len(header)) + " |")
-
-    grouped = {}
-
-    for r in results:
-        grouped.setdefault(r.name, {})
-        grouped[r.name][config_name(r.flags)] = r.time
-
-    for test_name, values in grouped.items():
-        row = [test_name]
-
-        for cfg in configs:
-            value = values.get(cfg)
-
-            if value is None:
-                row.append("-")
-            else:
-                row.append(f"{value:.2f}s")
-
-        lines.append("| " + " | ".join(row) + " |")
-
-    return "\n".join(lines)
+    return "\n".join(table)
 
 #
 # Running tests
@@ -115,13 +112,8 @@ def generate_markdown_table(results: List[TestResult]) -> str:
 all_results: List[TestResult] = []
 
 for test in benchmarking_tests:
-    for values in product([False, True], repeat=len(OPTIONS)):
-        enabled = [
-            option
-            for option, is_enabled in zip(OPTIONS, values)
-            if is_enabled
-        ]
-        result = run_single_test(test.name, cycles=test.cycles, flags=enabled)
+    for optimization in OPTIMIZATIONS:
+        result = run_single_test(test.name, cycles=test.cycles, optimization=optimization)
         all_results.append(result)
 
 with open(OUTPUT_FILE, "w") as f:

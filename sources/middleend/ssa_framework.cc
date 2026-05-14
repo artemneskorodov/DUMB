@@ -169,5 +169,30 @@ GetUses( ir::Function&     func,
     return uses;
 }
 
+graph::Graph<ir::BasicBlockID>
+BuildCFG( const ir::Function& func)
+{
+    graph::Graph<ir::BasicBlockID> result;
+
+    for ( const ir::BasicBlock& bb : func.BasicBlocks() )
+    {
+        result.AddNode( bb.id);
+    }
+
+    for ( const ir::BasicBlock& bb : func.BasicBlocks() )
+    {
+        if ( bb.terminator.type == ir::CmpType::INVALID )
+        {
+            continue;
+        }
+        result.AddEdge( bb.id, bb.terminator.true_dest);
+        if ( bb.terminator.type != ir::CmpType::ALWAYS_TRUE )
+        {
+            result.AddEdge( bb.id, bb.terminator.false_dest);
+        }
+    }
+    return result;
+}
+
 } // ! namespace ssa
 } // ! namespace dumb
