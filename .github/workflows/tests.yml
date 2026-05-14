@@ -156,8 +156,4 @@ jobs:
         run: |
           echo "### Benchmark results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          jq -r '["|Name|", "No optimizations|", "--enable-sccp|", "--enable-sccp --enable-dce|", "--enable-dce|", "--enable-lsr|", "--enable-sccp --enable-lsr|", "--enable-sccp --enable-dce --enable-lsr", "--enable-dce --enable-lsr"],
-            ["|:----|", "----:|", "----:|", "----:|", "----:|"],
-            (.[] | ["|" + .name + "|", .no_opt + "|", .sccp + "|", .sccp_dce + "|", .dce + "|" + .lsr + "|" + .sccp_lsr + "|" + .sccp_dce_lsr + "|" + .dce_lsr])
-            | @tsv' result.json >> $GITHUB_STEP_SUMMARY
+          cat result.md >> $GITHUB_STEP_SUMMARY

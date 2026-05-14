@@ -26,7 +26,7 @@ if len(sys.argv) != 3:
 compiler_path = sys.argv[1]
 workdir       = sys.argv[2]
 
-OUTPUT_FILE = f"{workdir}/result.json"
+OUTPUT_FILE = f"{workdir}/result.md"
 
 @dataclass
 class TestResult:
