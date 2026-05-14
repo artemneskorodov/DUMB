@@ -37,14 +37,11 @@ class TestResult:
 #
 # Generate configuration name
 #
-def config_name(flags: Dict[str, bool]) -> str:
-    enabled = [k for k, v in flags.items() if v]
-
-    if not enabled:
+def config_name(flags: List[str]) -> str:
+    if not flags:
         return "no-flags"
 
-    return " ".join(enabled)
-
+    return " ".join(flags)
 #
 # Build and run single test
 #
@@ -119,4 +116,3 @@ for test in benchmarking_tests:
 
 with open(OUTPUT_FILE, "w") as f:
     f.write(generate_markdown_table(all_results))
-
