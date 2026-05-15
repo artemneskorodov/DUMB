@@ -4,11 +4,11 @@
 #include "ir.hh"
 #include "ir_dump.hh"
 #include "build_ssa.hh"
-#include "options.hh"
 #include "sccp.hh"
 #include "dce.hh"
 #include "lsr.hh"
 #include "instr_simplify.hh"
+#include "licm.hh"
 
 namespace dumb
 {
@@ -25,6 +25,7 @@ opt_to_str( Optimization opt)
         case Optimization::DCE:  return "dce";
         case Optimization::LSR:  return "lsr";
         case Optimization::ISIM: return "isim";
+        case Optimization::LICM: return "licm";
         default:
         {
             throw std::runtime_error{ "Unexpected Optimization value = " +
@@ -69,6 +70,9 @@ PipelineFromStr( const std::string& string)
         } else if ( opt == opt_to_str( Optimization::ISIM) )
         {
             optimizations.emplace_back( Optimization::ISIM);
+        } else if ( opt == opt_to_str( Optimization::LICM) )
+        {
+            optimizations.emplace_back( Optimization::LICM);
         } else
         {
             throw std::runtime_error{ "Unknown optimization: " + opt};
@@ -127,6 +131,12 @@ RunMiddleend( ir::Program&            program,
             case Optimization::ISIM:
             {
                 instr_simplify::InstructionsSimplification( program, skip_optimizations);
+                break;
+            }
+            case Optimization::LICM:
+            {
+                licm::LoopInvariantCodeMotion( program, skip_optimizations);
+                break;
             }
         }
         std::string name = opt_to_str( opt) + "_" + std::to_string( optimizations_counters.count( opt));

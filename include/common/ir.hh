@@ -188,6 +188,38 @@ struct Instruction
     Operand defines;
     std::vector<Operand> operands;
 
+    bool
+    HasSideEffect() const
+    {
+        if ( opcode == ir::Opcode::INPUT ||
+             opcode == ir::Opcode::OUTPUT ||
+             opcode == ir::Opcode::EXIT ||
+             opcode == ir::Opcode::RET )
+        {
+            return true;
+        }
+        if ( opcode == ir::Opcode::ADD ||
+             opcode == ir::Opcode::SUB ||
+             opcode == ir::Opcode::DIV ||
+             opcode == ir::Opcode::MUL ||
+             opcode == ir::Opcode::MOV )
+        {
+            if ( defines.type == ir::Operand::GLOBAL )
+            {
+                return true;
+            } else
+            {
+                return false;
+            }
+        }
+        if ( opcode == ir::Opcode::CALL )
+        {
+            return true;
+        }
+
+        return true;
+    }
+
 };
 
 ///
