@@ -131,10 +131,12 @@ RunMiddleend( ir::Program&            program,
             case Optimization::ISIM:
             {
                 instr_simplify::InstructionsSimplification( program, skip_optimizations);
+                break;
             }
             case Optimization::LICM:
             {
                 licm::LoopInvariantCodeMotion( program, skip_optimizations);
+                break;
             }
         }
         std::string name = opt_to_str( opt) + "_" + std::to_string( optimizations_counters.count( opt));
