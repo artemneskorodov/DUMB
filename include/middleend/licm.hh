@@ -9,7 +9,7 @@ namespace dumb
 namespace licm
 {
 
-void LoopInvariantCodeMotion( ir::Function& func, loops::LoopsInfo& loops);
+void LoopInvariantCodeMotion( ir::Program& program, nt::SymbolID skip_optimizations);
 
 } // ! namespace licm
 } // ! namespace dumb

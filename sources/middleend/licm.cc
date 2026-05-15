@@ -1,4 +1,5 @@
 #include "licm.hh"
+#include "ssa_framework.hh"
 
 namespace dumb
 {
@@ -34,13 +35,11 @@ find_definition_block( const ir::Function& func,
     return 123123;
 }
 
-} // ! anonymous namespace
-
 void
-LoopInvariantCodeMotion( ir::Function&     func,
-                         loops::LoopsInfo& loops)
+loop_invariant_code_motion( ir::Function&     func,
+                            loops::LoopsInfo& loops_info)
 {
-    for ( const std::unique_ptr<loops::Loop>& loop : loops.Loops() )
+    for ( const std::unique_ptr<loops::Loop>& loop : loops_info.Loops() )
     {
         ir::BasicBlock& preheader = func.GetBasicBlock( loop->preheader);
 
@@ -83,6 +82,27 @@ LoopInvariantCodeMotion( ir::Function&     func,
                 }
             }
         }
+    }
+}
+
+} // ! anonymous namespace
+
+void
+LoopInvariantCodeMotion( ir::Program& program,
+                         nt::SymbolID skip_optimizations)
+{
+    for ( ir::Function& func : program.Functions() )
+    {
+        if ( func.Id() == skip_optimizations )
+        {
+            continue;
+        }
+
+        graph::Graph<ir::BasicBlockID> cfg = ssa::BuildCFG( func);
+        cfg.BuildDominatorsTable();
+        loops::LoopsInfo loops_info{ cfg};
+
+        loop_invariant_code_motion( func, loops_info);
     }
 }
 
