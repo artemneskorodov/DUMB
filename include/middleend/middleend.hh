@@ -13,9 +13,10 @@ enum class Optimization
     SCCP,
     DCE,
     LSR,
+    ISIM,
 };
 
-inline std::string kDefaultPipeline = "sccp-dce-lsr-sccp-dce";
+inline std::string kDefaultPipeline = "sccp-dce-isim-lsr-sccp-dce";
 
 struct MiddleendOptions
 {
