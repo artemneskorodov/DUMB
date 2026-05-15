@@ -39,46 +39,53 @@ void
 loop_invariant_code_motion( ir::Function&     func,
                             loops::LoopsInfo& loops_info)
 {
-    for ( const std::unique_ptr<loops::Loop>& loop : loops_info.Loops() )
+    bool changed = true;
+    while ( changed )
     {
-        ir::BasicBlock& preheader = func.GetBasicBlock( loop->preheader);
-
-        for ( ir::BasicBlockID block_id : loop->blocks )
+        changed = false;
+        for ( const std::unique_ptr<loops::Loop>& loop : loops_info.Loops() )
         {
-            if ( !loop->IsBlockDirectlyInLoop( block_id) )
+            ir::BasicBlock& preheader = func.GetBasicBlock( loop->preheader);
+
+            for ( ir::BasicBlockID block_id : loop->blocks )
             {
-                continue;
-            }
-            ir::BasicBlock& block = func.GetBasicBlock( block_id);
-            auto instr_it = block.instructions.begin();
-            while ( instr_it != block.instructions.end() )
-            {
-                if ( instr_it->HasSideEffect() )
+                if ( !loop->IsBlockDirectlyInLoop( block_id) )
                 {
                     continue;
                 }
-
-                bool all_outside = true;
-                for ( const ir::Operand& operand : instr_it->operands )
+                ir::BasicBlock& block = func.GetBasicBlock( block_id);
+                auto instr_it = block.instructions.begin();
+                while ( instr_it != block.instructions.end() )
                 {
-                    if ( operand.type != ir::Operand::VARIABLE )
+                    if ( instr_it->HasSideEffect() )
                     {
+                        ++instr_it;
                         continue;
                     }
-                    ir::BasicBlockID definition = find_definition_block( func, operand);
-                    if ( loop->Contains( definition) )
+
+                    bool all_outside = true;
+                    for ( const ir::Operand& operand : instr_it->operands )
                     {
-                        all_outside = false;
-                        break;
+                        if ( operand.type != ir::Operand::VARIABLE )
+                        {
+                            continue;
+                        }
+                        ir::BasicBlockID definition = find_definition_block( func, operand);
+                        if ( loop->Contains( definition) )
+                        {
+                            all_outside = false;
+                            break;
+                        }
                     }
-                }
-                if ( all_outside )
-                {
-                    preheader.instructions.push_back( *instr_it);
-                    instr_it = block.instructions.erase( instr_it);
-                } else
-                {
-                    ++instr_it;
+                    if ( all_outside )
+                    {
+                        preheader.instructions.push_back( *instr_it);
+                        instr_it = block.instructions.erase( instr_it);
+                        changed = true;
+                    } else
+                    {
+                        ++instr_it;
+                    }
                 }
             }
         }
