@@ -518,12 +518,14 @@ SyntaxParser::get_element()
         return get_immediate();
     } else if ( is_type (lexer::TokenType::LEFT_PARENTHESIS) )
     {
+        advance();
         ast::ExprNodePtr expression = get_expression();
         if ( !is_type( lexer::TokenType::RIGHT_PARENTHESIS) )
         {
             throw SyntaxError{ line(), column(),
                               "Expected ')' after expression"};
         }
+        advance();
         return expression;
     }else
     {
