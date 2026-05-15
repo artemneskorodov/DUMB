@@ -17,13 +17,14 @@ main( int         argc,
 {
     dumb::option::OptionsParser parser{};
 
-    parser.AddOption<std::string>( "--input"     , "-i" , ""                    , true );
-    parser.AddOption<std::string>( "--output"    , "-o" , ""                    , true );
-    parser.AddOption<std::string>( "--log-flags" , "-lf", ""                    , false);
-    parser.AddOption<std::string>( "--dump-dir"  , "-dd", "./"                  , false);
-    parser.AddOption<bool>       ( "--benchmark" , "-b" , false                 , false);
-    parser.AddOption<int>        ( "--cycles"    , "-c" , 10000                 , false);
-    parser.AddOption<std::string>( "--pipeline"  , "-p" , dumb::kDefaultPipeline, false);
+    parser.AddOption<std::string>( "--input"     , "-i"  , ""                    , true );
+    parser.AddOption<std::string>( "--output"    , "-o"  , ""                    , true );
+    parser.AddOption<std::string>( "--log-flags" , "-lf" , ""                    , false);
+    parser.AddOption<std::string>( "--dump-dir"  , "-dd" , "./"                  , false);
+    parser.AddOption<bool>       ( "--benchmark" , "-b"  , false                 , false);
+    parser.AddOption<int>        ( "--cycles"    , "-c"  , 10000                 , false);
+    parser.AddOption<std::string>( "--pipeline"  , "-p"  , dumb::kDefaultPipeline, false);
+    parser.AddOption<bool>       ( "--polish"    , "-pol", false                 , false);
 
     std::vector<std::string> args( argv + 1, argv + argc);
 
@@ -38,6 +39,13 @@ main( int         argc,
 
     std::string source = parser.GetOption<std::string>( "--input");
     std::string output = parser.GetOption<std::string>( "--output");
+
+    if ( parser.GetOption<bool>( "--polish") )
+    {
+        std::string polish = dumb::GeneratePolish( source);
+        dumb::utils::WriteTextFile( output, polish);
+        return EXIT_SUCCESS;
+    }
 
     dumb::ir::Program program_ir = dumb::RunFrontend( source);
 

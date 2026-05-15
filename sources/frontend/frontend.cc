@@ -9,6 +9,7 @@
 #include "emit_ir.hh"
 #include "emit_ir.hh"
 #include "ast_interpreter.hh"
+#include "polish_notation.hh"
 
 namespace dumb
 {
@@ -47,6 +48,13 @@ RunASTInterpreter( const std::string& filename)
     ast::Program tree = BuildAST( filename);
 
     ast::interpreter::Run( tree);
+}
+
+std::string
+GeneratePolish( const std::string& filename)
+{
+    ast::Program ast = BuildAST( filename);
+    return pn::GeneratePolishNotation( ast);
 }
 
 } // ! namespace dumb
