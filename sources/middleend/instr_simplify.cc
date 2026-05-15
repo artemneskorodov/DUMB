@@ -158,23 +158,18 @@ InstructionsSimplification( ir::Program& program,
             auto instr_it = block.instructions.begin();
             while ( instr_it != block.instructions.end() )
             {
-                bool changed = false;
                 if ( instr_it->opcode == ir::Opcode::MUL )
                 {
-                    changed = simplify_mul( *instr_it);
+                    simplify_mul( *instr_it);
                 } else if ( instr_it->opcode == ir::Opcode::ADD )
                 {
-                    changed = simplify_add( *instr_it);
+                    simplify_add( *instr_it);
                 } else if ( instr_it->opcode == ir::Opcode::SUB )
                 {
-                    changed = simplify_sub( *instr_it);
+                    simplify_sub( *instr_it);
                 }
 
-                if ( changed )
-                {
-                    ++instr_it;
-                    continue;
-                }
+                ++instr_it;
             }
         }
         squash_movs( func);
