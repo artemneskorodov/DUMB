@@ -31,6 +31,7 @@ function divide_positive(x, y)
 @ensure(@result > 0, "Result of function is expected to be positive")
 {
     variable result = x / y;
+    return result;
 }
 ```
 
