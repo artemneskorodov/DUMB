@@ -8,6 +8,7 @@
 #include "sccp.hh"
 #include "dce.hh"
 #include "lsr.hh"
+#include "instr_simplify.hh"
 
 namespace dumb
 {
@@ -23,6 +24,7 @@ opt_to_str( Optimization opt)
         case Optimization::SCCP: return "sccp";
         case Optimization::DCE:  return "dce";
         case Optimization::LSR:  return "lsr";
+        case Optimization::ISIM: return "isim";
         default:
         {
             throw std::runtime_error{ "Unexpected Optimization value = " +
@@ -37,6 +39,11 @@ std::vector<Optimization>
 PipelineFromStr( const std::string& string)
 {
     std::vector<Optimization> optimizations{};
+
+    if ( string == "none" )
+    {
+        return optimizations;
+    }
 
     std::size_t pos = 0;
     for ( ; ; )
@@ -59,6 +66,9 @@ PipelineFromStr( const std::string& string)
         } else if ( opt == opt_to_str( Optimization::LSR) )
         {
             optimizations.emplace_back( Optimization::LSR);
+        } else if ( opt == opt_to_str( Optimization::ISIM) )
+        {
+            optimizations.emplace_back( Optimization::ISIM);
         } else
         {
             throw std::runtime_error{ "Unknown optimization: " + opt};
@@ -113,6 +123,10 @@ RunMiddleend( ir::Program&            program,
             {
                 lsr::LoopStrengthReduction( program, skip_optimizations);
                 break;
+            }
+            case Optimization::ISIM:
+            {
+                instr_simplify::InstructionsSimplification( program, skip_optimizations);
             }
         }
         std::string name = opt_to_str( opt) + "_" + std::to_string( optimizations_counters.count( opt));

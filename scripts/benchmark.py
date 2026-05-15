@@ -22,7 +22,7 @@ BENCHMARKING_TESTS = [
     ]
 
 OPTIMIZATIONS = [
-    "",
+    "none",
     "sccp",
     "dce",
     "lsr",
