@@ -93,6 +93,54 @@ simplify_sub( ir::Instruction& instr)
     return false;
 }
 
+void
+squash_movs( ir::Function& func)
+{
+    for ( ir::BasicBlock& block : func.BasicBlocks() )
+    {
+        auto instr_it = block.instructions.begin();
+        while ( instr_it != block.instructions.end() )
+        {
+            auto next = std::next( instr_it);
+            if ( next == block.instructions.end() )
+            {
+                break;
+            }
+
+            //
+            // Trying to get pattern: tmp = (instruction); var = mov(tmp);
+            // In this case if tmp is not used anywhere else, this can be squashed to var = (instruction)
+            //
+            if ( instr_it->defines.type != ir::Operand::VARIABLE ||
+                 ssa::GetUsesCount( func, instr_it->defines) != 1 )
+            {
+                ++instr_it;
+                continue;
+            }
+
+            auto instr_uses = ssa::GetInstrUsers( func, instr_it->defines);
+            if ( instr_uses.size() == 0 )
+            {
+                ++instr_it;
+                continue;
+            }
+
+            ir::Instruction *use = const_cast<ir::Instruction *>( instr_uses.front());
+            if ( use->opcode != ir::Opcode::MOV )
+            {
+                ++instr_it;
+                continue;
+            }
+
+            use->opcode = instr_it->opcode;
+            use->operands = instr_it->operands;
+            func.RemoveVariable( instr_it->defines.id, instr_it->defines.value);
+
+            instr_it = block.instructions.erase( instr_it);
+        }
+    }
+}
+
 } // ! anonymous namespace
 
 void
@@ -127,45 +175,9 @@ InstructionsSimplification( ir::Program& program,
                     ++instr_it;
                     continue;
                 }
-
-                auto next = std::next( instr_it);
-                if ( next == block.instructions.end() )
-                {
-                    break;
-                }
-
-                //
-                // Trying to get pattern: tmp = (instruction); var = mov(tmp);
-                // In this case if tmp is not used anywhere else, this can be squashed to var = (instruction)
-                //
-                if ( instr_it->defines.type != ir::Operand::VARIABLE ||
-                     ssa::GetUsesCount( func, instr_it->defines) != 1 )
-                {
-                    ++instr_it;
-                    continue;
-                }
-
-                auto instr_uses = ssa::GetInstrUsers( func, instr_it->defines);
-                if ( instr_uses.size() == 0 )
-                {
-                    ++instr_it;
-                    continue;
-                }
-
-                ir::Instruction *use = const_cast<ir::Instruction *>( instr_uses.front());
-                if ( use->opcode != ir::Opcode::MOV )
-                {
-                    ++instr_it;
-                    continue;
-                }
-
-                use->opcode = instr_it->opcode;
-                use->operands = instr_it->operands;
-                func.RemoveVariable( instr_it->defines.id, instr_it->defines.value);
-
-                instr_it = block.instructions.erase( instr_it);
             }
         }
+        squash_movs( func);
     }
 }
 
