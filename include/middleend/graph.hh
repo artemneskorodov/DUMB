@@ -11,6 +11,8 @@
 #include <climits>
 #include <vector>
 #include <bit>
+#include <unordered_set>
+#include <stack>
 
 #include "logger.hh"
 
@@ -746,6 +748,75 @@ public:
     Size() const
     {
         return nodes_.size();
+    }
+
+public:
+    std::list<NodeIdT>
+    PreorderDFS() const
+    {
+        return get_dfs_order( true);
+    }
+
+    std::list<NodeIdT>
+    PostorderDFS() const
+    {
+        return get_dfs_order( false);
+    }
+
+    std::list<NodeIdT>
+    ReversePostorderDFS() const
+    {
+        std::list<NodeIdT> order = get_dfs_order( false);
+        order.reverse();
+        return order;
+    }
+
+private:
+    std::list<NodeIdT>
+    get_dfs_order( bool is_preorder) const
+    {
+        std::list<NodeIdT>                   order{};
+        std::unordered_set<NodeIdT>          visited{};
+        std::stack<std::pair<NodeIdT, bool>> stack{}; // node_id, is_exit
+
+        stack.push( { entry_, false});
+        while ( !stack.empty() )
+        {
+            NodeIdT node_id = stack.top().first;
+            bool    is_exit = stack.top().second;
+            stack.pop();
+
+            if ( is_exit )
+            {
+                if ( !is_preorder )
+                {
+                    order.push_back( node_id);
+                }
+                continue;
+            }
+
+            if ( visited.contains( node_id) )
+            {
+                continue;
+            }
+
+            visited.insert( node_id);
+
+            if ( is_preorder )
+            {
+                order.emplace_back( node_id);
+            }
+
+            stack.push( { node_id, true}); // Exit for postorder
+            for ( NodeIdT next : GetNexts( node_id) )
+            {
+                if ( !visited.contains( next) )
+                {
+                    stack.push( { next, false});
+                }
+            }
+        }
+        return order;
     }
 
 private:
